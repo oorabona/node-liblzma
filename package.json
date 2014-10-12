@@ -1,0 +1,47 @@
+{
+  "name": "node-liblzma",
+  "version": "0.3.0",
+  "description": "Liblzma bindings for NodeJS",
+  "main": "./lib/coffee/XzStream.js",
+  "scripts": {
+    "clean": "rm -rf node_modules build",
+    "build": "node-gyp configure build",
+    "debug": "node-gyp configure build --debug",
+    "test": "./node_modules/plz/bin/plz -v clean test",
+    "prepublish": "./node_modules/plz/bin/plz -v build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/oorabona/node-liblzma"
+  },
+  "keywords": [
+    "node",
+    "lzma",
+    "lzma2",
+    "xz",
+    "compress",
+    "uncompress",
+    "decompress",
+    "filters",
+    "binding",
+    "native"
+  ],
+  "author": "Olivier ORABONA",
+  "licenses": [
+    {
+      "type": "LGPL3",
+      "url": "https://github.com/oorabona/node-liblzma/blob/master/LICENSE"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/oorabona/node-liblzma/issues"
+  },
+  "homepage": "https://github.com/oorabona/node-liblzma",
+  "devDependencies": {
+    "coffee-script": "^1.8.0",
+    "expect.js": "^0.3.1",
+    "mocha": "^1.21.4",
+    "plz": "^2.0.3",
+    "q": "^1.0.1"
+  }
+}

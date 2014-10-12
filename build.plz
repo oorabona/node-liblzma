@@ -1,0 +1,5 @@
+load "coffee"
+load "mocha"
+
+settings.clean = [ "lib" ]
+settings.distclean = [ "build", "node_modules" ]
