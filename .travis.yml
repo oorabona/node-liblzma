@@ -9,6 +9,7 @@ before_install:
   - sudo apt-get update -qq
   - npm install plz
   - npm install coffee-script
+  - npm install mocha
 install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
 # We want to compile with g++ 4.8 when rather than the default g++
