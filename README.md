@@ -1,5 +1,5 @@
-Node-libxz
-==========
+Node-liblzma
+============
 
 An other way to deal with the XZ compression format with NodeJS !
 
