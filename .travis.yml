@@ -10,6 +10,8 @@ before_install:
   - npm install plz
   - npm install coffee-script
   - npm install mocha
+  - npm install expect.js
+  - npm install q
 install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
 # We want to compile with g++ 4.8 when rather than the default g++
