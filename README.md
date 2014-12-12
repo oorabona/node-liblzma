@@ -1,12 +1,18 @@
 Node-liblzma
-============
+==========
+
+[![NPM Version](https://img.shields.io/npm/v/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
+[![NPM Downloads](https://img.shields.io/npm/dm/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
+[![Build Status](https://travis-ci.org/oorabona/node-liblzma.png)](https://travis-ci.org/oorabona/node-liblzma)
+[![Dependency Status](https://david-dm.org/oorabona/node-liblzma.svg)](https://david-dm.org/oorabona/node-liblzma)
+[![devDependency Status](https://david-dm.org/oorabona/node-liblzma/dev-status.svg)](https://david-dm.org/oorabona/node-liblzma#info=devDependencies)
 
 An other way to deal with the XZ compression format with NodeJS !
 
-# What is XZ ?
+# What is liblzma/XZ ?
 
 [XZ](http://tukaani.org/xz/xz-file-format.txt) is a container for compressed
-archives. It can use LZMA1 or LZMA2 compression algorithms and is among the best
+archives. It is among the best
 compressors out there according to several benchmarks:
 * [Gzip vs Bzip2 vs LZMA vs XZ vs LZ4 vs LZO](http://pokecraft.first-world.info/wiki/Quick_Benchmark:_Gzip_vs_Bzip2_vs_LZMA_vs_XZ_vs_LZ4_vs_LZO)
 * [Large Text Compression Benchmark](http://mattmahoney.net/dc/text.html#2118)
@@ -24,10 +30,10 @@ I did not want to rely on an embedded liblzma version and instead use the system
 one (most Linux distros have liblzma, if not look at INSTALL below) ;
 
 * It supports modes, presets (including "extreme"), all LZMA checks (CRC32/64, SHA-256 hash...),
-filters (X86,IA64,...) and should be even compatible with future extensions of liblzma as well ;
+filters (X86,IA64,...) and should be even compatible with future extensions of liblzma ;
 
 * (Almost) complete NodeJS Zlib API / implementation compatibility so that switching
-from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :)
+from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :smile:
 
 > Also, as stated in src/liblzma/api/lzma/lzma12.h
 
