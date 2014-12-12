@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-   - "0.11"
+   - "0.8"
    - "0.10"
 # http://gearchicken.com/wordpress/?p=105
 before_install:
@@ -17,6 +17,8 @@ install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
   # We want to compile with g++ 4.8 when rather than the default g++
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+  # Add xz utils and development package
+  - sudo apt-get install -qq xz-utils liblzma-dev
   # Ensure source install works and compiles correctly
   - npm run-script build
   # test our module
