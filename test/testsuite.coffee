@@ -3,7 +3,7 @@ fs = require "fs"
 stream = require "stream"
 Q = require "q"
 
-xzStream = require "../lib/coffee/XzStream"
+xzStream = require "../lib/XzStream"
 
 helpers = require "./helpers"
 

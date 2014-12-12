@@ -1,7 +1,7 @@
 expect = require "expect.js"
 fs = require "fs"
 
-{Unxz, Xz, filter} = require "../lib/coffee/XzStream"
+{Unxz, Xz, filter} = require "../lib/XzStream"
 
 describe 'Xz Compressor options', ->
   it 'should only allow Array filters', ->

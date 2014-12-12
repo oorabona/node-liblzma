@@ -26,5 +26,5 @@ exports.bufferEqual = (a, b) ->
     return false  unless a[i] is b[i]
     ++i
   true
-  
+
 module.exports = exports
