@@ -12,7 +12,19 @@ before_install:
   - npm install mocha
   - npm install expect.js
   - npm install q
+  # Put local npm modules .bin on PATH
+  - export PATH=./node_modules/.bin/:$PATH
+  # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
+  - npm install node-gyp -g
+  - npm run-script build
 install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
-# We want to compile with g++ 4.8 when rather than the default g++
+  # We want to compile with g++ 4.8 when rather than the default g++
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+  # Ensure source install works and compiles correctly
+  - npm install --build-from-source
+  # test our module
+  - npm test
+after_success:
+  # if success then query and display all published binaries
+  - node-pre-gyp info
