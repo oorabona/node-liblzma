@@ -6,8 +6,8 @@
       },
       "target_name": "node_libxz",
       "sources": [
-        "src/c++/node_libxz.cpp",
-        "src/c++/node_libxz.h"
+        "src/bindings/node_libxz.cpp",
+        "src/bindings/node_libxz.h"
       ],
       "target_conditions": [
         ["use_mt==1", {"defines": ["LIBLZMA_ENABLE_MT"]}]
