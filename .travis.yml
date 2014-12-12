@@ -14,6 +14,8 @@ before_install:
   - npm install node-gyp -g
   - npm install plz -g
   - npm run-script clean
+before_script:
+  - coffee -c -o lib src
 install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
   # We want to compile with g++ 4.8 when rather than the default g++
