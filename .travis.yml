@@ -1,6 +1,5 @@
 language: node_js
 node_js:
-   - "0.8"
    - "0.10"
 # http://gearchicken.com/wordpress/?p=105
 before_install:
