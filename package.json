@@ -7,9 +7,9 @@
     "clean": "rm -rf node_modules build",
     "build": "node-gyp configure build",
     "debug": "node-gyp configure build --debug",
-    "test": "plz -v clean test",
-    "preinstall": "plz -v build",
-    "prepublish": "plz -v build"
+    "test": "./node_modules/plz/bin/plz -v clean test",
+    "preinstall": "./node_modules/plz/bin/plz -v build",
+    "prepublish": "./node_modules/plz/bin/plz -v build"
   },
   "repository": {
     "type": "git",
