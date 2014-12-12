@@ -3,3 +3,4 @@
 /node_modules/
 .plz
 build/
+*.log
