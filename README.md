@@ -91,10 +91,10 @@ $ ENABLE_MT=1 npm install
 # Usage
 
 As the API is very close to NodeJS Zlib, you will probably find a good reference
-[there](www.nodejs.org/api/zlib.html).
+[there](http://www.nodejs.org/api/zlib.html).
 
 Otherwise examples can be found as part of the test suite, so feel free to use them!
-They are written in [CoffeeScript](http://www.coffeesscript.org).
+They are written in [CoffeeScript](http://www.coffeescript.org).
 
 # Bugs
 
