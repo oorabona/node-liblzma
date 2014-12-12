@@ -7,8 +7,8 @@
     "clean": "rm -rf node_modules build",
     "build": "node-gyp configure build",
     "debug": "node-gyp configure build --debug",
-    "test": "./node_modules/plz/bin/plz -v clean test",
-    "preinstall": "./node_modules/plz/bin/plz -v build",
+    "test": "plz -v clean test",
+    "preinstall": "plz -v build",
     "prepublish": "plz -v build"
   },
   "repository": {
@@ -43,8 +43,8 @@
   },
   "devDependencies": {
     "expect.js": "^0.3.1",
-    "mocha": "^1.21.4",
     "plz": "^2.0.3",
+    "mocha": "^1.21.4",
     "q": "^1.0.1"
   }
 }
