@@ -12,6 +12,7 @@ before_install:
   - export PATH=./node_modules/.bin/:$PATH
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
+  - npm install plz
   - npm run-script clean
 install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
