@@ -1,4 +1,4 @@
-liblzma = require "../../build/Release/node_libxz.node"
+liblzma = require "../build/Release/node_libxz.node"
 
 util = require "util"
 assert = require "assert"

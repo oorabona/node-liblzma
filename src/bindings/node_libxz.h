@@ -40,7 +40,7 @@ public:
 
 private:
   explicit LZMA() : node::ObjectWrap(), _stream(LZMA_STREAM_INIT),
-    _wip(false), _pending_close(false)
+    _wip(false), _pending_close(false), _refs(0)
   {
   }
   ~LZMA() {
@@ -57,14 +57,14 @@ private:
 
 private:
   void Ref() {
-    if (++_refs == 1) {
+    if (++this->_refs == 1) {
       handle_.ClearWeak();
     }
   }
 
   void Unref() {
-    assert(_refs > 0);
-    if (--_refs == 0) {
+    assert(this->_refs > 0);
+    if (--this->_refs == 0) {
       MakeWeak();
     }
   }
