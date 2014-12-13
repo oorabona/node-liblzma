@@ -1,5 +1,12 @@
 load "coffee"
 load "mocha"
 
-settings.clean = [ "lib" ]
-settings.distclean = [ "build", "node_modules" ]
+task 'bindings',
+  description: 'Compile liblzma bindings for NodeJS'
+  attach: 'build'
+  run: ->
+    exec('node-gyp configure build').then ->
+      notice 'Build complete'
+
+settings.clean = [ "lib", "build" ]
+settings.distclean = [ "node_modules" ]
