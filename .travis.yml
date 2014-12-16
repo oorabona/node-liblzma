@@ -8,6 +8,8 @@ before_install:
   - sudo apt-get update -qq
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
+  # Install coffee globally
+  - npm install -g coffee-script
   # Install Unified Build System
   - npm install ubs
 install:
