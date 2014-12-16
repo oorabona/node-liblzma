@@ -4,6 +4,7 @@ init:
     - clean
     - packagejson
 settings:
+  toClean: ['lib', 'build']
   srcPath: 'src'
   libPath: 'lib'
 clean:
