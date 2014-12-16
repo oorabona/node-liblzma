@@ -17,7 +17,7 @@ install:
   # Add xz utils and development package
   - sudo apt-get install -qq xz-utils liblzma-dev
   # Ensure source install works and compiles correctly
-  - npm install
+  - npm install --build-from-source
   # test our module
   - npm test
 after_success:
