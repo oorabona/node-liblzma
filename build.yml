@@ -1,0 +1,21 @@
+init:
+  plugins:
+    - mocha
+    - clean
+    - packagejson
+settings:
+  srcPath: 'src'
+  libPath: 'lib'
+clean:
+  - node-gyp clean
+build_module:
+  - echo Building %name version %version ...
+  - node-gyp configure build
+build:
+  - task: build_module
+  - coffee -o %libPath -c %srcPath
+test:
+  - task: mocha-test
+install:
+  - task: build
+  - echo Build done.
