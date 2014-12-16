@@ -6,13 +6,8 @@ before_install:
 # We need this line to have g++4.8 available in apt
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
-  - npm update
-  # Put local npm modules .bin on PATH
-  - export PATH=./node_modules/.bin/:$PATH
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
-before_script:
-  - coffee -c -o lib src
 install:
   - sudo apt-get install -qq gcc-4.8 g++-4.8
   # We want to compile with g++ 4.8 when rather than the default g++
@@ -20,7 +15,7 @@ install:
   # Add xz utils and development package
   - sudo apt-get install -qq xz-utils liblzma-dev
   # Ensure source install works and compiles correctly
-  - npm run-script build
+  - npm install
   # test our module
   - npm test
 after_success:
