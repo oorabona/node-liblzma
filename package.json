@@ -4,6 +4,7 @@
   "description": "Liblzma bindings for NodeJS",
   "main": "./lib/XzStream.js",
   "scripts": {
+    "test": "./node_modules/.bin/ubs test",
     "preinstall": "./node_modules/.bin/ubs clean install",
     "prepublish": "./node_modules/.bin/ubs clean install"
   },
