@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "0.4.1-rc11",
+  "version": "0.4.2",
   "description": "Liblzma bindings for NodeJS",
   "main": "./lib/XzStream.js",
   "scripts": {
