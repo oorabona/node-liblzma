@@ -1,14 +1,11 @@
 {
   "name": "node-liblzma",
-  "version": "0.4.1-rc4",
+  "version": "0.4.1-rc11",
   "description": "Liblzma bindings for NodeJS",
   "main": "./lib/XzStream.js",
   "scripts": {
-    "clean": "./node_modules/.bin/plz -v clean",
-    "build": "./node_modules/.bin/plz -v clean build",
-    "debug": "node-gyp configure build --debug",
-    "test": "./node_modules/.bin/plz -v clean test",
-    "prepublish": "./node_modules/.bin/plz -v clean test"
+    "preinstall": "./node_modules/.bin/ubs clean install",
+    "prepublish": "./node_modules/.bin/ubs clean install"
   },
   "repository": {
     "type": "git",
@@ -36,21 +33,17 @@
   "bugs": {
     "url": "https://github.com/oorabona/node-liblzma/issues"
   },
+  "main": "./lib/XzStream.js",
   "homepage": "https://github.com/oorabona/node-liblzma",
-  "dependencies": {
-  },
-  "preferGlobal": true,
-  "files": [
-    "build.plz",
-    "src",
-    "lib",
-    "test"
-  ],
+  "dependencies": {},
   "devDependencies": {
-    "plz": "^2.0.3",
-    "coffee-script": "latest",
+    "coffee-script": "*",
     "expect.js": "^0.3.1",
     "mocha": "^1.21.4",
-    "q": "^1.0.1"
+    "q": "^1.0.1",
+    "ubs": "^0.2.5"
+  },
+  "engines": {
+    "node": ">=0.10.1"
   }
 }
