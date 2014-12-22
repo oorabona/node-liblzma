@@ -1,3 +1,8 @@
+# 0.4.3
+* Changes in build system (now using ubs to compile/run tests)
+* Applied a fix for 'availInAfter' in stream callback, after [#6032](https://github.com/joyent/node/issues/6032)
+* Fixed bad variable init in binding module
+
 # 0.3.0
 * Added multithread support
 * ENABLE_MT is now available to compile with thread support

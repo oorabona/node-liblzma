@@ -7,7 +7,7 @@ Node-liblzma
 [![Dependency Status](https://david-dm.org/oorabona/node-liblzma.svg)](https://david-dm.org/oorabona/node-liblzma)
 [![devDependency Status](https://david-dm.org/oorabona/node-liblzma/dev-status.svg)](https://david-dm.org/oorabona/node-liblzma#info=devDependencies)
 
-An other way to deal with the XZ compression format with NodeJS !
+An other way to deal with the XZ compression format in NodeJS !
 
 # What is liblzma/XZ ?
 
@@ -55,6 +55,8 @@ A very complete implementation of XZ library bindings
 
 # Installation
 
+## Using system dev libraries to compile
+
 You need to have the development package installed on your system. So you can
 either install it manually by downloading [XZ SDK](http://tukaani.org/xz/) and
 build it, or if you have root access, you can do (e.g. if you have Debian based distro):
@@ -62,6 +64,19 @@ build it, or if you have root access, you can do (e.g. if you have Debian based 
 ``` bash
 # apt-get install liblzma-dev
 ```
+
+## Using temporary beta install to enable multi threading (fast and easy)
+
+If you do not plan on having a local install, with the use of [UBS](https://github.com/oorabona/ubs),
+you do not need to download/configure/install XZ yourself anymore.
+
+You can temporary build XZ with threads enabled just for this library by running:
+
+```bash
+$ ENABLE_MT=1 npm install
+```
+
+## Local install of XZ sources (manual)
 
 If you did install locally, set the include directory and library directory search paths
 as GCC [environment variables](https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html).
@@ -87,6 +102,8 @@ If you want to try the __unstable__ threading support, then opt in with
 ``` bash
 $ ENABLE_MT=1 npm install
 ```
+
+> This will work only if you have compiled liblzma with threading enabled !
 
 # Usage
 
