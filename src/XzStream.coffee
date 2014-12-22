@@ -166,7 +166,7 @@ class XzStream extends Transform
         @_offset = 0
         @_buffer = new Buffer @_chunkSize
 
-      if availOutAfter is 0
+      if availOutAfter is 0 or availInAfter > 0
         inOff += (availInBefore - availInAfter)
         availInBefore = availInAfter
 
