@@ -10,6 +10,8 @@ before_install:
   - npm install node-gyp -g
   # Install coffee globally
   - npm install -g coffee-script
+  # Install request globally
+  - npm install -g request
   # Install Unified Build System
   - npm install ubs
 install:
@@ -19,7 +21,7 @@ install:
   # Add xz utils and development package
   - sudo apt-get install -qq xz-utils liblzma-dev
   # Ensure source install works and compiles correctly
-  - npm install --build-from-source
+  - npm install
   # test our module
   - npm test
 after_success:
