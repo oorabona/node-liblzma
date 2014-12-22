@@ -3,18 +3,41 @@ init:
     - mocha
     - clean
     - packagejson
+    - grab
 settings:
-  toClean: ['lib', 'build']
+  xzBetaLink: http://tukaani.org/xz/xz-5.1.4beta.tar.gz
+  toDistclean: ['lib', 'build']
   srcPath: 'src'
   libPath: 'lib'
   mocha:
     useCoffee: true
 clean:
   - node-gyp clean
+build_lzma:
+  - echo Building lib_lzma
+  - echo Cleaning deps ...
+  - rm -rf deps
+  - echo Fetching source ...
+  - grab: "%xzBetaLink"
+  - mkdir -p deps/xz
+  - tar zxvf `basename %xzBetaLink` -C deps/xz --strip-components=1
+  - cd deps/xz
+  - ./autogen.sh
+  - ./configure --prefix=`pwd` --enable-threads
+  - make
+  - make install
+  - echo DTC $CPATH
+  - env: CPATH=`pwd`/include
+  - env: LIBRARY_PATH=`pwd`/lib
+  - env: LD_LIBRARY_PATH=$LIBRARY_PATH:$LD_LIBRARY_PATH
+  - echo Done compiling liblzma. CPATH is $CPATH
+  - cd ../..
 build_module:
   - echo Building %name version %version ...
   - node-gyp configure build
 build:
+  - '[ "$ENABLE_MT" = "1" ] && ubs build_lzma && echo lixz source headers $CPATH'
+  - echo Enable Multithread is $ENABLE_MT
   - task: build_module
   - coffee -o %libPath -c %srcPath
 test:
