@@ -5,6 +5,9 @@ init:
     - packagejson
     - grab
 settings:
+  exec:
+    env:
+      CPPFLAGS: "-fPIC"
   xzBetaLink: http://tukaani.org/xz/xz-5.1.4beta.tar.gz
   toDistclean: ['lib', 'build']
   srcPath: 'src'
@@ -23,7 +26,8 @@ build_lzma:
   - tar zxvf `basename %xzBetaLink` -C deps/xz --strip-components=1
   - cd deps/xz
   - ./autogen.sh
-  - ./configure --prefix=`pwd` --enable-threads
+  - ./configure --prefix=`pwd` --enable-threads --enable-static --disable-shared --disable-scripts --disable-lzmainfo
+    --disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath
   - make
   - make install
   - echo DTC $CPATH
