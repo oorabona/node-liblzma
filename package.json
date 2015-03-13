@@ -35,9 +35,10 @@
     "url": "https://github.com/oorabona/node-liblzma/issues"
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
-  "dependencies": {},
+  "dependencies": {
+    "ubs": "^0.4.0"
+  },
   "devDependencies": {
-    "ubs": "^0.4.0",
     "coffee-script": "*",
     "expect.js": "^0.3.1",
     "mocha": "^2.0.1",
