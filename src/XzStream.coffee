@@ -17,7 +17,7 @@ class XzStream extends Transform
 
     @_chunkSize = if @_opts.chunkSize then @_opts.chunkSize else liblzma.BUFSIZ
 
-    # By default no flush, since there is not LZMA_NO_SYNC, we stick to
+    # By default no flush, since there is no LZMA_NO_SYNC, we stick to
     # default LZMA_RUN (0)
     @_flushFlag = @_opts.flushFlag or liblzma.LZMA_RUN
 
@@ -79,7 +79,7 @@ class XzStream extends Transform
 
   close: (callback) ->
     if callback
-      process.nextTick callback;
+      process.nextTick callback
 
     # We will trigger this case with #xz and #unxz
     return if @_closed
@@ -149,7 +149,7 @@ class XzStream extends Transform
         return false
 
       used = availOutBefore - availOutAfter
-      assert used >= 0, "More bytes after than before! :)"
+      assert used >= 0, "More bytes after than before! Delta = #{used}"
 
       if used > 0
         out = @_buffer[@_offset...@_offset+used]
