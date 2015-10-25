@@ -5,8 +5,7 @@
   "main": "./lib/XzStream.js",
   "scripts": {
     "test": "./node_modules/ubs/bin/ubs test",
-    "preinstall": "./node_modules/ubs/bin/ubs clean install",
-    "prepublish": "./node_modules/ubs/bin/ubs clean install test"
+    "install": "./node_modules/ubs/bin/ubs build_coffee"
   },
   "repository": {
     "type": "git",

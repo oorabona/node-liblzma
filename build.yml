@@ -42,9 +42,11 @@ build:
   - '[ "$ENABLE_MT" = "1" ] && ubs build_lzma && echo lixz source headers $CPATH'
   - echo Enable Multithread is $ENABLE_MT
   - task: build_module
+build_coffee:
   - coffee -o %libPath -c %srcPath
 test:
   - task: mocha-test
 install:
   - task: build
+  - task: build_coffee
   - echo Build done.
