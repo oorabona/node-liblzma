@@ -23,5 +23,5 @@ install:
   # test our module
   - npm test
   # Redo install and tests with multithread enabled
-  - ENABLE_MT=1 npm install
+  # - ENABLE_MT=1 npm install
 after_success:
