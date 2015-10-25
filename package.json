@@ -4,9 +4,9 @@
   "description": "Liblzma bindings for NodeJS",
   "main": "./lib/XzStream.js",
   "scripts": {
-    "test": "ubs test",
-    "preinstall": "ubs clean install",
-    "prepublish": "ubs clean install test"
+    "test": "./node_modules/ubs/bin/ubs test",
+    "preinstall": "./node_modules/ubs/bin/ubs clean install",
+    "prepublish": "./node_modules/ubs/bin/ubs clean install test"
   },
   "repository": {
     "type": "git",
@@ -36,10 +36,10 @@
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
-    "coffee-script": "*",
     "ubs": "^0.4.0"
   },
   "devDependencies": {
+    "coffee-script": "*",
     "expect.js": "^0.3.1",
     "mocha": "^2.0.1",
     "q": "^1.0.1"
