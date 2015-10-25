@@ -15,9 +15,6 @@ before_install:
   - npm install node-gyp -g
   # Install coffee globally
   - npm install -g coffee-script
-  # Install request globally
-  - npm install -g request
-  - npm install -g ubs
 install:
   # We want to compile with g++ 4.8 when rather than the default g++
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
