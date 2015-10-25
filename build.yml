@@ -30,7 +30,6 @@ build_lzma:
     --disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath
   - make
   - make install
-  - echo DTC $CPATH
   - env: CPATH=`pwd`/include
   - env: LIBRARY_PATH=`pwd`/lib
   - env: LD_LIBRARY_PATH=$LIBRARY_PATH:$LD_LIBRARY_PATH
