@@ -1,25 +1,25 @@
 language: node_js
 node_js:
    - "0.10"
-# http://gearchicken.com/wordpress/?p=105
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.8
+      - g++-4.8
+      - xz-utils
+      - liblzma-dev
 before_install:
-# We need this line to have g++4.8 available in apt
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo apt-get update -qq
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
   # Install coffee globally
   - npm install -g coffee-script
   # Install request globally
   - npm install -g request
-  # Install Unified Build System
-  - npm install ubs
 install:
-  - sudo apt-get install -qq gcc-4.8 g++-4.8
   # We want to compile with g++ 4.8 when rather than the default g++
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
-  # Add xz utils and development package
-  - sudo apt-get install -qq xz-utils liblzma-dev
   # Ensure source install works and compiles correctly
   - npm install
   # test our module
