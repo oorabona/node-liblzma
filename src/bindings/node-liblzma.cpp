@@ -31,26 +31,7 @@ Nan::Persistent<Function> LZMA::constructor;
 	if (!self) { \
 		_failMissingSelf(info); \
 		return; \
-	} \
-	struct _MemScopeGuard { \
-		_MemScopeGuard(LZMA* self_) : self(self_) {} \
-		~_MemScopeGuard() { \
-			self->reportAdjustedExternalMemoryToV8(); \
-		} \
-		\
-		LZMA* self; \
-	}; \
-	_MemScopeGuard guard(self);
-
-void LZMA::reportAdjustedExternalMemoryToV8() {
-#ifdef LZMA_ASYNC_AVAILABLE
-	if (nonAdjustedExternalMemory == 0)
-		return;
-
-	Nan::AdjustExternalMemory(nonAdjustedExternalMemory);
-	nonAdjustedExternalMemory = 0;
-#endif
-}
+	}
 
 void LZMA::Close() {
   if(_wip) {
