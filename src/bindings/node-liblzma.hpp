@@ -59,10 +59,6 @@ using v8::Value;
 # define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #endif
 
-#if NODE_MODULE_VERSION >= 11
-#define LZMA_ASYNC_AVAILABLE
-#endif
-
 /**
  * Create a new v8 String
  */
@@ -81,6 +77,7 @@ private:
   {
   }
   ~LZMA() {
+    Nan::AdjustExternalMemory(-int64_t(sizeof(LZMA)));
     Close();
   }
 
@@ -93,7 +90,6 @@ private:
   static NAN_METHOD(Code);
 
 private:
-  void reportAdjustedExternalMemoryToV8();
   static void Process(uv_work_t* work_req);
   static void After(uv_work_t* work_req, int status);
   static Local<Value> AfterSync(LZMA* obj);
@@ -114,7 +110,6 @@ private:
   lzma_action _action;
   Nan::Callback _callback;
   lzma_ret _ret;
-  int64_t nonAdjustedExternalMemory;
 };
 
 #endif // NODE_LIBLZMA_H
