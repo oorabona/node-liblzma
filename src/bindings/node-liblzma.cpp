@@ -297,7 +297,6 @@ void LZMA::After(uv_work_t* work_req, int status) {
 }
 
 Local<Value> LZMA::AfterSync(LZMA* obj) {
-	Nan::HandleScope scope;
   Local<Number> ret_code = Nan::New<Number>(obj->_ret);
   Local<Number> avail_in = Nan::New<Number>(obj->_stream.avail_in);
   Local<Number> avail_out = Nan::New<Number>(obj->_stream.avail_out);

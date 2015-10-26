@@ -6,3 +6,4 @@ build/
 *.log
 deps/
 *.gz
+core
