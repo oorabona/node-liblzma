@@ -4,6 +4,7 @@ node_js:
   - "0.11"
   - "0.12"
   - "4.2"
+sudo: false
 addons:
   apt:
     sources:
@@ -20,7 +21,7 @@ before_install:
   - npm install -g coffee-script
 install:
   # We want to compile with g++ 4.8 when rather than the default g++
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+  - export CXX="g++-4.8" CC="gcc-4.8"
   # Ensure source install works and compiles correctly
   - npm install
   # test our module
