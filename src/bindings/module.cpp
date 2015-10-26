@@ -105,4 +105,4 @@ void moduleInit(Local<Object> exports) {
 	// exports->Set(NewString("asyncCodeAvailable"),       Nan::New<Boolean>(LZMAStream::asyncCodeAvailable));
 }
 
-NODE_MODULE(lzma_native, moduleInit)
+NODE_MODULE(node_liblzma, moduleInit)
