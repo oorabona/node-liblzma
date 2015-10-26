@@ -8,7 +8,7 @@ describe 'Xz Compressor options', ->
     expect(->
       xzStream = new Xz filters: filter.LZMA2
     ).to.throwException (e) ->
-      expect(e).to.eql {"name":"AssertionError","actual":false,"expected":true,"operator":"==","message":"Filters need to be in an array!","generatedMessage":false}
+      expect(e.message).to.eql "Filters need to be in an array!"
 
   it 'should throw error if more than LZMA_MAX_FILTERS set', (done) ->
     expect(->
