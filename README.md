@@ -8,6 +8,7 @@ Node-liblzma
 [![devDependency Status](https://david-dm.org/oorabona/node-liblzma/dev-status.svg)](https://david-dm.org/oorabona/node-liblzma#info=devDependencies)
 
 An other way to deal with the XZ compression format in NodeJS !
+Now supports NodeJS 0.12+, and all flavors of iojs/nodejs 3+/4+ !!
 
 # What is liblzma/XZ ?
 
@@ -28,9 +29,6 @@ But there are some differences:
 * Both download and deploy a specific liblzma version to be compiled from the sources.
 I did not want to rely on an embedded liblzma version and instead use the system
 one (most Linux distros have liblzma, if not look at INSTALL below) ;
-
-* It supports modes, presets (including "extreme"), all LZMA checks (CRC32/64, SHA-256 hash...),
-filters (X86,IA64,...) and should be even compatible with future extensions of liblzma ;
 
 * (Almost) complete NodeJS Zlib API / implementation compatibility so that switching
 from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :smile:

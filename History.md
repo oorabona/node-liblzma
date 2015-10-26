@@ -1,3 +1,8 @@
+# 0.5.0
+* Rewrote large parts with Nan so now it supports 0.12+, 3+, 4+
+* BUG: Apparently not anymore 0.10 ...
+* Fixed syntax in XzStream.coffee
+
 # 0.4.3
 * Changes in build system (now using ubs to compile/run tests)
 * Applied a fix for 'availInAfter' in stream callback, after [#6032](https://github.com/joyent/node/issues/6032)

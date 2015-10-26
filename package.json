@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "Liblzma bindings for NodeJS",
   "main": "./lib/XzStream.js",
   "scripts": {
@@ -24,17 +24,13 @@
     "native"
   ],
   "author": "Olivier ORABONA",
-  "licenses": [
-    {
-      "type": "LGPL3",
-      "url": "https://github.com/oorabona/node-liblzma/blob/master/LICENSE"
-    }
-  ],
+  "license": "LGPL3",
   "bugs": {
     "url": "https://github.com/oorabona/node-liblzma/issues"
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
+    "nan": "^2.1.0",
     "ubs": "^0.4.0"
   },
   "devDependencies": {

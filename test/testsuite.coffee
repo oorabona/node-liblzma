@@ -125,7 +125,7 @@ describe 'UnXZ', ->
 
   describe 'should accept LZMA_FILTER_X86 with generated node addon', ->
     it 'in sync mode, using #xzSync and #unxzSync', (next) ->
-      input = fs.readFileSync "build/Release/node_libxz.node"
+      input = fs.readFileSync 'build/Release/node-liblzma.node'
       output = null
       expect(->
         output = xzStream.xzSync input, filters: [xzStream.filter.X86]
@@ -142,7 +142,7 @@ describe 'UnXZ', ->
         next "Uncompressed different from original!"
 
     it 'in async mode using promises, and compare output sizes', (next) ->
-      buffer = fs.readFileSync "build/Release/node_libxz.node"
+      buffer = fs.readFileSync 'build/Release/node-liblzma.node'
 
       # Using Q to wait on async operations
       promises = [

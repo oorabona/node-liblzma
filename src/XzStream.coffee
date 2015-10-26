@@ -1,9 +1,12 @@
-liblzma = require "../build/Release/node_libxz.node"
+liblzma = require '../build/Release/node-liblzma.node'
 
-util = require "util"
-assert = require "assert"
-os = require "os"
-{ Transform } = require "stream"
+util = require 'util'
+assert = require 'assert'
+os = require 'os'
+{ Transform } = require 'stream'
+
+# Should not change over time... :)
+maxThreads = os.cpus().length
 
 class XzStream extends Transform
   constructor: (mode, @_opts = {}, options) ->
@@ -34,7 +37,7 @@ class XzStream extends Transform
 
       if @_opts.threads is 0
         # autodetect
-        @_opts.threads = os.cpus().length
+        @_opts.threads = maxThreads
 
       mode = liblzma.STREAM_ENCODE_MT if @_opts.threads > 1
 
@@ -58,7 +61,7 @@ class XzStream extends Transform
   flush: (kind, callback) ->
     ws = @_writableState;
 
-    if (typeof kind == "function" or (typeof kind == "undefined" && !callback))
+    if (typeof kind == 'function' or (typeof kind == 'undefined' && !callback))
       [callback, kind] = [kind, liblzma.LZMA_SYNC_FLUSH]
 
     if ws.ended
@@ -127,7 +130,7 @@ class XzStream extends Transform
     # TODO: Works in v0.11
     #async = util.isFunction cb
     # until then...
-    async = typeof cb == "function"
+    async = typeof cb == 'function'
 
     # Sanity checks
     assert !@_closed, "Stream closed!"
@@ -213,7 +216,7 @@ exports.Xz = Xz
 exports.Unxz = Unxz
 
 exports.hasThreads = ->
-  typeof liblzma.STREAM_ENCODE_MT != "undefined"
+  typeof liblzma.STREAM_ENCODE_MT != 'undefined'
 
 exports.messages = [
   "Operation completed successfully"
@@ -266,7 +269,7 @@ exports.createUnxz = (args...) ->
   new Unxz(args...)
 
 exports.unxz = (buffer, opts, callback) ->
-  if typeof opts == "function"
+  if typeof opts == 'function'
     [callback, opts] = [opts, {}]
 
   xzBuffer new Unxz(opts), buffer, callback
@@ -275,7 +278,7 @@ exports.unxzSync = (buffer, opts) ->
   xzBufferSync new Unxz(opts), buffer
 
 exports.xz = (buffer, opts, callback) ->
-  if typeof opts == "function"
+  if typeof opts == 'function'
     [callback, opts] = [opts, {}]
   xzBuffer new Xz(opts), buffer, callback
 
@@ -290,11 +293,11 @@ xzBuffer = (engine, buffer, callback) ->
     while null isnt (chunk = engine.read())
       buffers.push chunk
       nread += chunk.length
-    engine.once "readable", flow
+    engine.once 'readable', flow
     return
   onError = (err) ->
-    engine.removeListener "end", onEnd
-    engine.removeListener "readable", flow
+    engine.removeListener 'end', onEnd
+    engine.removeListener 'readable', flow
     callback err
     return
   onEnd = ->
@@ -303,14 +306,14 @@ xzBuffer = (engine, buffer, callback) ->
     callback null, buf
     engine.close()
     return
-  engine.on "error", onError
-  engine.on "end", onEnd
+  engine.on 'error', onError
+  engine.on 'end', onEnd
   engine.end buffer
   flow()
   return
 
 xzBufferSync = (engine, buffer) ->
-  buffer = new Buffer(buffer)  if typeof buffer == "string"
+  buffer = new Buffer(buffer)  if typeof buffer == 'string'
   throw new TypeError("Not a string or buffer")  unless buffer instanceof Buffer
 
   engine._processChunk buffer, liblzma.LZMA_FINISH

@@ -8,7 +8,7 @@ describe 'Xz Compressor options', ->
     expect(->
       xzStream = new Xz filters: filter.LZMA2
     ).to.throwException (e) ->
-      expect(e).to.eql {"name":"AssertionError","actual":false,"expected":true,"operator":"==","message":"Filters need to be in an array!"}
+      expect(e).to.eql {"name":"AssertionError","actual":false,"expected":true,"operator":"==","message":"Filters need to be in an array!","generatedMessage":false}
 
   it 'should throw error if more than LZMA_MAX_FILTERS set', (done) ->
     expect(->
@@ -19,6 +19,6 @@ describe 'Xz Compressor options', ->
         filter.ARM
       ]
     ).to.throwException (e) ->
-      expect(e).to.be "More filters than allowed maximum"
+      expect(e).to.be.a RangeError
 
     done()

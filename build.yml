@@ -43,7 +43,7 @@ build:
   - echo Enable Multithread is $ENABLE_MT
   - task: build_module
 build_coffee:
-  - coffee -o %libPath -c %srcPath
+  - coffee -b -c -o %libPath %srcPath
 test:
   - task: mocha-test
 install:
