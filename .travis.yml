@@ -22,10 +22,10 @@ install:
   # We want to compile with g++ 4.8 when rather than the default g++
   - export CXX="g++-4.8" CC="gcc-4.8"
   # Ensure source install works and compiles correctly
-  - npm install
+  - COMPILE=1 npm install
   # test our module
   - npm test
   # Redo install and tests with multithread enabled
-  - ENABLE_MT=1 COMPILE=1 npm install
-  - npm test
+#  - ENABLE_MT=1 COMPILE=1 npm install
+#  - npm test
 after_success:
