@@ -12,7 +12,6 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
-      - xz-utils
       - liblzma-dev
 before_install:
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
@@ -27,5 +26,6 @@ install:
   # test our module
   - npm test
   # Redo install and tests with multithread enabled
-  # - ENABLE_MT=1 npm install
+  - ENABLE_MT=1 COMPILE=1 npm install
+  - npm test
 after_success:
