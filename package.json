@@ -1,21 +1,23 @@
 {
   "name": "node-liblzma",
-  "version": "0.5.0",
-  "description": "Liblzma bindings for NodeJS",
-  "main": "./lib/XzStream.js",
+  "version": "1.0.0",
+  "description": "Liblzma bindings for NodeJS (aka xzlib)",
+  "main": "./lib/lzma.js",
   "scripts": {
-    "test": "./node_modules/ubs/bin/ubs test",
-    "prepublish": "./node_modules/ubs/bin/ubs build_coffee"
+    "test": "./node_modules/.bin/ubs test",
+    "install": "./node_modules/.bin/ubs install",
+    "prepublish": "./node_modules/.bin/ubs build_coffee"
   },
   "repository": {
     "type": "git",
     "url": "http://github.com/oorabona/node-liblzma"
   },
   "keywords": [
-    "node",
+    "module",
     "lzma",
     "lzma2",
     "xz",
+    "unxz",
     "compress",
     "uncompress",
     "decompress",
@@ -24,14 +26,14 @@
     "native"
   ],
   "author": "Olivier ORABONA",
-  "license": "LGPL3",
+  "license": "LGPL-3.0",
   "bugs": {
     "url": "https://github.com/oorabona/node-liblzma/issues"
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
     "nan": "^2.1.0",
-    "ubs": "^0.4.0"
+    "ubs": "^0.4.1"
   },
   "devDependencies": {
     "coffee-script": "*",
