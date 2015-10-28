@@ -8,8 +8,9 @@ settings:
   exec:
     env:
       CPPFLAGS: "-fPIC"
-  xzBetaLink: http://tukaani.org/xz/xz-5.1.4beta.tar.gz
-  toDistclean: ['lib', 'build']
+      CFLAGS: "-O3"
+  xzBetaLink: 'http://tukaani.org/xz/xz-5.2.2.tar.gz'
+  toDistclean: ['lib', 'build', '*.tar.gz', '*.log']
   srcPath: 'src'
   libPath: 'lib'
   mocha:
@@ -17,7 +18,7 @@ settings:
 clean:
   - node-gyp clean
 build_lzma:
-  - echo Building lib_lzma
+  - echo Building LibLZMA from sources !
   - echo Cleaning deps ...
   - rm -rf deps
   - echo Fetching source ...
@@ -33,20 +34,22 @@ build_lzma:
   - env: CPATH=`pwd`/include
   - env: LIBRARY_PATH=`pwd`/lib
   - env: LD_LIBRARY_PATH=$LIBRARY_PATH:$LD_LIBRARY_PATH
-  - echo Done compiling liblzma. CPATH is $CPATH
+  - echo Done compiling liblzma. headers are at $CPATH
   - cd ../..
 build_module:
-  - echo Building %name version %version ...
+  - echo Building %name version %version Add-On ...
   - node-gyp configure build
 build:
-  - '[ "$ENABLE_MT" = "1" ] && ubs build_lzma && echo lixz source headers $CPATH'
-  - echo Enable Multithread is $ENABLE_MT
+  - '[ "$COMPILE" = "1" ] && ./node_modules/.bin/ubs build_lzma'
   - task: build_module
+  - task: build_coffee
 build_coffee:
+  - echo Building Javascript API...
   - coffee -b -c -o %libPath %srcPath
+  - echo Done building Javascript.
 test:
   - task: mocha-test
 install:
   - task: build
-  - task: build_coffee
+  - rm *.tar.gz
   - echo Build done.
