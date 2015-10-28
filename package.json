@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Liblzma bindings for NodeJS (aka xzlib)",
   "main": "./lib/lzma.js",
   "scripts": {
