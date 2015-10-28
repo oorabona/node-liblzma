@@ -3,7 +3,7 @@ fs = require "fs"
 stream = require "stream"
 Q = require "q"
 
-xzStream = require "../lib/XzStream"
+xzStream = require "../lib/lzma"
 
 helpers = require "./helpers"
 

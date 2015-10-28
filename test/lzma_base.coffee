@@ -1,7 +1,7 @@
 expect = require "expect.js"
 fs = require "fs"
 
-{Unxz, Xz, filter} = require "../lib/XzStream"
+{Unxz, Xz, filter} = require "../lib/lzma"
 
 describe 'Xz Compressor options', ->
   it 'should only allow Array filters', ->
@@ -13,7 +13,7 @@ describe 'Xz Compressor options', ->
   it 'should throw error if more than LZMA_MAX_FILTERS set', (done) ->
     expect(->
       xzStream = new Xz filters: [
-        filter.LZMA2
+        # filter.LZMA2 (should be automagically added anyway)
         filter.X86
         filter.IA64
         filter.ARM
