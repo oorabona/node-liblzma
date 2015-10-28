@@ -1,3 +1,7 @@
+# 1.0.0
+* All known bugs have been fixed
+* JS Library has been renamed to ```lzma```, no big deal :smile:
+
 # 0.5.0
 * Rewrote large parts with Nan so now it supports 0.12+, 3+, 4+
 * BUG: Apparently not anymore 0.10 ...
