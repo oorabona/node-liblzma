@@ -101,8 +101,8 @@ class XzStream extends Transform
     ws = @_writableState
     ending = ws.ending or ws.ended
     last = ending and (not chunk or ws.length is chunk.length)
-    return cb(new Error("invalid input"))  if chunk != null and !(chunk instanceof Buffer)
-    return cb(new Error("lzma binding closed"))  if @_closed
+    return callback(new Error("invalid input"))  if chunk != null and !(chunk instanceof Buffer)
+    return callback(new Error("lzma binding closed"))  if @_closed
 
     # If it's the last chunk, or a final flush, we use the LZMA_FINISH flush flag.
     # If it's explicitly flushing at some other time, then we use
@@ -204,12 +204,12 @@ class XzStream extends Transform
     return
 
 class Xz extends XzStream
-  constructor: (lzma, options) ->
-    super liblzma.STREAM_ENCODE, lzma, options
+  constructor: (lzma_options, options) ->
+    super liblzma.STREAM_ENCODE, lzma_options, options
 
 class Unxz extends XzStream
-  constructor: (lzma, options) ->
-    super liblzma.STREAM_DECODE, lzma, options
+  constructor: (lzma_options, options) ->
+    super liblzma.STREAM_DECODE, lzma_options, options
 
 
 exports.Xz = Xz
@@ -262,11 +262,11 @@ exports.mode =
   "FAST": liblzma.LZMA_MODE_FAST
   "NORMAL": liblzma.LZMA_MODE_NORMAL
 
-exports.createXz = (args...) ->
-  new Xz(args...)
+exports.createXz = (lzma_options, options) ->
+  new Xz(lzma_options, options)
 
-exports.createUnxz = (args...) ->
-  new Unxz(args...)
+exports.createUnxz = (lzma_options, options) ->
+  new Unxz(lzma_options, options)
 
 exports.unxz = (buffer, opts, callback) ->
   if typeof opts == 'function'
@@ -295,16 +295,16 @@ xzBuffer = (engine, buffer, callback) ->
       nread += chunk.length
     engine.once 'readable', flow
     return
-  onError = (err) ->
-    engine.removeListener 'end', onEnd
-    engine.removeListener 'readable', flow
-    callback err
-    return
   onEnd = ->
     buf = Buffer.concat(buffers, nread)
     buffers = []
     callback null, buf
     engine.close()
+    return
+  onError = (err) ->
+    engine.removeListener 'end', onEnd
+    engine.removeListener 'readable', flow
+    callback err
     return
   engine.on 'error', onError
   engine.on 'end', onEnd
