@@ -70,24 +70,24 @@ gunzipSync      | unxzSync                | (buf, [options])
 Attribute            | Type     | Available options
 ---------------------|----------|------------
 check                | Uint32   | NONE
-||CRC32
-||CRC64
-||SHA256
+ | |CRC32
+ | |CRC64
+ | |SHA256
 preset | Uint32 | DEFAULT
-||EXTREME
+ | |EXTREME
 flag | Uint32 | TELL_NO_CHECK
-||TELL_UNSUPPORTED_CHECK
-||TELL_ANY_CHECK
-||CONCATENATED
+ | |TELL_UNSUPPORTED_CHECK
+ | |TELL_ANY_CHECK
+ | |CONCATENATED
 mode | Uint32 | FAST
-||NORMAL
+ | |NORMAL
 filters | Array | LZMA2 (added by default)
-||X86
-||POWERPC
-||IA64
-||ARM
-||ARMTHUMB
-||SPARC
+ | |X86
+ | |POWERPC
+ | |IA64
+ | |ARM
+ | |ARMTHUMB
+ | |SPARC
 
 For further information about each of these flags, you will find reference at [XZ SDK](http://7-zip.org/sdk.html).
 
