@@ -33,7 +33,7 @@
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
     "nan": "^2.1.0",
-    "ubs": "^0.4.1"
+    "ubs": "latest"
   },
   "devDependencies": {
     "coffee-script": "*",

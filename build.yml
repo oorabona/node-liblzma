@@ -5,26 +5,36 @@ init:
     - packagejson
     - grab
 settings:
+  self: './node_modules/.bin/ubs'
   exec:
     env:
       CPPFLAGS: "-fPIC"
       CFLAGS: "-O3"
-  xzBetaLink: 'http://tukaani.org/xz/xz-5.2.2.tar.gz'
-  toDistclean: ['lib', 'build', '*.tar.gz', '*.log']
+  xzWebUrl: 'http://tukaani.org/xz/xz'
+  xzVersion: '5.2.2'
+  xzExt: 'gz'
+  clean:
+    path: ['lib', '*.log']
+    distclean: ['build', 'xz*.tar.*']
   srcPath: 'src'
   libPath: 'lib'
   mocha:
     useCoffee: true
 clean:
   - node-gyp clean
+  - rm -rf %clean.path%
+fetch_lzma:
+  - echo Fetching source ...
+  - grab: "%xzWebUrl%-%xzVersion%.tar.%xzExt%"
+  - mkdir -p deps/xz
+  - '[ "%xzExt%" = "gz" ] && tar zxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
+  - '[ "%xzExt%" = "bz2" ] && tar jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
+  - '[ "%xzExt%" = "xz" ] && tar Jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
 build_lzma:
   - echo Building LibLZMA from sources !
   - echo Cleaning deps ...
   - rm -rf deps
-  - echo Fetching source ...
-  - grab: "%xzBetaLink"
-  - mkdir -p deps/xz
-  - tar zxvf `basename %xzBetaLink` -C deps/xz --strip-components=1
+  - task: fetch_lzma
   - cd deps/xz
   - ./autogen.sh
   - ./configure --prefix=`pwd` --enable-threads --enable-static --disable-shared --disable-scripts --disable-lzmainfo
@@ -37,19 +47,18 @@ build_lzma:
   - echo Done compiling liblzma. headers are at $CPATH
   - cd ../..
 build_module:
-  - echo Building %name version %version Add-On ...
+  - echo Building %name% version %version% Add-On ...
   - node-gyp configure build
 build:
-  - '[ "$COMPILE" = "1" ] && ./node_modules/.bin/ubs build_lzma'
+  - '[ "$COMPILE" = "1" ] && %self% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
   - task: build_module
   - task: build_coffee
 build_coffee:
   - echo Building Javascript API...
-  - coffee -b -c -o %libPath %srcPath
+  - coffee -b -c -o %libPath% %srcPath%
   - echo Done building Javascript.
 test:
   - task: mocha-test
 install:
   - task: build
-  - rm *.tar.gz
   - echo Build done.
