@@ -1,3 +1,9 @@
+# 1.0.2
+* Fixed build.yml to work with new UBS 0.6.1.
+
+# 1.0.1
+* Fixed minor bugs
+
 # 1.0.0
 * All known bugs have been fixed
 * JS Library has been renamed to ```lzma```, no big deal :smile:
