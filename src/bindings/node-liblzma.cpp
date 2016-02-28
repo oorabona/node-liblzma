@@ -200,7 +200,7 @@ NAN_METHOD(LZMA::Code) {
 
   // Neat trick but that does the job :)
   if (info.Length() != 6+(int)async) {
-    Nan::ThrowError(NewString("Requires all these arguments: "
+    Nan::ThrowError(NewString("BUG?: LZMA::Code requires all these arguments: "
       "flushFlag, input_buffer, input_offset, availInBefore, "
       "output_buffer, output_offset, [callback]"));
     info.GetReturnValue().SetUndefined();
@@ -213,6 +213,7 @@ NAN_METHOD(LZMA::Code) {
   uint8_t *out;
   size_t in_off, in_len, out_off, out_len;
 
+	// If we do not have input buffer data
   if (info[1]->IsNull()) {
     // just a flush
     uint8_t nada[1] = { 0 };
@@ -221,7 +222,7 @@ NAN_METHOD(LZMA::Code) {
     in_off = 0;
   } else {
     if (!node::Buffer::HasInstance(info[1])) {
-      Nan::ThrowTypeError(NewString("Argument must be a buffer"));
+      Nan::ThrowTypeError(NewString("BUG?: LZMA::Code 'input_buffer' argument must be a Buffer"));
       info.GetReturnValue().SetUndefined();
     }
     Local<Object> in_buf;
@@ -236,9 +237,10 @@ NAN_METHOD(LZMA::Code) {
     in = reinterpret_cast<const uint8_t *>(node::Buffer::Data(in_buf) + in_off);
   }
 
+	// Check if output buffer is also a Buffer
   Local<Object> out_buf = info[4]->ToObject();
   if( !node::Buffer::HasInstance(out_buf) ) {
-    Nan::ThrowTypeError(NewString("Argument must be a buffer"));
+    Nan::ThrowTypeError(NewString("BUG?: LZMA::Code 'output_buffer' argument must be a Buffer"));
     info.GetReturnValue().SetUndefined();
   }
 
@@ -246,7 +248,7 @@ NAN_METHOD(LZMA::Code) {
   out_len = node::Buffer::Length(out_buf) - out_off;
   out = reinterpret_cast<uint8_t *>(node::Buffer::Data(out_buf) + out_off);
 
-  // Only if async mode is enabled we need a callback function
+  // Only if async mode is enabled shall we need a callback function
   if(async)
     self->_callback.SetFunction(info[6].As<Function>());
 
@@ -255,6 +257,7 @@ NAN_METHOD(LZMA::Code) {
   self->_stream.next_out = out;
   self->_stream.avail_out = out_len;
 
+	// make us reference ourselves because of how async work_req event loop structure works
   self->_req.data = self;
 
   // do it synchronously
@@ -264,7 +267,7 @@ NAN_METHOD(LZMA::Code) {
     return;
   }
 
-  // set a circular point so that we can get work_req structure data
+  // otherwise queue work, make sure we get our work done by first calling Process and then After
   uv_queue_work(uv_default_loop(), &(self->_req), LZMA::Process, LZMA::After);
   info.GetReturnValue().SetUndefined();
 	return;
@@ -273,6 +276,7 @@ NAN_METHOD(LZMA::Code) {
 void LZMA::Process(uv_work_t* work_req) {
   LZMA* obj = static_cast<LZMA*>(work_req->data);
 
+	// the real work is done here :)
   obj->_wip = true;
   obj->_ret = lzma_code(&(obj->_stream), obj->_action);
 }

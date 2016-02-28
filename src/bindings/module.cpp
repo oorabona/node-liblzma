@@ -102,7 +102,6 @@ void moduleInit(Local<Object> exports) {
 #endif
 
   exports->Set(NewString("BUFSIZ"),                  Nan::New<Number>(BUFSIZ));
-	// exports->Set(NewString("asyncCodeAvailable"),       Nan::New<Boolean>(LZMAStream::asyncCodeAvailable));
 }
 
 NODE_MODULE(node_liblzma, moduleInit)
