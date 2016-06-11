@@ -12,15 +12,15 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-4.8
-      - g++-4.8
+      - gcc-4.9
+      - g++-4.9
       - liblzma-dev
 before_install:
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
 install:
-  # We want to compile with g++ 4.8 when rather than the default g++
-  - export CXX="g++-4.8" CC="gcc-4.8"
+  # We want to compile with g++ 4.9 when rather than the default g++
+  - export CXX="g++-4.9" CC="gcc-4.9"
   # Ensure source install works and compiles correctly
   - COMPILE=1 npm install
   # test our module
