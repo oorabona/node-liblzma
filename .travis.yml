@@ -18,7 +18,6 @@ addons:
 # We want to compile with g++ 4.9 when rather than the default g++
 env:
   - CXX=g++-4.9
-  - CC=gcc-4.9
 before_install:
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
@@ -28,6 +27,6 @@ install:
   # test our module
   - npm test
   # Redo install and tests with multithread enabled
-#  - ENABLE_MT=1 COMPILE=1 npm install
-#  - npm test
+ - ENABLE_MT=1 COMPILE=1 npm install
+ - npm test
 after_success:
