@@ -25,14 +25,14 @@ But there are some differences:
 I did not want to rely on an embedded liblzma version and instead use the system
 one (most Linux distros have liblzma, if not look at INSTALL below) ;
 
-* (Almost) complete NodeJS Zlib API / implementation compatibility so that switching
+* (Almost) complete NodeJS Zlib API / implementation _source code_ compatibility so that switching
 from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :smile:
 
 > Worth noting, only LZMA2 is supported for compression output. But the library can open and read any LZMA1 or LZMA2 compressed file and possibly others...
 
 # What's new ?
 
-Now supports NodeJS 0.10.x, v0.12.x, and all flavors of iojs/nodejs 3+/4+ !!
+Supports all NodeJS versions, thanks to [nan](https://github.com/nodejs/nan) !
 
 # Related projects
 

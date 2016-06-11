@@ -1,3 +1,7 @@
+# 1.0.3
+* Updated to latest versions of dependencies
+* NodeJS 6.x is now supported
+
 # 1.0.2
 * Fixed build.yml to work with new UBS 0.6.1.
 
