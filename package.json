@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Liblzma bindings for NodeJS (aka xzlib)",
   "main": "./lib/lzma.js",
   "scripts": {
@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
-    "nan": "^2.1.0",
+    "nan": "latest",
     "ubs": "latest"
   },
   "devDependencies": {

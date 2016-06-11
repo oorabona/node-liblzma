@@ -3,7 +3,9 @@ node_js:
   - "0.10"
   - "0.11"
   - "0.12"
-  - "4.2"
+  - "4.4"
+  - "5.11"
+  - "6.2"
 sudo: false
 addons:
   apt:
@@ -16,8 +18,6 @@ addons:
 before_install:
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-gyp -g
-  # Install coffee globally
-  - npm install -g coffee-script
 install:
   # We want to compile with g++ 4.8 when rather than the default g++
   - export CXX="g++-4.8" CC="gcc-4.8"
