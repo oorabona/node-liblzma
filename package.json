@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Liblzma bindings for NodeJS (aka xzlib)",
   "main": "./lib/lzma.js",
   "scripts": {
@@ -25,6 +25,7 @@
     "binding",
     "native"
   ],
+  "bundledDependencies": ["node-pre-gyp"],
   "author": "Olivier ORABONA",
   "license": "LGPL-3.0",
   "bugs": {
@@ -33,6 +34,7 @@
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
     "nan": "latest",
+    "node-pre-gyp": "latest",
     "ubs": "latest"
   },
   "devDependencies": {
@@ -43,5 +45,11 @@
   },
   "engines": {
     "node": ">=0.10.1"
+  },
+  "binary": {
+    "module_name": "node-liblzma",
+    "module_path": "./build/",
+    "host": "https://github.com/",
+    "remote_path": "./oorabona/node-liblzma/"
   }
 }
