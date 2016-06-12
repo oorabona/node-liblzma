@@ -51,9 +51,9 @@ void LZMA::Init(Local<Object> exports) {
   t->SetClassName(NewString("LZMA"));
 
   // prototype methods
-  t->PrototypeTemplate()->Set(NewString("close"), Nan::New<FunctionTemplate>(Close)->GetFunction());
-  t->PrototypeTemplate()->Set(NewString("code"), Nan::New<FunctionTemplate>(Code<true>)->GetFunction());
-  t->PrototypeTemplate()->Set(NewString("codeSync"), Nan::New<FunctionTemplate>(Code<false>)->GetFunction());
+  t->PrototypeTemplate()->Set(NewString("close"), Nan::New<FunctionTemplate>(Close));
+  t->PrototypeTemplate()->Set(NewString("code"), Nan::New<FunctionTemplate>(Code<true>));
+  t->PrototypeTemplate()->Set(NewString("codeSync"), Nan::New<FunctionTemplate>(Code<false>));
 
 	constructor.Reset(t->GetFunction());
 	exports->Set(NewString("LZMA"), Nan::New<Function>(constructor));
