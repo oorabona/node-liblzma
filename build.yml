@@ -5,7 +5,6 @@ init:
     - packagejson
     - grab
 settings:
-  self: './node_modules/.bin/ubs'
   exec:
     env:
       CPPFLAGS: "-fPIC"
@@ -18,21 +17,22 @@ settings:
     distclean: ['build', 'xz*.tar.*']
   srcPath: 'src'
   libPath: 'lib'
+  coffee: './node_modules/.bin/coffee'
   mocha:
     useCoffee: true
 clean:
   - node-gyp clean
   - rm -rf %clean.path%
 fetch_lzma:
-  - echo Fetching source ...
+  - log: Fetching source ...
   - grab: "%xzWebUrl%-%xzVersion%.tar.%xzExt%"
   - mkdir -p deps/xz
   - '[ "%xzExt%" = "gz" ] && tar zxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
   - '[ "%xzExt%" = "bz2" ] && tar jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
   - '[ "%xzExt%" = "xz" ] && tar Jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
 build_lzma:
-  - echo Building LibLZMA from sources !
-  - echo Cleaning deps ...
+  - log: Building LibLZMA from sources !
+  - log: Cleaning deps ...
   - rm -rf deps
   - task: fetch_lzma
   - cd deps/xz
@@ -44,21 +44,22 @@ build_lzma:
   - env: CPATH=`pwd`/include
   - env: LIBRARY_PATH=`pwd`/lib
   - env: LD_LIBRARY_PATH=$LIBRARY_PATH:$LD_LIBRARY_PATH
-  - echo Done compiling liblzma. headers are at $CPATH
+  - log: Done compiling liblzma. headers are at $CPATH
   - cd ../..
 build_module:
-  - echo Building %name% version %version% Add-On ...
-  - node-gyp configure build
+  - log: Building %name% version %version% Add-On ...
+  - node-pre-gyp install --fallback-to-build
+  # - node-gyp configure build
 build:
-  - '[ "$COMPILE" = "1" ] && %self% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
+  - '[ "$COMPILE" = "1" ] && %ubs% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
   - task: build_module
   - task: build_coffee
 build_coffee:
-  - echo Building Javascript API...
-  - coffee -b -c -o %libPath% %srcPath%
-  - echo Done building Javascript.
+  - log: Building Javascript API...
+  - '%coffee% -b -c -o %libPath% %srcPath%'
+  - log: Done building Javascript.
 test:
   - task: mocha-test
 install:
   - task: build
-  - echo Build done.
+  - log: Build done.
