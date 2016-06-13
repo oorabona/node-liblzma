@@ -1,3 +1,6 @@
+os:
+  - linux
+  - osx
 language: node_js
 node_js:
   - "0.10"
@@ -10,14 +13,17 @@ sudo: false
 addons:
   apt:
     sources:
-      - ubuntu-toolchain-r-test
+    - ubuntu-toolchain-r-test
     packages:
-      - gcc-4.9
-      - g++-4.9
-      - liblzma-dev
-# We want to compile with g++ 4.9 when rather than the default g++
+    - gcc-4.8
+    - g++-4.8
+    - liblzma-dev
+# We want to compile with g++ 4.8 when rather than the default g++
 env:
-  - CXX=g++-4.9
+  - CXX=g++-4.8
+  matrix:
+    - COMPILE=1
+    - ENABLE_MT=1 COMPILE=1
 before_install:
   # Install node-gyp and node-pre-gyp so it is available for packaging and publishing
   - npm install node-pre-gyp -g
