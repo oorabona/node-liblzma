@@ -29,10 +29,6 @@ before_install:
   - npm install node-pre-gyp -g
 install:
   # Ensure source install works and compiles correctly
-  - COMPILE=1 npm install
+  - npm install
   # test our module
   - npm test
-  # Redo install and tests with multithread enabled
- - ENABLE_MT=1 COMPILE=1 npm install
- - npm test
-after_success:
