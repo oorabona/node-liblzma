@@ -20,7 +20,8 @@ addons:
     - liblzma-dev
 # We want to compile with g++ 4.8 when rather than the default g++
 env:
-  - CXX=g++-4.8
+  global:
+    - CXX=g++-4.8
   matrix:
     - COMPILE=1
     - ENABLE_MT=1 COMPILE=1
