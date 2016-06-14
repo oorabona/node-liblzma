@@ -46,8 +46,6 @@
   "engines": {
     "node": ">=0.10.1"
   },
-  "files": [
-    "lib/"
   "binary": {
     "module_name": "node-liblzma",
     "module_path": "./build/",
