@@ -55,7 +55,7 @@ build:
   - '[ "$COMPILE" = "1" ] && %ubs% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
   - task: build_module
   # If we do not have any coffee file, files should have been already compiled
-  - '[ -r %srcPath%/lzma.coffee ] && %ubs% build_coffee'
+  - '[ -r %libPath%/lzma.js ] || %ubs% build_coffee'
 build_coffee:
   - log: Building Javascript API...
   - '%coffee% -b -c -o %libPath% %srcPath%'

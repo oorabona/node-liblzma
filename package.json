@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.4-2",
+  "version": "1.0.4-3",
   "description": "Liblzma bindings for NodeJS (aka xzlib)",
   "main": "./lib/lzma.js",
   "scripts": {
@@ -46,6 +46,8 @@
   "engines": {
     "node": ">=0.10.1"
   },
+  "files": [
+    "lib/"
   "binary": {
     "module_name": "node-liblzma",
     "module_path": "./build/",
