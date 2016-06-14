@@ -22,7 +22,7 @@ settings:
   mocha:
     useCoffee: true
 clean:
-  - node-gyp clean
+  - '%npg% clean'
   - rm -rf %clean.path%
 fetch_lzma:
   - log: Fetching source ...
@@ -54,7 +54,8 @@ build_module:
 build:
   - '[ "$COMPILE" = "1" ] && %ubs% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
   - task: build_module
-  - task: build_coffee
+  # If we do not have any coffee file, files should have been already compiled
+  - '[ -r %srcPath%/lzma.coffee ] && %ubs% build_coffee'
 build_coffee:
   - log: Building Javascript API...
   - '%coffee% -b -c -o %libPath% %srcPath%'
