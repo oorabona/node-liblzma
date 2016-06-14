@@ -18,6 +18,7 @@ settings:
   srcPath: 'src'
   libPath: 'lib'
   coffee: './node_modules/.bin/coffee'
+  npg: './node_modules/.bin/node-pre-gyp'
   mocha:
     useCoffee: true
 clean:
@@ -48,7 +49,7 @@ build_lzma:
   - cd ../..
 build_module:
   - log: Building %name% version %version% Add-On ...
-  - node-pre-gyp install --fallback-to-build
+  - '%npg% install --fallback-to-build'
   # - node-gyp configure build
 build:
   - '[ "$COMPILE" = "1" ] && %ubs% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
