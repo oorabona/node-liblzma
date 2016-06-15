@@ -1,11 +1,12 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.4-4",
+  "version": "1.0.4-5",
   "description": "Liblzma bindings for NodeJS (aka xzlib)",
   "main": "./lib/lzma.js",
   "scripts": {
     "test": "./node_modules/.bin/ubs test",
     "install": "./node_modules/.bin/ubs install",
+    "preinstall": "npm install npm",
     "prepublish": "./node_modules/.bin/ubs build_coffee"
   },
   "repository": {
