@@ -1,6 +1,6 @@
 test/
 /.DS_Store
-/node_modules/
+node_modules
 .plz
 build/
 *.log
@@ -13,3 +13,5 @@ npm-debug.log
 README.md.xz
 .travis*
 appveyor.yml
+.npmignore
+.gitignore
