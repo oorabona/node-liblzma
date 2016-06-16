@@ -35,7 +35,6 @@ install:
   - IF NOT "%nwjs_version%" == "" set NPG_ARGS=--runtime=node-webkit --target=%NWJS_VERSION%
   - IF NOT "%nwjs_version%" == "" npm install nw@%NWJS_VERSION% nw-gyp@%NWJS_VERSION%
   - npm install
-  - move build\stage\node-liblzma node-liblzma
 
 test_script:
   - IF "%nwjs_version%" == "" npm test
