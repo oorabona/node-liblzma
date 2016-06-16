@@ -1,0 +1,52 @@
+environment:
+  matrix:
+    - nodejs_version: "6"
+      platform: x64
+    - nodejs_version: "6"
+      platform: x86
+    - nodejs_version: "5"
+      platform: x64
+    - nodejs_version: "5"
+      platform: x86
+    - nodejs_version: "5"
+      platform: x86
+      nwjs_version: "0.12.3"
+    - nodejs_version: "5"
+      platform: x64
+      nwjs_version: "0.12.3"
+    - nodejs_version: "4"
+      platform: x86
+    - nodejs_version: "4"
+      platform: x64
+    - nodejs_version: "0.12"
+      platform: x86
+    - nodejs_version: "0.12"
+      platform: x64
+
+
+install:
+  # From https://github.com/nodejs/nan/blob/master/appveyor.yml
+  - ps: Install-Product node $env:nodejs_version
+  - ps: Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) $env:platform
+  - node -p process.arch
+  - node -p process.version
+  - IF %nodejs_version% LSS 1 npm -g install npm
+  - IF %nodejs_version% LSS 1 set PATH=%APPDATA%\npm;%PATH%
+  - IF NOT "%nwjs_version%" == "" set NPG_ARGS=--runtime=node-webkit --target=%NWJS_VERSION%
+  - IF NOT "%nwjs_version%" == "" npm install nw@%NWJS_VERSION% nw-gyp@%NWJS_VERSION%
+  - npm install
+  - move build\stage\node-liblzma node-liblzma
+
+test_script:
+  - IF "%nwjs_version%" == "" npm test
+  - IF NOT "%nwjs_version%" == "" pushd test\nwjs && (..\..\node_modules\.bin\nw & node exitcode.js & popd)
+
+build: off
+
+version: "{build}"
+
+matrix:
+  fast_finish: true
+
+cache:
+  - node_modules
