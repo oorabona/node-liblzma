@@ -10,10 +10,8 @@ environment:
       platform: x86
     - nodejs_version: "5"
       platform: x86
-      nwjs_version: "0.12.3"
     - nodejs_version: "5"
       platform: x64
-      nwjs_version: "0.12.3"
     - nodejs_version: "4"
       platform: x86
     - nodejs_version: "4"
