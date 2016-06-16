@@ -1,15 +1,10 @@
-test/
-/.DS_Store
-node_modules
 .plz
-build/
 *.log
 deps/
 *.gz
 core
 build/
 test/
-npm-debug.log
 README.md.xz
 .travis*
 appveyor.yml
