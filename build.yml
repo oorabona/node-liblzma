@@ -19,6 +19,7 @@ settings:
   libPath: 'lib'
   coffee: './node_modules/.bin/coffee'
   npg: './node_modules/.bin/node-pre-gyp'
+  cpu: 4
   mocha:
     useCoffee: true
 clean:
@@ -32,7 +33,7 @@ fetch_lzma:
   - '[ "%xzExt%" = "bz2" ] && tar jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
   - '[ "%xzExt%" = "xz" ] && tar Jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
 build_lzma:
-  - log: Building LibLZMA from sources !
+  - log: Building LibLZMA from sources, using %cpu% threads ! (change by passing cpu=xxx)
   - log: Cleaning deps ...
   - rm -rf deps
   - task: fetch_lzma
@@ -40,7 +41,7 @@ build_lzma:
   - ./autogen.sh
   - ./configure --prefix=`pwd` --enable-threads --enable-static --disable-shared --disable-scripts --disable-lzmainfo
     --disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath
-  - make
+  - make -j%cpu%
   - make install
   - env: CPATH=`pwd`/include
   - env: LIBRARY_PATH=`pwd`/lib
@@ -49,16 +50,24 @@ build_lzma:
   - cd ../..
 build_module:
   - log: Building %name% version %version% Add-On ...
+  - '%npg% configure build'
+install_module:
+  - log: Installing %name% version %version% Add-On ...
   - '%npg% install --fallback-to-build'
-  # - node-gyp configure build
 build:
-  - '[ "$COMPILE" = "1" ] && %ubs% build_lzma xzVersion=%xzVersion% xzExt=%xzExt%'
-  - task: build_module
-  # If we do not have any coffee file, files should have been already compiled
+  # If we are compiling, we surely won't want to try to download a precompiled binary
+  - |
+    if [ "$COMPILE" = "1" ]
+    then
+      %ubs% build_lzma build_module xzVersion=%xzVersion% xzExt=%xzExt%
+    else
+      %ubs% install_module
+    fi
+  # If we do not have any js file, we build it
   - '[ -r %libPath%/lzma.js ] || %ubs% build_coffee'
 build_coffee:
   - log: Building Javascript API...
-  - '%coffee% -b -c -o %libPath% %srcPath%'
+  - '%coffee% -c -o %libPath% %srcPath%'
   - log: Done building Javascript.
 test:
   - task: mocha-test
