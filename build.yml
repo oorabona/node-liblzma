@@ -37,7 +37,7 @@ build_lzma:
   - rm -rf deps
   - task: fetch_lzma
   - cd deps/xz
-  - ./autogen.sh
+  # - ./autogen.sh
   - ./configure --prefix=`pwd` --enable-threads --enable-static --disable-shared --disable-scripts --disable-lzmainfo
     --disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath
   - make
