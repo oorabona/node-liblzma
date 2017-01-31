@@ -9,7 +9,7 @@ settings:
     env:
       CPPFLAGS: "-fPIC"
       CFLAGS: "-O3"
-  xzWebUrl: 'http://tukaani.org/xz'
+  xzWebUrl: 'http://tukaani.org/xz/xz'
   xzVersion: '5.2.3'
   xzExt: 'gz'
   clean:
