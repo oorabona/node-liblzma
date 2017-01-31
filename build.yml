@@ -9,8 +9,8 @@ settings:
     env:
       CPPFLAGS: "-fPIC"
       CFLAGS: "-O3"
-  xzWebUrl: 'http://tukaani.org/xz/xz'
-  xzVersion: '5.2.2'
+  xzWebUrl: 'http://tukaani.org/xz'
+  xzVersion: '5.2.3'
   xzExt: 'gz'
   clean:
     path: ['lib', '*.log']
