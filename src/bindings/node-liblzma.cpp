@@ -135,6 +135,14 @@ NAN_METHOD(LZMA::New) {
       ret = lzma_stream_encoder(&self->_stream, filters, check);
       break;
     }
+    case STREAM_DECODE_RAW: {
+      ret = lzma_raw_decoder(&self->_stream, filters);
+      break;
+    }
+    case STREAM_ENCODE_RAW: {
+      ret = lzma_raw_encoder(&self->_stream, filters);
+      break;
+    }
 #ifdef LIBLZMA_ENABLE_MT
     case STREAM_ENCODE_MT: {
       unsigned int threads = opts->Get(NewString("threads"))->Uint32Value();
