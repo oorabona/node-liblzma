@@ -98,8 +98,10 @@ void moduleInit(Local<Object> exports) {
   exports->Set(NewString("STREAM_ENCODE"),                  Nan::New<Number>(STREAM_ENCODE));
   exports->Set(NewString("STREAM_DECODE"),                  Nan::New<Number>(STREAM_DECODE));
 #ifdef LIBLZMA_ENABLE_MT
-  exports->Set(NewString("STREAM_ENCODE_MT"),                  Nan::New<Number>(STREAM_ENCODE_MT));
+  exports->Set(NewString("STREAM_ENCODE_MT"),              	Nan::New<Number>(STREAM_ENCODE_MT));
 #endif
+  exports->Set(NewString("STREAM_ENCODE_RAW"),              Nan::New<Number>(STREAM_ENCODE_RAW));
+  exports->Set(NewString("STREAM_DECODE_RAW"),              Nan::New<Number>(STREAM_DECODE_RAW));
 
   exports->Set(NewString("BUFSIZ"),                  Nan::New<Number>(BUFSIZ));
 }

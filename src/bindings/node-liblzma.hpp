@@ -50,6 +50,8 @@ using v8::Value;
 #define STREAM_ENCODE 0
 #define STREAM_DECODE 1
 #define STREAM_ENCODE_MT 2
+#define STREAM_ENCODE_RAW 3
+#define STREAM_DECODE_RAW 4
 
 #define CONST_UINT32(target, value) \
   target->Set(String::NewSymbol(#value), Uint32::New(value), \
