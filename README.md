@@ -18,21 +18,26 @@ It has a good balance between compression time/ratio and decompression time/memo
 
 # About this project
 
-This project is close to node-xz or lzma-native as I have chosen to bind XZ library to NodeJS.
-But there are some differences:
+This project aims towards providing:
+* A quick and easy way to play with XZ compression:
+Quick and easy as it conforms to zlib API, so that switching from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :smile:
 
-* Both download and deploy a specific liblzma version to be compiled from the sources.
-I did not want to rely on an embedded liblzma version and instead use the system
-one (most Linux distros have liblzma, if not look at INSTALL below) ;
+* Complete integration with XZ sources/binaries:
+You can either use system packages or download a specific version and compile it!
+See [installation](#installation) below.
 
-* (Almost) complete NodeJS Zlib API / implementation _source code_ compatibility so that switching
-from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :smile:
-
-> Worth noting, only LZMA2 is supported for compression output. But the library can open and read any LZMA1 or LZMA2 compressed file and possibly others...
+> Only LZMA2 is supported for compression output.
+But the library can open and read any LZMA1 or LZMA2 compressed file. And possibly others...
 
 # What's new ?
 
 Supports all NodeJS versions, thanks to [nan](https://github.com/nodejs/nan) !
+It has been tested and works on:
+- Linux x64 (Ubuntu)
+- OSX (tested with Travis)
+- Raspberry Pi 2 (armv7l 32-bits)
+- Raspberry Pi 3 (armv8l but still a 32 bits Raspbian)
+- Windows (ongoing tests)
 
 # Related projects
 
@@ -45,13 +50,10 @@ Node binding of XZ library
 A very complete implementation of XZ library bindings
 * Others are also available but they fork "xz" process in the background.
 
-Basically, this project has been designed to be as close as possible to the way NodeJS works with Zlib.
-Would probably be a good idea and probably a huge step to migrate from Zlib to XZ someday ...
-
 # API comparison
 
 ```js
-var lzma = require('lzma');
+var lzma = require('node-liblzma');
 ```
 
 Zlib            | XZlib                   | Arguments
@@ -65,7 +67,7 @@ gunzipSync      | unxzSync                | (buf, [options])
 
 ## Constants
 
-```options``` is an ```Object``` have the attributes:
+`options` is an `Object` with the following possible attributes:
 
 Attribute            | Type     | Available options
 ---------------------|----------|------------
@@ -93,37 +95,63 @@ For further information about each of these flags, you will find reference at [X
 
 # Installation
 
-## Using system dev libraries to compile
+Well, as simple as this one-liner:
 
-You need to have the development package installed on your system. So you can either install it manually by downloading [XZ SDK](http://tukaani.org/xz/) and build it, or if you have root access, you can do (e.g. if you have Debian based distro):
+```sh
+$ npm i node-liblzma --save
+```
+
+If you want to enable threading support in the module, then opt in with:
 
 ``` bash
+$ ENABLE_MT=1 npm install liblzma --save
+```
+
+> This will of course work only if you have a binary version of liblzma with threading enabled.
+If this is not the case, it will not fail (even at runtime). It justs won't work.
+To check if this is enabled or not, run the [tests suite](#tests)
+
+In both cases, it will try to download an existing pre-compiled module binary and if none exists it will build it.
+
+To build the module, you have the following options:
+1. Using system development libraries
+2. Automatic download and compilation of `xz` libs, and statically link against node module
+3. Compile `xz` yourself, outside `node-liblzma` and build node module with dynamically linked library
+
+## Using system dev libraries to compile
+
+You need to have the development package installed on your system. If you have Debian based distro:
+
+```
 # apt-get install liblzma-dev
 ```
 
-## Using temporary beta install to enable multi threading (fast and easy)
+## Automatic download and compilation to statically link `xz`
 
-If you do not plan on having a local install, with the use of [UBS](https://github.com/oorabona/ubs),
-you do not need to download/configure/install XZ yourself anymore.
+If you do not plan on having a local install, you can ask for automatic download and build of whatever version of `xz` you want.
+With the use of [UBS](https://github.com/oorabona/ubs), you do not need to download/configure/install `xz` yourself anymore.
 
-You can temporary build XZ with threads enabled just for this library by running:
+Just do:
 
-```bash
-$ ENABLE_MT=1 COMPILE=1 npm install
+```sh
+$ COMPILE=1 npm install --save node-liblzma
 ```
 
-If you want to only recompile without multithreading enabled, just type:
+When no option is given in the commandline arguments, it will build with default values.
 
-```bash
-$ COMPILE=1 npm install
+If you want to build __experimental__ multi-threading feature, you can build `xz` with threads enabled just for this library by running:
+
+```sh
+$ ENABLE_MT=1 COMPILE=1 npm install --save node-liblzma
 ```
 
-## Local install of XZ sources (manual)
+## Local install of `xz` sources (outside `node-liblzma`)
 
-If you did install locally, set the include directory and library directory search paths
-as GCC [environment variables](https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html).
+So you did install `xz` somewhere outside the module and want the module to use it.
 
-``` bash
+For that, you need to set the include directory and library directory search paths as GCC [environment variables](https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html).
+
+```sh
 $ export CPATH=$HOME/path/to/headers
 $ export LIBRARY_PATH=$HOME/path/to/lib
 $ export LD_LIBRARY_PATH=$HOME/path/to/lib:$LD_LIBRARY_PATH
@@ -131,21 +159,21 @@ $ export LD_LIBRARY_PATH=$HOME/path/to/lib:$LD_LIBRARY_PATH
 
 The latest is needed for tests to be run right after.
 
-Once done, a simple:
+Once done, this should suffice:
 
-``` bash
+```sh
 $ npm install
 ```
 
-Will build and launch tests suite with [Mocha](https://github.com/visionmedia/mocha).
+# Tests
 
-If you want to enable threading support in the module, then opt in with:
+You can run tests with:
 
-``` bash
-$ ENABLE_MT=1 npm install
+```sh
+$ npm test
 ```
 
-> This will of course work only if you have compiled liblzma with threading enabled.
+It will build and launch tests suite with [Mocha](https://github.com/visionmedia/mocha).
 
 # Usage
 
@@ -157,10 +185,10 @@ They are written in [CoffeeScript](http://www.coffeescript.org).
 
 # Bugs
 
-If you find one, feel free to contribute as post a new issue!
+If you find one, feel free to contribute and post a new issue!
 PR are accepted as well :)
 
-Kudos goes to [addaleax](https://github.com/addaleax) for bug fixing in the last release !
+Kudos goes to [addaleax](https://github.com/addaleax) for helping me out with C++ stuff !
 
 If you compile with threads, you may see a bunch of warnings about `-Wmissing-field-initializers`.
 This is _normal_ and does not prevent threading from being active and working.

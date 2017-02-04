@@ -1,3 +1,8 @@
+# 1.0.5
+* Added CI for OSX and Windows
+* Implemented use of node-pre-gyp instead of node-gyp
+* Better build script, bug fixing.
+
 # 1.0.3
 * Updated to latest versions of dependencies
 * NodeJS 6.x is now supported
