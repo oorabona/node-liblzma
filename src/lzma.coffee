@@ -16,7 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-liblzma = require '../build/Release/node-liblzma.node'
+binary = require 'node-pre-gyp'
+path = require 'path'
+binding_path = binary.find path.resolve path.join __dirname,'../package.json'
+liblzma = require binding_path
 
 util = require 'util'
 assert = require 'assert'
