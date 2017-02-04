@@ -1,17 +1,17 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.4-5",
-  "description": "Liblzma bindings for NodeJS (aka xzlib)",
+  "version": "1.0.5",
+  "description": "NodeJS wrapper for liblzma",
   "main": "./lib/lzma.js",
   "scripts": {
     "test": "./node_modules/.bin/ubs test",
     "install": "./node_modules/.bin/ubs install",
-    "preinstall": "npm install npm",
+    "preinstall": "npm install node-pre-gyp",
     "prepublish": "./node_modules/.bin/ubs build_coffee"
   },
   "repository": {
     "type": "git",
-    "url": "http://github.com/oorabona/node-liblzma"
+    "url": "https://github.com/oorabona/node-liblzma"
   },
   "keywords": [
     "module",
@@ -26,7 +26,7 @@
     "binding",
     "native"
   ],
-  "bundledDependencies": ["node-pre-gyp"],
+  "gypfile": true,
   "author": "Olivier ORABONA",
   "license": "LGPL-3.0",
   "bugs": {
@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
   "dependencies": {
+    "coffee-script": "*",
     "nan": "latest",
     "node-pre-gyp": "latest",
     "ubs": "latest"
