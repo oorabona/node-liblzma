@@ -13,8 +13,8 @@ settings:
       CFLAGS: "-O3"
   # Url/version/extension of `xz` sources.
   # gz is the most common, but you can of course override it!
-  xzWebUrl: 'http://tukaani.org/xz/xz'
-  xzVersion: '5.2.2'
+  xzWebUrl: 'http://tukaani.org/xz'
+  xzVersion: '5.2.3'
   xzExt: 'gz'
   # Clean all these paths/files
   clean:
@@ -32,9 +32,9 @@ clean:
   - rm -rf %clean.path%
 fetch_lzma:
   - log: Fetching source ...
-  - grab: "%xzWebUrl%-%xzVersion%.tar.%xzExt%"
+  - grab: "%xzWebUrl%/xz-%xzVersion%.tar.%xzExt%"
   - mkdir -p deps/xz
-  - |-
+  - |
     opts="xvf"
     if [ "%xzExt%" = "gz" ]
     then
