@@ -7,11 +7,16 @@ init:
 settings:
   exec:
     env:
+      # Required in Linux, harmless elsewhere, Position Independant Code is
+      # enabled by default.
       CPPFLAGS: "-fPIC"
       CFLAGS: "-O3"
+  # Url/version/extension of `xz` sources.
+  # gz is the most common, but you can of course override it!
   xzWebUrl: 'http://tukaani.org/xz/xz'
   xzVersion: '5.2.2'
   xzExt: 'gz'
+  # Clean all these paths/files
   clean:
     path: ['lib', '*.log']
     distclean: ['build', 'xz*.tar.*']
@@ -29,9 +34,22 @@ fetch_lzma:
   - log: Fetching source ...
   - grab: "%xzWebUrl%-%xzVersion%.tar.%xzExt%"
   - mkdir -p deps/xz
-  - '[ "%xzExt%" = "gz" ] && tar zxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
-  - '[ "%xzExt%" = "bz2" ] && tar jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
-  - '[ "%xzExt%" = "xz" ] && tar Jxvf xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1'
+  - |-
+    opts="xvf"
+    if [ "%xzExt%" = "gz" ]
+    then
+      opts="z$opts"
+    elif [ "%xzExt%" = "bz2" ]
+    then
+      opts="j$opts"
+    elif [ "%xzExt%" = "xz" ]
+    then
+      opts="J$opts"
+    else
+      echo "Not understood: $opts"
+    fi
+    tar $opts xz-%xzVersion%.tar.%xzExt% -C deps/xz --strip-components=1
+  - log: Done fetching source.
 build_lzma:
   - log: Building LibLZMA from sources, using %cpu% threads ! (change by passing cpu=xxx)
   - log: Cleaning deps ...
