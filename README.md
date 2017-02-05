@@ -53,7 +53,7 @@ A very complete implementation of XZ library bindings
 # API comparison
 
 ```js
-var lzma = require('node-liblzma');
+var lzma = require('lzma');
 ```
 
 Zlib            | XZlib                   | Arguments
@@ -104,7 +104,7 @@ $ npm i node-liblzma --save
 If you want to enable threading support in the module, then opt in with:
 
 ``` bash
-$ ENABLE_MT=1 npm install liblzma --save
+$ ENABLE_MT=1 npm install node-liblzma --save
 ```
 
 > This will of course work only if you have a binary version of liblzma with threading enabled.
