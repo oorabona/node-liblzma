@@ -16,7 +16,11 @@
         'xcode_settings': {
           'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
           'CLANG_CXX_LIBRARY': 'libc++',
-          'MACOSX_DEPLOYMENT_TARGET': '10.7',
+          'MACOSX_DEPLOYMENT_TARGET': '10.9',
+          'OTHER_CFLAGS': [
+            '-stdlib=libc++',
+            '-std=c++2a'
+          ]
         },
       }],
 			['OS == "win"', {
@@ -473,7 +477,8 @@
 								}
 							]
 						}
-					], [
+					],
+          [
 						'OS!="win"', {
 							'targets': [
 								{
@@ -532,15 +537,6 @@
 				'-g'
 			],
 			"conditions": [
-				['OS=="mac"', {
-					'xcode_settings': {
-						'MACOSX_DEPLOYMENT_TARGET': '10.9',
-						'OTHER_CFLAGS': [
-							'-stdlib=libc++',
-							'-std=c++11'
-						]
-					}
-				}],
 				['OS=="win"', {
 					"conditions": [
 						[
