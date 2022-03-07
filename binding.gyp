@@ -514,7 +514,7 @@
 				"NAPI_DISABLE_CPP_EXCEPTIONS"
 			],
 			'cflags': [
-				'-std=c++20',
+				'-std=c++2a',  # because GCC 9 and earlier do not support -std=c++20
 				'-Wall',
 				'-pthread',
 				'-g',
