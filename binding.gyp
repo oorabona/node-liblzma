@@ -12,6 +12,13 @@
 	},
 	'target_defaults': {
 		'conditions': [
+      ['OS == "mac"', {
+        'xcode_settings': {
+          'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+          'CLANG_CXX_LIBRARY': 'libc++',
+          'MACOSX_DEPLOYMENT_TARGET': '10.7',
+        },
+      }],
 			['OS == "win"', {
         "msvs_disabled_warnings": [4275, 4005],
         "configurations" : {
@@ -569,7 +576,7 @@
             "<(xz_vendor_dir)/src/liblzma/simple"
           ],
 				}],
-				['OS=="linux"', {
+				['OS=="linux" or OS=="mac"', {
 					"conditions": [
 						[
 							'use_global_liblzma == "true"', {
