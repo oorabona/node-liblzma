@@ -1,0 +1,92 @@
+name: Publish @oorabona/liblzma
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+env:
+  NPM_TOKEN: ${{ secrets.NPM_PACKAGES_TOKEN }}
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - os: macos-11 # At the time of writing macos-latest is mac 10; we need 11 to build a universal binary
+            build-group: darwin-x64
+          - os: windows-latest
+            build-group: win32-x64
+          - os: ubuntu-latest
+            build-group: linux-x64
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.build-group }}
+    env:
+      BUILD_GROUP: ${{ matrix.build-group }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Set up node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+          architecture: x64
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Prebuild
+        run: yarn run prebuild
+        shell: bash
+      - name: Prepare artifact
+        run: tar -zcvf $BUILD_GROUP.tar.gz -C prebuilds .
+        shell: bash
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.BUILD_GROUP }}
+          path: ${{ env.BUILD_GROUP }}.tar.gz
+          retention-days: 1
+  publish:
+    needs: build
+    permissions:
+      contents: write
+    name: Publish @oorabona/liblzma
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v2
+      # - name: Set version from git
+      #   run: npm version --no-git-tag-version from-git
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+      - name: Unzip all binaries
+        run: mkdir prebuilds && find artifacts -name "*.tar.gz" -exec tar zxvf {} -C prebuilds \;
+      - name: Set version from branch name
+        run: npm version --no-git-tag-version "${GITHUB_REF##refs/tags/v}"
+      - name: Publish to npm.pkg.github.com
+        run: npm publish
+  release:
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    name: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+      - name: Create GitHub release
+        uses: docker://antonyurchenko/git-release:v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: artifacts/*/*.tar.gz
