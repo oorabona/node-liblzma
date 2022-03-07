@@ -9,8 +9,6 @@
     "build:native": "node-gyp rebuild",
     "build:coffee": "coffee --compile --output lib/ src/",
     "rebuild": "node-gyp rebuild",
-    "prebuild": "prebuildify --napi --strip",
-    "prebuild:debug": "prebuildify --napi --debug",
     "test": "npx mocha test/*.coffee"
   },
   "dependencies": {
@@ -23,7 +21,6 @@
     "expect.js": "0.3.1",
     "mocha": "9.2.1",
     "node-gyp": "8.4.1",
-    "prebuildify": "5.0.0",
     "tsd": "0.19.1"
   },
   "types": "index.d.ts",
