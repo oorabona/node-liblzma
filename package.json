@@ -54,6 +54,9 @@
   "binary": {
     "module_name": "liblzma"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "mocha": {
     "throw-deprecation": true,
     "require": [
