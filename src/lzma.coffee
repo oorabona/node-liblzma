@@ -1,6 +1,6 @@
 ###
  * node-liblzma - Node.js bindings for liblzma
- * Copyright (C) 2014-2015 Olivier Orabona <olivier.orabona@gmail.com>
+ * Copyright (C) Olivier Orabona <olivier.orabona@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -16,11 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-binary = require 'node-pre-gyp'
 path = require 'path'
-binding_path = binary.find path.resolve path.join __dirname,'../package.json'
-liblzma = require binding_path
+binding_path = path.resolve path.join __dirname, '..'
 
+liblzma = require('node-gyp-build')(binding_path)
 util = require 'util'
 assert = require 'assert'
 os = require 'os'
@@ -67,7 +66,7 @@ class XzStream extends Transform
     @_closed = false
     @_hadError = false
     @_offset = 0
-    @_buffer = new Buffer @_chunkSize
+    @_buffer = Buffer.alloc @_chunkSize
 
     @on 'onerror', (errno) =>
       @_hadError = true
@@ -80,7 +79,7 @@ class XzStream extends Transform
     @once 'end', @close
 
   flush: (kind, callback) ->
-    ws = @_writableState;
+    ws = @_writableState
 
     if (typeof kind == 'function' or (typeof kind == 'undefined' && !callback))
       [callback, kind] = [kind, liblzma.LZMA_SYNC_FLUSH]
@@ -97,7 +96,7 @@ class XzStream extends Transform
         return
     else
       @_flushFlag = kind
-      @write new Buffer(0), '', callback
+      @write Buffer.alloc(0), '', callback
 
     return
 
@@ -122,8 +121,8 @@ class XzStream extends Transform
     ws = @_writableState
     ending = ws.ending or ws.ended
     last = ending and (not chunk or ws.length is chunk.length)
-    return callback(new Error("invalid input"))  if chunk != null and !(chunk instanceof Buffer)
-    return callback(new Error("lzma binding closed"))  if @_closed
+    return callback(new Error("invalid input")) if chunk != null and !(chunk instanceof Buffer)
+    return callback(new Error("lzma binding closed")) if @_closed
 
     # If it's the last chunk, or a final flush, we use the LZMA_FINISH flush flag.
     # If it's explicitly flushing at some other time, then we use
@@ -135,13 +134,13 @@ class XzStream extends Transform
 
       # once we've flushed the last of the queue, stop flushing and
       # go back to the normal behavior.
-      @_flushFlag = @_opts.flushFlag or liblzma.LZMA_RUN  if chunk.length >= ws.length
+      @_flushFlag = @_opts.flushFlag or liblzma.LZMA_RUN if chunk.length >= ws.length
 
     @_processChunk chunk, flushFlag, callback
     return
 
   _flush: (callback) ->
-    @_transform new Buffer(0), '', callback
+    @_transform Buffer.alloc(0), '', callback
     return
 
   _processChunk: (chunk, flushFlag, cb) ->
@@ -176,7 +175,7 @@ class XzStream extends Transform
       assert used >= 0, "More bytes after than before! Delta = #{used}"
 
       if used > 0
-        out = @_buffer[@_offset...@_offset+used]
+        out = @_buffer[ @_offset ... @_offset + used ]
         @_offset += used
         if async
           @push out
@@ -188,7 +187,7 @@ class XzStream extends Transform
       if availOutAfter is 0 or @_offset >= @_chunkSize
         availOutBefore = @_chunkSize
         @_offset = 0
-        @_buffer = new Buffer @_chunkSize
+        @_buffer = Buffer.alloc @_chunkSize
 
       if availOutAfter is 0 or availInAfter > 0
         inOff += (availInBefore - availInAfter)
@@ -254,23 +253,26 @@ exports.messages = [
   "Programming error"
 ]
 
-exports.check =
+exports.check = {
   "NONE": liblzma.LZMA_CHECK_NONE
   "CRC32": liblzma.LZMA_CHECK_CRC32
   "CRC64": liblzma.LZMA_CHECK_CRC64
   "SHA256": liblzma.LZMA_CHECK_SHA256
+}
 
-exports.preset =
+exports.preset = {
   "DEFAULT": liblzma.LZMA_PRESET_DEFAULT
   "EXTREME": liblzma.LZMA_PRESET_EXTREME
+}
 
-exports.flag =
+exports.flag = {
   "TELL_NO_CHECK": liblzma.LZMA_TELL_NO_CHECK
   "TELL_UNSUPPORTED_CHECK": liblzma.LZMA_TELL_UNSUPPORTED_CHECK
   "TELL_ANY_CHECK": liblzma.LZMA_TELL_ANY_CHECK
   "CONCATENATED": liblzma.LZMA_CONCATENATED
+}
 
-exports.filter =
+exports.filter = {
   "LZMA2": liblzma.LZMA_FILTER_LZMA2
   "X86": liblzma.LZMA_FILTER_X86
   "POWERPC": liblzma.LZMA_FILTER_POWERPC
@@ -278,10 +280,12 @@ exports.filter =
   "ARM": liblzma.LZMA_FILTER_ARM
   "ARMTHUMB": liblzma.LZMA_FILTER_ARMTHUMB
   "SPARC": liblzma.LZMA_FILTER_SPARC
+}
 
-exports.mode =
+exports.mode = {
   "FAST": liblzma.LZMA_MODE_FAST
   "NORMAL": liblzma.LZMA_MODE_NORMAL
+}
 
 exports.createXz = (lzma_options, options) ->
   new Xz(lzma_options, options)
@@ -334,8 +338,8 @@ xzBuffer = (engine, buffer, callback) ->
   return
 
 xzBufferSync = (engine, buffer) ->
-  buffer = new Buffer(buffer)  if typeof buffer == 'string'
-  throw new TypeError("Not a string or buffer")  unless buffer instanceof Buffer
+  buffer = Buffer.from(buffer) if typeof buffer == 'string'
+  throw new TypeError("Not a string or buffer") unless buffer instanceof Buffer
 
   engine._processChunk buffer, liblzma.LZMA_FINISH
 
