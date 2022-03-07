@@ -2,13 +2,13 @@ name: Test
 on:
   push:
     branches:
-      - main
+      - master
       - "releases/**"
     tags-ignore:
       - "v[0-9]+.[0-9]+.[0-9]+"
   pull_request:
     branches:
-      - main
+      - master
       - "releases/**"
 
 permissions:
