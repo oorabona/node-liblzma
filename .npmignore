@@ -1,12 +1,30 @@
-.plz
-*.log
-deps/
-*.gz
-core
+artifacts/
+deps/*
+
+# Build artifacts
+*.tar.gz
+*.tgz
 build/
+build-pre-gyp/
+.vscode
+
+# Benchmarks and tests
+bench/
 test/
-README.md.xz
-.travis*
+.benchmarks/
+*.csv
+
+# Misc
+.nyc_output/
+.github/
+yarn.lock
+.gitmodules
+.travis.yml
 appveyor.yml
-.npmignore
-.gitignore
+.appveyor.yml
+Dockerfile
+.dockerignore
+Vagrantfile
+.arcconfig
+.clang-format
+.watchmanconfig
