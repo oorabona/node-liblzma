@@ -1,7 +1,6 @@
 expect = require "expect.js"
 fs = require "fs"
 stream = require "stream"
-Q = require "q"
 
 xzStream = require "../lib/lzma"
 
@@ -26,9 +25,9 @@ describe 'Xz', ->
 
     it 'in async mode, using #xz and #unxz', (next) ->
       buffer = helpers.random 256
-      xzStream.xz buffer, (err,res) ->
+      xzStream.xz buffer, (err, res) ->
         expect(err).to.not.be.ok()
-        xzStream.unxz res, (err,res) ->
+        xzStream.unxz res, (err, res) ->
           expect(err).to.not.be.ok()
           expect(res).to.be.a Buffer
           expect(res.toString()).to.be buffer
@@ -42,6 +41,7 @@ describe 'Xz', ->
         output = xzStream.xzSync input
       ).to.not.throwException()
       expect(output && output.length).to.be 610980
+      # fs.writeFileSync "test/data/HollywoodSign.jpg.xz", output
       next()
 
     it 'in async mode', (next) ->
@@ -75,7 +75,7 @@ describe 'Xz', ->
         expectedSize = 610980
         console.log "liblzma was built without thread support."
 
-      xz = new xzStream.Xz threads: 0
+      xz = new xzStream.Xz { threads: 0 }
       input = fs.createReadStream "test/data/HollywoodSign.jpg"
       output = fs.createWriteStream "test/data/HollywoodSign.jpg.xz"
 
@@ -125,15 +125,15 @@ describe 'UnXZ', ->
 
   describe 'should accept LZMA_FILTER_X86 with generated node addon', ->
     it 'in sync mode, using #xzSync and #unxzSync', (next) ->
-      input = fs.readFileSync 'build/Release/node-liblzma.node'
+      input = fs.readFileSync 'build/Release/node_lzma.node'
       output = null
       expect(->
-        output = xzStream.xzSync input, filters: [xzStream.filter.X86]
+        output = xzStream.xzSync input, { filters: [xzStream.filter.X86] }
       ).to.not.throwException()
       expect(output).to.be.ok()
       original = null
       expect(->
-        original = xzStream.unxzSync output, filters: [xzStream.filter.X86]
+        original = xzStream.unxzSync output, { filters: [xzStream.filter.X86] }
       ).to.not.throwException()
       expect(original).to.be.a Buffer
       if helpers.bufferEqual original, input
@@ -141,26 +141,24 @@ describe 'UnXZ', ->
       else
         next "Uncompressed different from original!"
 
-    it 'in async mode using promises, and compare output sizes', (next) ->
-      buffer = fs.readFileSync 'build/Release/node-liblzma.node'
+    it 'in async mode using promises, and compare output sizes', ->
+      buffer = fs.readFileSync 'build/Release/node_lzma.node'
 
-      # Using Q to wait on async operations
       promises = [
-        new Q.Promise (resolve) ->
-          xzStream.xz buffer, (err,res) ->
+        new Promise (resolve) ->
+          xzStream.xz buffer, (err, res) ->
             expect(err).to.not.be.ok()
             resolve res.length
-        new Q.Promise (resolve) ->
-          xzStream.xz buffer, filters: [xzStream.filter.X86], (err,res) ->
+        new Promise (resolve) ->
+          xzStream.xz buffer, { filters: [xzStream.filter.X86] }, (err, res) ->
             expect(err).to.not.be.ok()
             resolve res.length
       ]
 
-      Q.all promises
+      await Promise.all promises
       .then (results) ->
         console.info "Compressed size with X86 filter: #{results[1]}"
         console.info "Compressed size without X86 filter: #{results[0]}"
-        next()
 
   after ->
     # We completed our task, remove created files
