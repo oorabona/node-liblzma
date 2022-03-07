@@ -38,9 +38,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Install
         run: yarn install --frozen-lockfile
-      - name: Prebuild
-        run: yarn run prebuild
-        shell: bash
       - name: Prepare artifact
         run: tar -zcvf $BUILD_GROUP.tar.gz -C prebuilds .
         shell: bash
@@ -69,7 +66,7 @@ jobs:
         run: mkdir prebuilds && find artifacts -name "*.tar.gz" -exec tar zxvf {} -C prebuilds \;
       - name: Set version from branch name
         run: npm version --no-git-tag-version "${GITHUB_REF##refs/tags/v}"
-      - name: Publish to npm.pkg.github.com
+      - name: Go publish
         run: npm publish
   release:
     needs: build

@@ -8,7 +8,8 @@
 		"runtime_link": "shared",
 		"xz_vendor_dir": "<(module_root_dir)/deps/xz",
 		"py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
-    "target_dir": "<(module_root_dir)/build"
+    "target_dir": "<(module_root_dir)/build",
+    "prebuild_dir": "<(module_root_dir)/prebuilds/<(OS)-<(target_arch)/"
 	},
 	'target_defaults': {
 		'conditions': [
@@ -637,5 +638,16 @@
 				"<!(node -p \"require('node-addon-api').gyp\")",
 			]
 		},
+    {
+      'target_name': 'prebuildify',
+      'copies': [
+        {
+          'destination': '<(prebuild_dir)',
+          'files': [
+            '<(PRODUCT_DIR)/node_lzma.node'
+          ]
+        }
+      ]
+    }
 	]
 }
