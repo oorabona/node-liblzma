@@ -1,13 +1,34 @@
 {
   "name": "node-liblzma",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "description": "NodeJS wrapper for liblzma",
   "main": "./lib/lzma.js",
   "scripts": {
-    "test": "./node_modules/.bin/ubs test",
-    "install": "./node_modules/.bin/ubs install",
-    "preinstall": "npm install node-pre-gyp",
-    "prepublish": "./node_modules/.bin/ubs build_coffee"
+    "install": "node-gyp install",
+    "postinstall": "run-p build:*",
+    "build:native": "node-gyp rebuild",
+    "build:coffee": "coffee --compile --output lib/ src/",
+    "rebuild": "node-gyp rebuild",
+    "prebuild": "prebuildify --napi --strip",
+    "prebuild:debug": "prebuildify --napi --debug",
+    "test": "npx mocha test/*.coffee"
+  },
+  "dependencies": {
+    "node-addon-api": "4.2.0",
+    "node-gyp-build": "4.3.0",
+    "npm-run-all": "4.1.5"
+  },
+  "devDependencies": {
+    "coffeescript": "2.6.1",
+    "expect.js": "0.3.1",
+    "mocha": "9.2.1",
+    "node-gyp": "8.4.1",
+    "prebuildify": "5.0.0",
+    "tsd": "0.19.1"
+  },
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">12.0.0"
   },
   "repository": {
     "type": "git",
@@ -33,29 +54,17 @@
     "url": "https://github.com/oorabona/node-liblzma/issues"
   },
   "homepage": "https://github.com/oorabona/node-liblzma",
-  "dependencies": {
-    "nan": "latest",
-    "node-pre-gyp": "latest",
-    "ubs": "latest"
-  },
-  "devDependencies": {
-    "coffee-script": "*",
-    "expect.js": "^0.3.1",
-    "mocha": "^2.0.1",
-    "q": "^1.0.1"
-  },
-  "engines": {
-    "node": ">=0.10.1"
-  },
-  "files": [
-    "build.yml",
-    "lib",
-    "build/Release/node-liblzma.node"
-  ],
   "binary": {
-    "module_name": "node-liblzma",
-    "module_path": "./build/",
-    "host": "https://github.com/",
-    "remote_path": "./oorabona/node-liblzma/"
+    "module_name": "liblzma"
+  },
+  "mocha": {
+    "throw-deprecation": true,
+    "require": [
+      "coffeescript/register"
+    ],
+    "inline-diffs": true,
+    "timeout": 5000,
+    "reporter": "spec",
+    "recursive": true
   }
 }
