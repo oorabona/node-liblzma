@@ -22,10 +22,10 @@ jobs:
         os: [ubuntu-latest, macos-11, windows-latest]
         node: [16]
         runtime_link: [static, shared]
-        include:
-          - os: ubuntu-latest
-            runtime_link: static
-            use_global_liblzma: false
+        use_global_liblzma: [true, false]
+        exclude:
+          - os: windows-latest
+            use_global_liblzma: true
     runs-on: ${{ matrix.os }}
     name: Node ${{ matrix.node }} on ${{ matrix.os }} / System Xz ? ${{ matrix.use_global_liblzma }} / Runtime is ${{ matrix.runtime_link }}
     steps:
