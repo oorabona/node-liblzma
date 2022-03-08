@@ -5,6 +5,9 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
+env:
+  NPM_TOKEN: ${{ secrets.NPM_PACKAGES_TOKEN }}
+
 jobs:
   build:
     permissions:
@@ -61,12 +64,12 @@ jobs:
           path: artifacts
       - name: Unzip all binaries
         run: mkdir prebuilds && find artifacts -name "*.tar.gz" -exec tar zxvf {} -C prebuilds \;
+      - name: Setup NPM_TOKEN
+        run: npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
       - name: Set version from branch name
         run: npm version --no-git-tag-version "${GITHUB_REF##refs/tags/v}"
       - name: Go publish
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PACKAGES_TOKEN }}
   release:
     needs: build
     permissions:
