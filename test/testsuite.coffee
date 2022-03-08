@@ -1,10 +1,15 @@
 expect = require "expect.js"
 fs = require "fs"
 stream = require "stream"
+path = require 'path'
 
 xzStream = require "../lib/lzma"
 
 helpers = require "./helpers"
+
+ngb = require('node-gyp-build')
+ngb(path.resolve path.join __dirname, '..')
+native_module_path = ngb.path()
 
 describe 'Xz', ->
   describe 'should compress and decompress a string', ->
@@ -125,7 +130,7 @@ describe 'UnXZ', ->
 
   describe 'should accept LZMA_FILTER_X86 with generated node addon', ->
     it 'in sync mode, using #xzSync and #unxzSync', (next) ->
-      input = fs.readFileSync 'build/Release/node_lzma.node'
+      input = fs.readFileSync native_module_path
       output = null
       expect(->
         output = xzStream.xzSync input, { filters: [xzStream.filter.X86] }
@@ -142,7 +147,7 @@ describe 'UnXZ', ->
         next "Uncompressed different from original!"
 
     it 'in async mode using promises, and compare output sizes', ->
-      buffer = fs.readFileSync 'build/Release/node_lzma.node'
+      buffer = fs.readFileSync native_module_path
 
       promises = [
         new Promise (resolve) ->
