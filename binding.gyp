@@ -9,7 +9,13 @@
 		"xz_vendor_dir": "<(module_root_dir)/deps/xz",
 		"py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
     "target_dir": "<(module_root_dir)/build",
-    "prebuild_dir": "<(module_root_dir)/prebuilds/<(OS)-<(target_arch)/"
+    "prebuild_dir": "<(module_root_dir)/prebuilds/<(OS)-<(target_arch)/",
+    'conditions': [
+      ['OS == "win"' , {
+        "runtime_link": "static",       # Prefered method by default on Windows
+        "use_global_liblzma": "false"   # Force download of Xz source code
+      }]
+    ],
 	},
 	'target_defaults': {
 		'conditions': [
@@ -115,11 +121,11 @@
 		]
 	},
 		'conditions': [
-			[ 'OS == "win" or use_global_liblzma == "false"', {
+			[ 'use_global_liblzma == "false"', {
+      # Compile liblzma from here
 				'conditions': [
 					[
 						'OS == "win"', {
-							# Compile liblzma from here
 							'targets': [
 								{
 									'target_name': 'download_and_extract_deps',
@@ -127,10 +133,15 @@
 									'hard_dependency': 1,
 									'actions': [
 										{
-											'action_name': 'do_it',
+											'action_name': 'download_and_extract_deps',
 											'inputs': [''],
 											'outputs': ["<(xz_vendor_dir)/autogen.sh"],
-											'action': ['<!(node -p "process.env.npm_config_python || \\"python3\\"")', "<(module_root_dir)/scripts/download_extract_deps.py", "<(module_root_dir)/deps/xz.tar.xz", "<(module_root_dir)/deps/"]
+											'action': [
+                        "<!(node -p \"process.env.npm_config_python || 'python3'\")",
+                        "<(module_root_dir)/scripts/download_extract_deps.py",
+                        "<(module_root_dir)/deps/xz.tar.xz",
+                        "<(module_root_dir)/deps/"
+                      ]
 										}
 									],
 								},
@@ -491,7 +502,12 @@
 											'action_name': 'download',
 											'inputs': [''],
 											'outputs': ["<(xz_vendor_dir)/autogen.sh"],
-											'action': ['<!(node -p "process.env.npm_config_python || \\"python3\\"")', "<(module_root_dir)/scripts/download_extract_deps.py", "<(module_root_dir)/deps/xz.tar.xz", "<(module_root_dir)/deps/"]
+											'action': [
+                        "<!(node -p \"process.env.npm_config_python || 'python3'\")",
+                        "<(module_root_dir)/scripts/download_extract_deps.py",
+                        "<(module_root_dir)/deps/xz.tar.xz",
+                        "<(module_root_dir)/deps/"
+                      ]
 										}
                   ],
                 },
@@ -636,15 +652,26 @@
 			],
 			"dependencies": [
 				"<!(node -p \"require('node-addon-api').gyp\")",
-			]
-		},
+			],
+    },
     {
       'target_name': 'prebuildify',
-      'copies': [
+      'type': 'none',
+      'dependencies': [
+        'node_lzma'
+      ],
+      'actions': [
         {
-          'destination': '<(prebuild_dir)',
-          'files': [
-            '<(PRODUCT_DIR)/node_lzma.node'
+          'action_name': 'prebuildify',
+          'inputs': [
+            '<(PRODUCT_DIR)/node_lzma.node',
+          ],
+          'outputs': ['<(prebuild_dir)'],
+          'action': [
+            "<!(node -p \"process.env.npm_config_python || 'python3'\")",
+            "<(module_root_dir)/scripts/prebuildify.py",
+            "<(PRODUCT_DIR)/node_lzma.node",
+            "<(prebuild_dir)/node_lzma.node"
           ]
         }
       ]
