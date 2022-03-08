@@ -4,17 +4,11 @@
 # https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/heads/chromium-deps/2016-08-17/binding.gyp
 {
 	"variables": {
-		"use_global_liblzma": "true",
-		"runtime_link": "shared",
+    "use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (os.type() === 'Linux')\")",
+    "runtime_link%": "<!(node -p \"process.env.RUNTIME_LINK?.length > 0 ? process.env.RUNTIME_LINK : (os.type() === 'Linux' ? 'shared' : 'static')\")",
 		"xz_vendor_dir": "<(module_root_dir)/deps/xz",
 		"py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
     "target_dir": "<(module_root_dir)/build",
-    'conditions': [
-      ['OS == "win"' , {
-        "runtime_link": "static",       # Prefered method by default on Windows
-        "use_global_liblzma": "false"   # Force download of Xz source code
-      }]
-    ],
 	},
 	'target_defaults': {
 		'conditions': [
