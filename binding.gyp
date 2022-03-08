@@ -9,7 +9,6 @@
 		"xz_vendor_dir": "<(module_root_dir)/deps/xz",
 		"py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
     "target_dir": "<(module_root_dir)/build",
-    "prebuild_dir": "<(module_root_dir)/prebuilds/<(OS)-<(target_arch)/",
     'conditions': [
       ['OS == "win"' , {
         "runtime_link": "static",       # Prefered method by default on Windows
@@ -654,27 +653,5 @@
 				"<!(node -p \"require('node-addon-api').gyp\")",
 			],
     },
-    {
-      'target_name': 'prebuildify',
-      'type': 'none',
-      'dependencies': [
-        'node_lzma'
-      ],
-      'actions': [
-        {
-          'action_name': 'prebuildify',
-          'inputs': [
-            '<(PRODUCT_DIR)/node_lzma.node',
-          ],
-          'outputs': ['<(prebuild_dir)'],
-          'action': [
-            "<!(node -p \"process.env.npm_config_python || 'python3'\")",
-            "<(module_root_dir)/scripts/prebuildify.py",
-            "<(PRODUCT_DIR)/node_lzma.node",
-            "<(prebuild_dir)/node_lzma.node"
-          ]
-        }
-      ]
-    }
 	]
 }
