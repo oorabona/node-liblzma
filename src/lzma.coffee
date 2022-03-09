@@ -53,13 +53,11 @@ class XzStream extends Transform
     # Multithreading is only available for encoding, so if we are encoding, check
     # opts threads value.
     if mode is liblzma.STREAM_ENCODE
-      @_opts.threads = 1 unless liblzma.STREAM_ENCODE_MT
+      @_opts.threads = 1 unless liblzma.HAS_THREADS_SUPPORT
 
       # By default set to maximum available processors
       if @_opts.threads is 0
         @_opts.threads = maxThreads
-
-      mode = liblzma.STREAM_ENCODE_MT if @_opts.threads > 1
 
     # Initialize engine
     @lzma = new liblzma.LZMA mode, @_opts
