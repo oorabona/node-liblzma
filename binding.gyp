@@ -6,7 +6,7 @@
 	"variables": {
 		"use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (!os.type().startsWith('Win'))\")",
 		"runtime_link%": "<!(node -p \"process.env.RUNTIME_LINK?.length > 0 ? process.env.RUNTIME_LINK : (!os.type().startsWith('Win') ? 'shared' : 'static')\")",
-		"enable_thread_support%": "<!(node -p \"process.env.ENABLE_THREAD_SUPPORT ? 'yes':'no'\")",
+		"enable_thread_support%": "<!(node -p \"process.env.ENABLE_THREAD_SUPPORT || 'yes'\")",
     "xz_vendor_dir": "<(module_root_dir)/deps/xz",
 		"py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
     "target_dir": "<(module_root_dir)/build",
@@ -517,7 +517,7 @@
                       'outputs': [''],
                       'action': [
                         'sh', '-c', 'cd <(xz_vendor_dir) && ./configure --enable-static --disable-shared --disable-scripts --disable-lzmainfo \
---disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath --enable-threads=<(enable_threads) \
+--disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath --enable-threads=<(enable_thread_support) \
 --prefix="<(target_dir)/liblzma" && make && make install'
                       ]
                     }
@@ -586,7 +586,7 @@
 				}],
 				['OS=="linux" or OS=="mac"', {
 					"conditions": [
-            [ 'enable_thread_support == "yes"', {
+            [ 'enable_thread_support != "no"', {
               'defines': [
                 "ENABLE_THREAD_SUPPORT"
               ]
