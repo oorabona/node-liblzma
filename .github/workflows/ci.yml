@@ -23,9 +23,14 @@ jobs:
         node: [16]
         runtime_link: [static, shared]
         use_global_liblzma: [true, false]
+        enable_threads: [yes, no]
         exclude:
           - os: windows-latest
             use_global_liblzma: true
+          # For now config.h by default enables thread support so use it in our module
+          - os: windows-latest
+            use_global_liblzma: false
+            enable_threads: no
     runs-on: ${{ matrix.os }}
     name: Node ${{ matrix.node }} on ${{ matrix.os }} / System Xz ? ${{ matrix.use_global_liblzma }} / Runtime is ${{ matrix.runtime_link }}
     steps:
@@ -43,5 +48,6 @@ jobs:
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
         run: yarn test
