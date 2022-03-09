@@ -97,10 +97,10 @@ Napi::Object Init(Napi::Env env, Napi::Object exports)
 	// LZMAStream flags
 	exports.Set(Napi::String::New(env, "STREAM_ENCODE"), Napi::Number::New(env, STREAM_ENCODE));
 	exports.Set(Napi::String::New(env, "STREAM_DECODE"), Napi::Number::New(env, STREAM_DECODE));
-	exports.Set(Napi::String::New(env, "STREAM_ENCODE_MT"), Napi::Number::New(env, STREAM_ENCODE_MT));
-
 	exports.Set(Napi::String::New(env, "BUFSIZ"), Napi::Number::New(env, BUFSIZ));
 
+	// Tell companion script if we are thread-able or not
+	exports.Set(Napi::String::New(env, "HAS_THREADS_SUPPORT"), Napi::Boolean::New(env, HAS_THREADS_SUPPORT));
 	return exports;
 }
 

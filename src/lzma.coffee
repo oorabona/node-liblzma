@@ -236,7 +236,7 @@ exports.Xz = Xz
 exports.Unxz = Unxz
 
 exports.hasThreads = ->
-  typeof liblzma.STREAM_ENCODE_MT != 'undefined'
+  liblzma.HAS_THREADS_SUPPORT
 
 exports.messages = [
   "Operation completed successfully"

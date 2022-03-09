@@ -30,7 +30,11 @@
 
 constexpr unsigned int STREAM_ENCODE = 0;
 constexpr unsigned int STREAM_DECODE = 1;
-constexpr unsigned int STREAM_ENCODE_MT = 2;
+#ifdef ENABLE_THREAD_SUPPORT
+constexpr bool HAS_THREADS_SUPPORT = true;
+#else
+constexpr bool HAS_THREADS_SUPPORT = false;
+#endif
 
 class LZMAWorker;
 class LZMA : public Napi::ObjectWrap<LZMA> {

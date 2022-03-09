@@ -4,91 +4,92 @@
 # https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/heads/chromium-deps/2016-08-17/binding.gyp
 {
 	"variables": {
-    "use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (!os.type().startsWith('Win'))\")",
-    "runtime_link%": "<!(node -p \"process.env.RUNTIME_LINK?.length > 0 ? process.env.RUNTIME_LINK : (!os.type().startsWith('Win') ? 'shared' : 'static')\")",
-		"xz_vendor_dir": "<(module_root_dir)/deps/xz",
+		"use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (!os.type().startsWith('Win'))\")",
+		"runtime_link%": "<!(node -p \"process.env.RUNTIME_LINK?.length > 0 ? process.env.RUNTIME_LINK : (!os.type().startsWith('Win') ? 'shared' : 'static')\")",
+		"enable_thread_support%": "<!(node -p \"process.env.ENABLE_THREAD_SUPPORT ? 'yes':'no'\")",
+    "xz_vendor_dir": "<(module_root_dir)/deps/xz",
 		"py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
     "target_dir": "<(module_root_dir)/build",
 	},
 	'target_defaults': {
 		'conditions': [
-      ['OS == "mac"', {
-        'xcode_settings': {
-          'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
-          'CLANG_CXX_LIBRARY': 'libc++',
-          'MACOSX_DEPLOYMENT_TARGET': '10.9',
-          'OTHER_CFLAGS': [
-            '-stdlib=libc++',
-            '-std=c++2a'
-          ]
-        },
-      }],
+			['OS == "mac"', {
+				'xcode_settings': {
+					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+					'CLANG_CXX_LIBRARY': 'libc++',
+					'MACOSX_DEPLOYMENT_TARGET': '10.9',
+					'OTHER_CFLAGS': [
+						'-stdlib=libc++',
+						'-std=c++2a'
+					]
+				},
+			}],
 			['OS == "win"', {
-        "msvs_disabled_warnings": [4275, 4005],
-        "configurations" : {
-          "Release" : {
-            "msvs_settings": {
-              "VCCLCompilerTool": {
-                "RuntimeLibrary": 0, # static release
-                "Optimization": 3,
-                "FavorSizeOrSpeed": 1,
-                "InlineFunctionExpansion": 2,
-                "WholeProgramOptimization": "true",
-                "OmitFramePointers": "true",
-                "EnableFunctionLevelLinking": "true",
-                "EnableIntrinsicFunctions": "true",
-                "RuntimeTypeInfo": "false",
-                "PreprocessorDefinitions": [
-                  "WIN32_LEAN_AND_MEAN"
-                ],
-                "ExceptionHandling": "0",
-                  "AdditionalOptions": [
-                    "/EHsc",
-                    "/utf-8",
-                    "/std:c++latest"
-                  ],
-              },
-              "VCLibrarianTool": {
-                "AdditionalOptions": [
-                  "/LTCG"
-                ]
-              },
-              "VCLinkerTool": {
-                "LinkTimeCodeGeneration": 1,
-                "OptimizeReferences": 2,
-                "EnableCOMDATFolding": 2,
-                "LinkIncremental": 1,
-              }
-            },
-            'defines': [ 'NDEBUG', '_NDEBUG' ],
-          },
-          "Debug": {
-            "msvs_settings": {
-              "VCCLCompilerTool": {
-                "PreprocessorDefinitions": [
-                  "WIN32_LEAN_AND_MEAN"
-                ],
-                "ExceptionHandling": "0",
-                "AdditionalOptions": [
-                  "/EHsc",
-                  "/utf-8",
-                  "/std:c++latest"
-                ],
-                'RuntimeLibrary': 1, # static debug
-              },
-              "VCLibrarianTool": {
-                "AdditionalOptions": [
-                  "/LTCG",
-                ]
-              },
-              "VCLinkerTool": {
-                "LinkTimeCodeGeneration": 1,
-                "LinkIncremental": 1,
-              }
-            },
-            'defines': [ 'DEBUG', '_DEBUG' ],
-          }
-        },
+				"msvs_disabled_warnings": [4275, 4005],
+				"configurations" : {
+					"Release" : {
+						"msvs_settings": {
+							"VCCLCompilerTool": {
+								"RuntimeLibrary": 0, # static release
+								"Optimization": 3,
+								"FavorSizeOrSpeed": 1,
+								"InlineFunctionExpansion": 2,
+								"WholeProgramOptimization": "true",
+								"OmitFramePointers": "true",
+								"EnableFunctionLevelLinking": "true",
+								"EnableIntrinsicFunctions": "true",
+								"RuntimeTypeInfo": "false",
+								"PreprocessorDefinitions": [
+									"WIN32_LEAN_AND_MEAN"
+								],
+								"ExceptionHandling": "0",
+									"AdditionalOptions": [
+										"/EHsc",
+										"/utf-8",
+										"/std:c++latest"
+									],
+							},
+							"VCLibrarianTool": {
+								"AdditionalOptions": [
+									"/LTCG"
+								]
+							},
+							"VCLinkerTool": {
+								"LinkTimeCodeGeneration": 1,
+								"OptimizeReferences": 2,
+								"EnableCOMDATFolding": 2,
+								"LinkIncremental": 1,
+							}
+						},
+						'defines': [ 'NDEBUG', '_NDEBUG' ],
+					},
+					"Debug": {
+						"msvs_settings": {
+							"VCCLCompilerTool": {
+								"PreprocessorDefinitions": [
+									"WIN32_LEAN_AND_MEAN"
+								],
+								"ExceptionHandling": "0",
+								"AdditionalOptions": [
+									"/EHsc",
+									"/utf-8",
+									"/std:c++latest"
+								],
+								'RuntimeLibrary': 1, # static debug
+							},
+							"VCLibrarianTool": {
+								"AdditionalOptions": [
+									"/LTCG",
+								]
+							},
+							"VCLinkerTool": {
+								"LinkTimeCodeGeneration": 1,
+								"LinkIncremental": 1,
+							}
+						},
+						'defines': [ 'DEBUG', '_DEBUG' ],
+					}
+				},
 				"defines": [
 					'_WIN32_WINNT=0x0600',
 					'_HAS_EXCEPTIONS=0',
@@ -110,12 +111,12 @@
 				"defines": [
 					"_GLIBCXX_USE_CXX11_ABI=1",
 				]
-				}]
+			}]
 		]
 	},
 		'conditions': [
 			[ 'use_global_liblzma == "false"', {
-      # Compile liblzma from here
+				# Compile liblzma from here
 				'conditions': [
 					[
 						'OS == "win"', {
@@ -130,29 +131,29 @@
 											'inputs': [''],
 											'outputs': ["<(xz_vendor_dir)/autogen.sh"],
 											'action': [
-                        "<!(node -p \"process.env.npm_config_python || 'python3'\")",
-                        "<(module_root_dir)/scripts/download_extract_deps.py",
-                        "<(module_root_dir)/deps/xz.tar.xz",
-                        "<(module_root_dir)/deps/"
-                      ]
+												"<!(node -p \"process.env.npm_config_python || 'python3'\")",
+												"<(module_root_dir)/scripts/download_extract_deps.py",
+												"<(module_root_dir)/deps/xz.tar.xz",
+												"<(module_root_dir)/deps/"
+												]
 										}
 									],
 								},
-              ]
-            }],
-            [
-              'OS == "win" and runtime_link == "shared"', {
-                'targets': [
+									]
+									}],
+									[
+										'OS == "win" and runtime_link == "shared"', {
+											'targets': [
 								{
 									'target_name': 'lzma',
 									'product_prefix': 'lib',
-                  'type': 'shared_library',
-                  'hard_dependency': 1,
+										'type': 'shared_library',
+										'hard_dependency': 1,
 									'defines': [
 										"WIN32",
 										"HAVE_CONFIG_H",
-                    "LIBLZMADLL_EXPORTS",
-                    "DLL_EXPORT"
+											"LIBLZMADLL_EXPORTS",
+											"DLL_EXPORT"
 									],
 									"include_dirs": [
 										"<(xz_vendor_dir)/src",
@@ -310,16 +311,16 @@
 										"<(xz_vendor_dir)/windows/vs2019/config.h",
 									]
 								},
-                ],
-              }],
-            [
-              'OS == "win" and runtime_link == "static"', {
-                'targets': [
+									],
+									}],
+									[
+										'OS == "win" and runtime_link == "static"', {
+											'targets': [
 								{
 									'target_name': 'lzma',
 									'product_prefix': 'lib',
 									'type': 'static_library',
-                  'hard_dependency': 1,
+										'hard_dependency': 1,
 									'defines': [
 										"WIN32",
 										"HAVE_CONFIG_H",
@@ -496,10 +497,10 @@
 											'inputs': [''],
 											'outputs': ["<(xz_vendor_dir)/autogen.sh"],
 											'action': [
-                        "<!(node -p \"process.env.npm_config_python || 'python3'\")",
-                        "<(module_root_dir)/scripts/download_extract_deps.py",
-                        "<(module_root_dir)/deps/xz.tar.xz",
-                        "<(module_root_dir)/deps/"
+												"<!(node -p \"process.env.npm_config_python || 'python3'\")",
+												"<(module_root_dir)/scripts/download_extract_deps.py",
+												"<(module_root_dir)/deps/xz.tar.xz",
+												"<(module_root_dir)/deps/"
                       ]
 										}
                   ],
@@ -516,14 +517,15 @@
                       'outputs': [''],
                       'action': [
                         'sh', '-c', 'cd <(xz_vendor_dir) && ./configure --enable-static --disable-shared --disable-scripts --disable-lzmainfo \
-    --disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath \
-    --prefix="<(target_dir)/liblzma" && make && make install'
+--disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath --enable-threads=<(enable_threads) \
+--prefix="<(target_dir)/liblzma" && make && make install'
                       ]
                     }
 									],
 								},
 							],
-						}]
+						}
+          ]
 				],
 			}]
 	],
@@ -536,7 +538,7 @@
 				"NAPI_DISABLE_CPP_EXCEPTIONS"
 			],
 			'cflags': [
-				'-std=c++2a',  # because GCC 9 and earlier do not support -std=c++20
+				'-std=c++2a', # because GCC 9 and earlier do not support -std=c++20
 				'-Wall',
 				'-pthread',
 				'-g',
@@ -551,39 +553,44 @@
 					"conditions": [
 						[
 							'runtime_link == "static"', {
-                "dependencies": [
-                  "lzma"
-                ],
-                'msvs_settings': {
-                  'VCLinkerTool': {
-                    'AdditionalOptions': [
-                      '/WHOLEARCHIVE:liblzma<(STATIC_LIB_SUFFIX)',
-                      '/FORCE:MULTIPLE'
-                    ],
-                  },
-                }
+								"dependencies": [
+									"lzma"
+								],
+								'msvs_settings': {
+									'VCLinkerTool': {
+										'AdditionalOptions': [
+											'/WHOLEARCHIVE:liblzma<(STATIC_LIB_SUFFIX)',
+											'/FORCE:MULTIPLE'
+										],
+									},
+								}
               }, {
-                "dependencies": [
-                  "lzma"
-                ],
-              }]
-            ],
-          "include_dirs": [
-            "<(xz_vendor_dir)/src",
-            "<(xz_vendor_dir)/windows/vs2019",
-            "<(xz_vendor_dir)/src/liblzma/common",
-            "<(xz_vendor_dir)/src/common",
-            "<(xz_vendor_dir)/src/liblzma/api",
-            "<(xz_vendor_dir)/src/liblzma/check",
-            "<(xz_vendor_dir)/src/liblzma/delta",
-            "<(xz_vendor_dir)/src/liblzma/lz",
-            "<(xz_vendor_dir)/src/liblzma/lzma",
-            "<(xz_vendor_dir)/src/liblzma/rangecoder",
-            "<(xz_vendor_dir)/src/liblzma/simple"
-          ],
+									"dependencies": [
+										"lzma"
+									],
+								}]
+								],
+								"include_dirs": [
+									"<(xz_vendor_dir)/src",
+									"<(xz_vendor_dir)/windows/vs2019",
+									"<(xz_vendor_dir)/src/liblzma/common",
+									"<(xz_vendor_dir)/src/common",
+									"<(xz_vendor_dir)/src/liblzma/api",
+									"<(xz_vendor_dir)/src/liblzma/check",
+									"<(xz_vendor_dir)/src/liblzma/delta",
+									"<(xz_vendor_dir)/src/liblzma/lz",
+									"<(xz_vendor_dir)/src/liblzma/lzma",
+									"<(xz_vendor_dir)/src/liblzma/rangecoder",
+									"<(xz_vendor_dir)/src/liblzma/simple"
+								],
 				}],
 				['OS=="linux" or OS=="mac"', {
 					"conditions": [
+            [ 'enable_thread_support == "yes"', {
+              'defines': [
+                "ENABLE_THREAD_SUPPORT"
+              ]
+            }],
 						[
 							'use_global_liblzma == "true"', {
 								# Use pkg-config for include and lib
@@ -620,17 +627,17 @@
 								'include_dirs': [
 									"<(target_dir)/liblzma/include",
 								],
-                "library_dirs": [
-                  "<(target_dir)/liblzma/lib",
-                ],
-                'ldflags': [
-                  '-Wl,--whole-archive',
-                  '-l:liblzma.a',
-                  '-Wl,--no-whole-archive',
-                ],
-                'defines': [
-                  "LZMA_API_STATIC",
-                ],
+									"library_dirs": [
+										"<(target_dir)/liblzma/lib",
+									],
+									'ldflags': [
+										'-Wl,--whole-archive',
+										'-l:liblzma.a',
+										'-Wl,--no-whole-archive',
+									],
+									'defines': [
+										"LZMA_API_STATIC",
+									],
 								'dependencies': [
 									'lzma'
 								]
@@ -646,6 +653,6 @@
 			"dependencies": [
 				"<!(node -p \"require('node-addon-api').gyp\")",
 			],
-    },
+				},
 	]
 }

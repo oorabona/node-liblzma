@@ -143,38 +143,39 @@ LZMA::LZMA(const Napi::CallbackInfo& info) : Napi::ObjectWrap<LZMA>(info), _stre
 			break;
 		}
 		case STREAM_ENCODE: {
-			ret = lzma_stream_encoder(&this->_stream, filters, check);
-			break;
-		}
-
-		case STREAM_ENCODE_MT: {
 			Napi::Value optsThreads = opts.Get("threads");
 			if (!optsThreads.IsNumber()) {
 				Napi::Error::New(env, "Threads must be an integer");
 				return;
 			}
 
+#ifdef ENABLE_THREAD_SUPPORT
 			unsigned int threads = optsThreads.ToNumber().Uint32Value();
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
-		lzma_mt mt = {
-			.flags = 0,
-			.threads = threads,
-			.block_size = 0,
-			.timeout = 0,
-			.preset = preset,
-			.filters = filters,
-			.check = check,
-		};
+			lzma_mt mt = {
+				.flags = 0,
+				.threads = threads,
+				.block_size = 0,
+				.timeout = 0,
+				.preset = preset,
+				.filters = filters,
+				.check = check,
+			};
 
 #pragma GCC diagnostic pop
 
-		ret = lzma_stream_encoder_mt(&this->_stream, &mt);
+			if( threads > 1 ) {
+				ret = lzma_stream_encoder_mt(&this->_stream, &mt);
+			} else {
+				ret = lzma_stream_encoder(&this->_stream, filters, check);
+			}
+#else
+			ret = lzma_stream_encoder(&this->_stream, filters, check);
+#endif
 		break;
 	}
-// #endif
 	default:
 		ret = LZMA_OPTIONS_ERROR;
 	}
