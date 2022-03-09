@@ -75,7 +75,7 @@ describe 'Xz', ->
     it 'in threaded mode', (next) ->
       if xzStream.hasThreads()
         console.log "liblzma built with threads support."
-        expectedSize = 610988
+        expectedSize = 610980
       else
         expectedSize = 610980
         console.log "liblzma was built without thread support."
