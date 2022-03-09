@@ -516,9 +516,9 @@
                       'inputs': [''],
                       'outputs': [''],
                       'action': [
-                        'sh', '-c', 'cd <(xz_vendor_dir) && ./configure --enable-static --disable-shared --disable-scripts --disable-lzmainfo \
+                        'sh', '-c', 'cd <(xz_vendor_dir) && ./configure --enable-static --enable-shared --disable-scripts --disable-lzmainfo \
 --disable-lzma-links --disable-lzmadec --disable-xzdec --disable-xz --disable-rpath --enable-threads=<(enable_thread_support) \
---prefix="<(target_dir)/liblzma" && make && make install'
+--disable-dependency-tracking --prefix="<(target_dir)/liblzma" && make && make install'
                       ]
                     }
 									],
