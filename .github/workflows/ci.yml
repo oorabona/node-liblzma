@@ -32,7 +32,7 @@ jobs:
             use_global_liblzma: false
             enable_threads: no
     runs-on: ${{ matrix.os }}
-    name: Node ${{ matrix.node }} on ${{ matrix.os }} / System Xz ? ${{ matrix.use_global_liblzma }} / Runtime is ${{ matrix.runtime_link }}
+    name: Node ${{ matrix.node }} on ${{ matrix.os }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
