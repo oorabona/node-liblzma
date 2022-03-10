@@ -38,6 +38,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Install
         run: yarn install --frozen-lockfile
+      - name: Prebuildify for Windows
+        if: ${{ matrix.build-group == 'win-x64' }}
+        run: yarn prebuildify:win
+      - name: Prebuildify for non-Windows
+        if: ${{ matrix.build-group != 'win-x64' }}
+        run: yarn prebuildify
       - name: Prepare artifact
         run: tar -zcvf $BUILD_GROUP.tar.gz -C prebuilds .
         shell: bash
