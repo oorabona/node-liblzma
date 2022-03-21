@@ -20,7 +20,15 @@
           "MACOSX_DEPLOYMENT_TARGET": "10.9",
           "OTHER_CFLAGS": [
             "-stdlib=libc++",
+            "-arch x86_64",
+            "-arch arm64",
             "-std=c++2a"
+          ],
+          "OTHER_LDFLAGS": [
+            "-Wl,-bind_at_load",
+            "-framework CoreFoundation -framework CoreServices",
+            "-arch x86_64",
+            "-arch arm64"
           ]
         }
       }],
