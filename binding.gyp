@@ -560,13 +560,15 @@
                 "libraries": ["<!@(pkg-config --libs --static liblzma | sed s#-llzma##g)"],
                 "ldflags": [
                   "-Wl,--whole-archive",
+                  "-Wl,-Bstatic",
                   "-l:liblzma.a",
+                  "-Wl,-Bdynamic",
                   "-Wl,--no-whole-archive"
                 ],
                 "defines": ["LZMA_API_STATIC"]
               },{
                 "libraries": ["<!@(pkg-config --libs liblzma)"],
-                "ldflags": ["-Wl,--disable-new-dtags -Wl,-rpath='<(xz_vendor_dir)/lib'"]
+                "ldflags": ["-Wl,--disable-new-dtags -Wl,-rpath-link='<(xz_vendor_dir)/lib'"]
               }]
             ]
           },{
