@@ -80,8 +80,8 @@ jobs:
           architecture: x64
       - name: debug
         run: |
-          echo static-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
-          echo shared-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
+          echo static-has-mt: ${{ fromJSON(needs.prereq.outputs.static-has-mt) }}
+          echo shared-has-mt: ${{ fromJSON(needs.prereq.outputs.static-has-mt) }}
       - name: Install
         if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt)"
         run: yarn install

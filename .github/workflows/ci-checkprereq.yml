@@ -21,8 +21,8 @@ jobs:
     runs-on: ${{ inputs.os }}
     # Map the job outputs to step outputs
     outputs:
-      static-has-mt: ${{ fromJSON(steps.check-mt.outputs.STATIC) }}
-      shared-has-mt: ${{ fromJSON(steps.check-mt.outputs.SHARED) }}
+      static-has-mt: ${{ steps.check-mt.outputs.STATIC }}
+      shared-has-mt: ${{ steps.check-mt.outputs.SHARED }}
     steps:
       - name: Checking if system library is multi threading capable
         run: |
