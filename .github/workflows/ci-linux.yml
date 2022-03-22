@@ -74,12 +74,12 @@ jobs:
       - name: Check prerequisites for multithreading
         id: precond
         uses: './.github/workflows/ci-checkprereq.yml'
-        if: matrix.use_global_liblzma == 'true'
+        if: ${{ matrix.use_global_liblzma && matrix.use_global_liblzma != 'false' }}
         with:
           os: ${{ matrix.os }}
           runtime_link: ${{ matrix.runtime_link }}
       - name: Install
-        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (steps.precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
+        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.has-mt && steps.precond.outputs.has-mt != 'false')
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
