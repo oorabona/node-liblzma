@@ -6,14 +6,14 @@ on:
       os:
         required: true
         type: string
-      runtime_link:
-        required: true
-        type: string
     # Map the workflow outputs to job outputs
     outputs:
-      has-mt:
-        description: "Does the library exposes multithreading API ?"
-        value: ${{ jobs.check.outputs.has-mt }}
+      static-has-mt:
+        description: "Does the static library exposes multithreading API ?"
+        value: ${{ jobs.check.outputs.static-has-mt }}
+      shared-has-mt:
+        description: "Does the shared library exposes multithreading API ?"
+        value: ${{ jobs.check.outputs.shared-has-mt }}
 
 jobs:
   check:
@@ -21,29 +21,24 @@ jobs:
     runs-on: ${{ inputs.os }}
     # Map the job outputs to step outputs
     outputs:
-      has-mt: ${{ steps.check-mt.outputs.CONDITION }}
+      static-has-mt: ${{ steps.check-mt.outputs.STATIC }}
+      shared-has-mt: ${{ steps.check-mt.outputs.SHARED }}
     steps:
       - name: Checking if system library is multi threading capable
-        id: check-mt
-        if: inputs.runtime_link == 'static'
         run: |
           if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.a | grep lzma_stream_encoder_mt
           then
             echo "Static system library is multi threading capable: yes"
-            echo '::set-output name=CONDITION::true'
+            echo '::set-output name=STATIC::true'
           else
             echo "Static system library is multi threading capable: no"
-            echo '::set-output name=CONDITION::false'
+            echo '::set-output name=STATIC::false'
           fi
-      - name: Checking if system library is multi threading capable
-        id: check-mt
-        if: inputs.runtime_link == 'shared'
-        run: |
           if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.so | grep lzma_stream_encoder_mt
           then
             echo "Dynamic system library is multi threading capable: yes"
-            echo '::set-output name=CONDITION::true'
+            echo '::set-output name=SHARED::true'
           else
             echo "Dynamic system library is multi threading capable: no"
-            echo '::set-output name=CONDITION::false'
+            echo '::set-output name=SHARED::false'
           fi

@@ -49,20 +49,13 @@ jobs:
       - name: Test
         run: yarn test
 
-  prereq-static:
+  prereq:
     uses: './.github/workflows/ci-checkprereq.yml'
     with:
       os: ubuntu-latest
-      runtime_link: static
-  
-  prereq-shared:
-    uses: './.github/workflows/ci-checkprereq.yml'
-    with:
-      os: ubuntu-latest
-      runtime_link: shared
 
   test-mt:
-    needs: [prereq-static, prereq-shared]
+    needs: prereq
     strategy:
       fail-fast: false
       matrix:
@@ -85,12 +78,12 @@ jobs:
           node-version: ${{ matrix.node }}
           architecture: x64
       - name: Install
-        if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq-static.outputs.has-mt && needs.prereq-static.outputs.has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq-shared.outputs.has-mt && needs.prereq-shared.outputs.has-mt != 'false')
+        if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
-        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (steps.precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
+        if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')
         run: yarn test
