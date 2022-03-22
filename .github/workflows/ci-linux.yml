@@ -49,7 +49,20 @@ jobs:
       - name: Test
         run: yarn test
 
+  prereq-static:
+    uses: './.github/workflows/ci-checkprereq.yml'
+    with:
+      os: ubuntu-latest
+      runtime_link: static
+  
+  prereq-shared:
+    uses: './.github/workflows/ci-checkprereq.yml'
+    with:
+      os: ubuntu-latest
+      runtime_link: shared
+
   test-mt:
+    needs: [prereq-static, prereq-shared]
     strategy:
       fail-fast: false
       matrix:
@@ -71,15 +84,8 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
-      - name: Check prerequisites for multithreading
-        id: precond
-        uses: oorabona/node-liblzma/.github/workflows/ci-checkprereq.yml@master
-        if: ${{ matrix.use_global_liblzma && matrix.use_global_liblzma != 'false' }}
-        with:
-          os: ${{ matrix.os }}
-          runtime_link: ${{ matrix.runtime_link }}
       - name: Install
-        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.has-mt && steps.precond.outputs.has-mt != 'false')
+        if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq-static.outputs.has-mt && needs.prereq-static.outputs.has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq-shared.outputs.has-mt && needs.prereq-shared.outputs.has-mt != 'false')
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
