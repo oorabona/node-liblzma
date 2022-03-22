@@ -60,8 +60,6 @@ jobs:
       - name: Checking if system library is multi threading capable
         id: check-mt
         run: |
-          brew update && brew install binutils
-          export PATH="/usr/local/opt/binutils/bin:$PATH"
           if nm -a /usr/local/lib/liblzma.a | grep lzma_stream_encoder_mt
           then
             echo "Static system library is multi threading capable: yes"
