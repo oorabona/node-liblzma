@@ -27,9 +27,9 @@ jobs:
         node: [16]
         runtime_link: [static, shared]
         use_global_liblzma: [true, false]
-        enable_threads: [yes, no]
+        enable_threads: [no]
     runs-on: ${{ matrix.os }}
-    name: Node ${{ matrix.node }} on ${{ matrix.os }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
+    name: Node ${{ matrix.node }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -40,22 +40,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
-      - name: Checking if system library is multi threading capable
-        run: |
-          brew update && brew install binutils
-          export PATH="/usr/local/opt/binutils/bin:$PATH"
-          if greadelf -Wa /usr/lib/liblzma.a | grep lzma_stream_encoder_mt
-          then
-            echo "Static system library is multi threading capable: yes"
-          else
-            echo "Static system library is multi threading capable: no"
-          fi
-          if greadelf -Wa /usr/lib/liblzma.so | grep lzma_stream_encoder_mt
-          then
-            echo "Dynamic system library is multi threading capable: yes"
-          else
-            echo "Dynamic system library is multi threading capable: no"
-          fi
       - name: Install
         run: yarn install
         env:
@@ -63,4 +47,73 @@ jobs:
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
+        run: yarn test
+
+  check:
+    name: Checking if system library is multi threading capable
+    runs-on: 'macos-11'
+    # Map the job outputs to step outputs
+    outputs:
+      static-has-mt: ${{ steps.check-mt.outputs.STATIC }}
+      shared-has-mt: ${{ steps.check-mt.outputs.SHARED }}
+    steps:
+      - name: Checking if system library is multi threading capable
+        id: check-mt
+        run: |
+          brew update && brew install binutils
+          export PATH="/usr/local/opt/binutils/bin:$PATH"
+          if greadelf -Wa /usr/local/lib/liblzma.a | grep lzma_stream_encoder_mt
+          then
+            echo "Static system library is multi threading capable: yes"
+            echo '::set-output name=STATIC::true'
+          else
+            echo "Static system library is multi threading capable: no"
+            echo '::set-output name=STATIC::false'
+          fi
+          if greadelf -Wa /usr/lib/liblzma.dylib | grep lzma_stream_encoder_mt
+          then
+            echo "Dynamic system library is multi threading capable: yes"
+            echo '::set-output name=SHARED::true'
+          else
+            echo "Dynamic system library is multi threading capable: no"
+            echo '::set-output name=SHARED::false'
+          fi
+
+  test-mt:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        # At the time of writing macos-latest is mac 10; we need 11 to build a universal binary.
+        os: [macos-11]
+        node: [16]
+        runtime_link: [static, shared]
+        use_global_liblzma: [true, false]
+        enable_threads: [yes]
+    runs-on: ${{ matrix.os }}
+    name: Node ${{ matrix.node }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Use node ${{ matrix.node }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: x64
+      - name: debug
+        run: |
+          echo use_global_liblzma: ${{ matrix.use_global_liblzma }}
+          echo static-has-mt: ${{ needs.check.outputs.static-has-mt }}
+          echo shared-has-mt: ${{ needs.check.outputs.shared-has-mt }}
+      - name: Install
+        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
+        run: yarn install
+        env:
+          USE_GLOBAL: ${{ matrix.use_global_liblzma }}
+          RUNTIME_LINK: ${{ matrix.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+      - name: Test
+        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
         run: yarn test
