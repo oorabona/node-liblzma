@@ -78,12 +78,12 @@ jobs:
           node-version: ${{ matrix.node }}
           architecture: x64
       - name: Install
-        if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')
+        if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')"
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
-        if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')
+        if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')"
         run: yarn test
