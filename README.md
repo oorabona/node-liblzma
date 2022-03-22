@@ -3,13 +3,13 @@ Node-liblzma
 
 [![NPM Version](https://img.shields.io/npm/v/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
 [![NPM Downloads](https://img.shields.io/npm/dm/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
-[![Build Status](https://travis-ci.org/oorabona/node-liblzma.png)](https://travis-ci.org/oorabona/node-liblzma)
-[![Dependency Status](https://david-dm.org/oorabona/node-liblzma.svg)](https://david-dm.org/oorabona/node-liblzma)
-[![devDependency Status](https://david-dm.org/oorabona/node-liblzma/dev-status.svg)](https://david-dm.org/oorabona/node-liblzma#info=devDependencies)
+[![Test on Linux](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml)
+[![Test on MacOS](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml)
+[![Test on Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
 
 # What is liblzma/XZ ?
 
-[XZ](http://tukaani.org/xz/xz-file-format.txt) is a container for compressed archives. It is among the best compressors out there according to several benchmarks:
+[XZ](https://tukaani.org/xz/xz-file-format.txt) is a container for compressed archives. It is among the best compressors out there according to several benchmarks:
 * [Gzip vs Bzip2 vs LZMA vs XZ vs LZ4 vs LZO](http://pokecraft.first-world.info/wiki/Quick_Benchmark:_Gzip_vs_Bzip2_vs_LZMA_vs_XZ_vs_LZ4_vs_LZO)
 * [Large Text Compression Benchmark](http://mattmahoney.net/dc/text.html#2118)
 * [Linux Compression Comparison (GZIP vs BZIP2 vs LZMA vs ZIP vs Compress)](http://bashitout.com/2009/08/30/Linux-Compression-Comparison-GZIP-vs-BZIP2-vs-LZMA-vs-ZIP-vs-Compress.html)
@@ -27,17 +27,28 @@ You can either use system packages or download a specific version and compile it
 See [installation](#installation) below.
 
 > Only LZMA2 is supported for compression output.
-But the library can open and read any LZMA1 or LZMA2 compressed file. And possibly others...
+But the library can open and read any LZMA1 or LZMA2 compressed file.
 
 # What's new ?
 
-Supports all NodeJS versions, thanks to [nan](https://github.com/nodejs/nan) !
-It has been tested and works on:
+It has been quite some time since I first published this package.
+In the meantime, [N-API](https://nodejs.org/api/n-api.html) eventually became the _de facto_ standard to provide stable ABI API for NodeJS Native Modules.
+
+It therefore replaces good ol' [nan](https://github.com/nodejs/nan) !
+
+It supports all NodeJS versions >= 12 and has been tested and works on:
 - Linux x64 (Ubuntu)
-- OSX (tested with Travis)
-- Raspberry Pi 2 (armv7l 32-bits)
-- Raspberry Pi 3 (armv8l but still a 32 bits Raspbian)
-- Windows (ongoing tests)
+- OSX (`macos-11`)
+- Raspberry Pi 2/3/4 (both on 32-bit and 64-bit architectures)
+- Windows (`windows-2019` and `windows-2022` are part of GitHub CI)
+
+> Notes:
+Few build configurations might not be working.
+- For [Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
+> There is no "global" installation of the LZMA library on the Windows machine provisionned by GitHub, so it is pointless to build with this config
+- For [Linux](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml)
+
+- For [MacOS](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml)
 
 # Related projects
 
@@ -53,7 +64,7 @@ A very complete implementation of XZ library bindings
 # API comparison
 
 ```js
-var lzma = require('lzma');
+var lzma = require('node-liblzma');
 ```
 
 Zlib            | XZlib                   | Arguments
@@ -101,22 +112,38 @@ Well, as simple as this one-liner:
 $ npm i node-liblzma --save
 ```
 
-If you want to enable threading support in the module, then opt in with:
+--OR--
 
-``` bash
-$ ENABLE_MT=1 npm install node-liblzma --save
+```sh
+$ yarn add node-liblzma
 ```
 
-> This will of course work only if you have a binary version of liblzma with threading enabled.
-If this is not the case, it will not fail (even at runtime). It justs won't work.
-To check if this is enabled or not, run the [tests suite](#tests)
+Several prebuilt versions are bundled within the package.
+- Windows x86_64
+- Linux x86_64
+- MacOS x86_64 / Arm64
 
-In both cases, it will try to download an existing pre-compiled module binary and if none exists it will build it.
+If your OS/architecture matches, you will use this version which has been compiled using the following default flags:
+
+Flag | Description | Default value | Possible values
+-----|-------------|---------------|----------------
+USE_GLOBAL | Should the library use the system provided DLL/.so library ? | `yes` (`no` if OS is Windows) | `yes` or `no`
+RUNTIME_LINK | Should the library be linked statically or dynamically to LZMA library ? | `dynamic` | `static` or `dynamic`
+ENABLE_THREAD_SUPPORT | Does the LZMA library support threads ? | `yes` | `yes` or `no`
+
+If you want to disable threading support in the module, then you have to opt out with:
+
+``` bash
+$ ENABLE_THREAD_SUPPORT=no npm install node-liblzma --build-from-source
+```
+
+> Note:
+Enabling thread support in the library will **NOT** work if the LZMA library itself has been built without such support.
 
 To build the module, you have the following options:
 1. Using system development libraries
-2. Automatic download and compilation of `xz` libs, and statically link against node module
-3. Compile `xz` yourself, outside `node-liblzma` and build node module with dynamically linked library
+2. Ask the build system to download `xz` and build it
+3. Compile `xz` yourself, outside `node-liblzma`, and have it use it after
 
 ## Using system dev libraries to compile
 
@@ -129,21 +156,14 @@ You need to have the development package installed on your system. If you have D
 ## Automatic download and compilation to statically link `xz`
 
 If you do not plan on having a local install, you can ask for automatic download and build of whatever version of `xz` you want.
-With the use of [UBS](https://github.com/oorabona/ubs), you do not need to download/configure/install `xz` yourself anymore.
 
 Just do:
 
 ```sh
-$ COMPILE=1 npm install --save node-liblzma
+$ npm install node-liblzma --build-from-source
 ```
 
 When no option is given in the commandline arguments, it will build with default values.
-
-If you want to build __experimental__ multi-threading feature, you can build `xz` with threads enabled just for this library by running:
-
-```sh
-$ ENABLE_MT=1 COMPILE=1 npm install --save node-liblzma
-```
 
 ## Local install of `xz` sources (outside `node-liblzma`)
 
@@ -196,4 +216,4 @@ I did not yet figure how to fix this except by masking the warning..
 
 # License
 
-This software is released under LGPL3.0+
+This software is released under [LGPL3.0+](LICENSE)
