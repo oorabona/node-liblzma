@@ -103,15 +103,15 @@ jobs:
           architecture: x64
       - name: debug
         run: |
-          echo static-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
-          echo shared-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
+          echo static-has-mt: ${{ needs.check.outputs.static-has-mt }}
+          echo shared-has-mt: ${{ needs.check.outputs.static-has-mt }}
       - name: Install
-        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt)"
+        if: ${{ !fromJSON(matrix.use_global_liblzma) || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt)}}
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
-        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt)"
+        if: ${{ !fromJSON(matrix.use_global_liblzma) || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt)}}
         run: yarn test
