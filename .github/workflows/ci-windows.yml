@@ -1,6 +1,10 @@
 name: Test on Windows
 on:
   push:
+    paths:
+      - "!*.md"
+      - "!.github"
+      - ".github/workflows/ci-windows.yml"
     branches:
       - master
       - "releases/**"

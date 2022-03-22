@@ -1,6 +1,10 @@
 name: Test on MacOS
 on:
   push:
+    paths:
+      - "!*.md"
+      - "!.github"
+      - ".github/workflows/ci-macos.yml"
     branches:
       - master
       - "releases/**"
