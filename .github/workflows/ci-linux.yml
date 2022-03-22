@@ -73,7 +73,7 @@ jobs:
           architecture: x64
       - name: Check prerequisites for multithreading
         id: precond
-        uses: ./.github/workflows/ci-checkprereq.yml
+        uses: oorabona/node-liblzma/.github/workflows/ci-checkprereq.yml@master
         if: ${{ matrix.use_global_liblzma && matrix.use_global_liblzma != 'false' }}
         with:
           os: ${{ matrix.os }}
