@@ -62,7 +62,7 @@ jobs:
         run: |
           brew update && brew install binutils
           export PATH="/usr/local/opt/binutils/bin:$PATH"
-          if greadelf -Wa /usr/local/lib/liblzma.a | grep lzma_stream_encoder_mt
+          if nm -a /usr/local/lib/liblzma.a | grep lzma_stream_encoder_mt
           then
             echo "Static system library is multi threading capable: yes"
             echo '::set-output name=STATIC::true'
@@ -70,7 +70,7 @@ jobs:
             echo "Static system library is multi threading capable: no"
             echo '::set-output name=STATIC::false'
           fi
-          if greadelf -Wa /usr/local/lib/liblzma.dylib | grep lzma_stream_encoder_mt
+          if nm -a /usr/local/lib/liblzma.dylib | grep lzma_stream_encoder_mt
           then
             echo "Dynamic system library is multi threading capable: yes"
             echo '::set-output name=SHARED::true'
