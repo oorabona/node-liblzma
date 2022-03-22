@@ -55,8 +55,8 @@ jobs:
     runs-on: 'ubuntu-latest'
     # Map the job outputs to step outputs
     outputs:
-      static-has-mt: ${{ steps.check-mt.outputs.STATIC == 'true' }}
-      shared-has-mt: ${{ steps.check-mt.outputs.SHARED == 'true' }}
+      static-has-mt: ${{ steps.check-mt.outputs.STATIC }}
+      shared-has-mt: ${{ steps.check-mt.outputs.SHARED }}
     steps:
       - name: Checking if system library is multi threading capable
         id: check-mt
