@@ -79,12 +79,12 @@ jobs:
           os: ${{ matrix.os }}
           runtime_link: ${{ matrix.runtime_link }}
       - name: Install
-        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
+        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (steps.precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
-        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
+        if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (steps.precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
         run: yarn test
