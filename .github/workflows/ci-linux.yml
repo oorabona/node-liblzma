@@ -36,13 +36,19 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
-      - name: System library is multi threading capable
+      - name: Checking if system library is multi threading capable
         run: |
           if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.a | grep lzma_stream_encoder_mt
           then
-            echo "System library is multi threading capable: yes"
+            echo "Static system library is multi threading capable: yes"
           else
-            echo "System library is multi threading capable: no"
+            echo "Static system library is multi threading capable: no"
+          fi
+          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.so | grep lzma_stream_encoder_mt
+          then
+            echo "Dynamic system library is multi threading capable: yes"
+          else
+            echo "Dynamic system library is multi threading capable: no"
           fi
       - name: Install
         run: yarn install
