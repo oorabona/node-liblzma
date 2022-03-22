@@ -10,10 +10,10 @@ on:
     outputs:
       static-has-mt:
         description: "Does the static library exposes multithreading API ?"
-        value: ${{ jobs.check.outputs.static-has-mt }}
+        value: ${{ fromJSON(jobs.check.outputs.static-has-mt) }}
       shared-has-mt:
         description: "Does the shared library exposes multithreading API ?"
-        value: ${{ jobs.check.outputs.shared-has-mt }}
+        value: ${{ fromJSON(jobs.check.outputs.shared-has-mt) }}
 
 jobs:
   check:

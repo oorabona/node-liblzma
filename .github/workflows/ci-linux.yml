@@ -50,13 +50,36 @@ jobs:
       - name: Test
         run: yarn test
 
-  prereq:
-    uses: './.github/workflows/ci-checkprereq.yml'
-    with:
-      os: ubuntu-latest
+  check:
+    name: Checking if system library is multi threading capable
+    runs-on: 'ubuntu-latest'
+    # Map the job outputs to step outputs
+    outputs:
+      static-has-mt: ${{ fromJSON(steps.check-mt.outputs.STATIC) }}
+      shared-has-mt: ${{ fromJSON(steps.check-mt.outputs.SHARED) }}
+    steps:
+      - name: Checking if system library is multi threading capable
+        id: check-mt
+        run: |
+          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.a | grep lzma_stream_encoder_mt
+          then
+            echo "Static system library is multi threading capable: yes"
+            echo '::set-output name=STATIC::true'
+          else
+            echo "Static system library is multi threading capable: no"
+            echo '::set-output name=STATIC::false'
+          fi
+          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.so | grep lzma_stream_encoder_mt
+          then
+            echo "Dynamic system library is multi threading capable: yes"
+            echo '::set-output name=SHARED::true'
+          else
+            echo "Dynamic system library is multi threading capable: no"
+            echo '::set-output name=SHARED::false'
+          fi
 
   test-mt:
-    needs: prereq
+    needs: check
     strategy:
       fail-fast: false
       matrix:
@@ -80,15 +103,15 @@ jobs:
           architecture: x64
       - name: debug
         run: |
-          echo static-has-mt: ${{ fromJSON(needs.prereq.outputs.static-has-mt) }}
-          echo shared-has-mt: ${{ fromJSON(needs.prereq.outputs.static-has-mt) }}
+          echo static-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
+          echo shared-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
       - name: Install
-        if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt)"
+        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt)"
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
-        if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')"
+        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt)"
         run: yarn test
