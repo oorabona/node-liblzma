@@ -5,6 +5,7 @@ on:
       - "!*.md"
       - "!.github"
       - ".github/workflows/ci-linux.yml"
+      - ".github/workflows/ci-checkprereq.yml"
     branches:
       - master
       - "releases/**"
