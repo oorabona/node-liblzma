@@ -70,7 +70,7 @@ jobs:
             echo "Static system library is multi threading capable: no"
             echo '::set-output name=STATIC::false'
           fi
-          if greadelf -Wa /usr/lib/liblzma.dylib | grep lzma_stream_encoder_mt
+          if greadelf -Wa /usr/local/lib/liblzma.dylib | grep lzma_stream_encoder_mt
           then
             echo "Dynamic system library is multi threading capable: yes"
             echo '::set-output name=SHARED::true'
