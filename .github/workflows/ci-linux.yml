@@ -103,8 +103,9 @@ jobs:
           architecture: x64
       - name: debug
         run: |
+          echo use_global_liblzma: ${{ matrix.use_global_liblzma }}
           echo static-has-mt: ${{ needs.check.outputs.static-has-mt }}
-          echo shared-has-mt: ${{ needs.check.outputs.static-has-mt }}
+          echo shared-has-mt: ${{ needs.check.outputs.shared-has-mt }}
       - name: Install
         if: matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')
         run: yarn install
