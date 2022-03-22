@@ -73,12 +73,11 @@ jobs:
           architecture: x64
       - name: Check prerequisites for multithreading
         id: precond
-        run: ls -l ./.github/workflows/
-        # uses: './.github/workflows/ci-checkprereq'
-        # if: ${{ matrix.use_global_liblzma && matrix.use_global_liblzma != 'false' }}
-        # with:
-        #   os: ${{ matrix.os }}
-        #   runtime_link: ${{ matrix.runtime_link }}
+        uses: test-mt: './.github/workflows/ci-checkprereq'
+        if: ${{ matrix.use_global_liblzma && matrix.use_global_liblzma != 'false' }}
+        with:
+          os: ${{ matrix.os }}
+          runtime_link: ${{ matrix.runtime_link }}
       - name: Install
         if: matrix.use_global_liblzma == 'false' || (steps.precond.outputs.has-mt && steps.precond.outputs.has-mt != 'false')
         run: yarn install
