@@ -27,7 +27,7 @@ jobs:
         node: [16]
         runtime_link: [static, shared]
         use_global_liblzma: [true, false]
-        enable_threads: [yes, no]
+        enable_threads: [no]
     runs-on: ${{ matrix.os }}
     name: Node ${{ matrix.node }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
     steps:
@@ -40,20 +40,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
-      - name: Checking if system library is multi threading capable
-        run: |
-          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.a | grep lzma_stream_encoder_mt
-          then
-            echo "Static system library is multi threading capable: yes"
-          else
-            echo "Static system library is multi threading capable: no"
-          fi
-          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.so | grep lzma_stream_encoder_mt
-          then
-            echo "Dynamic system library is multi threading capable: yes"
-          else
-            echo "Dynamic system library is multi threading capable: no"
-          fi
       - name: Install
         run: yarn install
         env:
@@ -61,4 +47,44 @@ jobs:
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
       - name: Test
+        run: yarn test
+
+  test-mt:
+    strategy:
+      fail-fast: false
+      matrix:
+        # At the time of writing macos-latest is mac 10; we need 11 to build a universal binary.
+        os: [ubuntu-latest]
+        node: [16]
+        runtime_link: [static, shared]
+        use_global_liblzma: [true, false]
+        enable_threads: [yes]
+    runs-on: ${{ matrix.os }}
+    name: Node ${{ matrix.node }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Use node ${{ matrix.node }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: x64
+      - name: Check prerequisites for multithreading
+        id: precond
+        uses: './.github/workflows/ci-checkprereq.yml'
+        if: matrix.use_global_liblzma == 'true'
+        with:
+          os: ${{ matrix.os }}
+          runtime_link: ${{ matrix.runtime_link }}
+      - name: Install
+        if: matrix.use_global_liblzma == 'false' || (precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
+        run: yarn install
+        env:
+          USE_GLOBAL: ${{ matrix.use_global_liblzma }}
+          RUNTIME_LINK: ${{ matrix.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+      - name: Test
+        if: matrix.use_global_liblzma == 'false' || (precond.outputs.mt-static == 'true' && matrix.runtime_link == 'static') || (precond.outputs.mt-shared == 'true' && matrix.runtime_link == 'shared')
         run: yarn test

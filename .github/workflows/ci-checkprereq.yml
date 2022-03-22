@@ -1,0 +1,53 @@
+name: Check prerequisites
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      runtime_link:
+        required: true
+        type: string
+    # Map the workflow outputs to job outputs
+    outputs:
+      mt-static:
+        description: "Does the static library exposes multithreading API ?"
+        value: ${{ jobs.check.outputs.mt-static }}
+      mt-shared:
+        description: "Does the shared library exposes multithreading API ?"
+        value: ${{ jobs.check.outputs.mt-shared }}
+
+jobs:
+  check:
+    name: Checking if system library is multi threading capable
+    runs-on: ${{ inputs.os }}
+    # Map the job outputs to step outputs
+    outputs:
+      mt-static: ${{ steps.mt-static.outputs.CONDITION }}
+      mt-shared: ${{ steps.mt-shared.outputs.CONDITION }}
+    steps:
+      - name: Checking if system library is multi threading capable
+        id: mt-static
+        if: inputs.runtime_link == 'static'
+        run: |
+          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.a | grep lzma_stream_encoder_mt
+          then
+            echo "Static system library is multi threading capable: yes"
+            echo '::set-output name=CONDITION::true'
+          else
+            echo "Static system library is multi threading capable: no"
+            echo '::set-output name=CONDITION::false'
+          fi
+      - name: Checking if system library is multi threading capable
+        id: mt-shared
+        if: inputs.runtime_link == 'shared'
+        run: |
+          if readelf -Wa /usr/lib/x86_64-linux-gnu/liblzma.so | grep lzma_stream_encoder_mt
+          then
+            echo "Dynamic system library is multi threading capable: yes"
+            echo '::set-output name=CONDITION::true'
+          else
+            echo "Dynamic system library is multi threading capable: no"
+            echo '::set-output name=CONDITION::false'
+          fi
