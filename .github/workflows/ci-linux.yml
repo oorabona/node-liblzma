@@ -77,8 +77,12 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
+      - name: debug
+        run: |
+          echo static-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
+          echo shared-has-mt: ${{ needs.prereq.outputs.static-has-mt }}
       - name: Install
-        if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt && needs.prereq.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt && needs.prereq.outputs.shared-has-mt != 'false')"
+        if: "!matrix.use_global_liblzma && matrix.use_global_liblzma == 'false' || (matrix.runtime_link == 'static' && needs.prereq.outputs.static-has-mt) || (matrix.runtime_link == 'shared' && needs.prereq.outputs.shared-has-mt)"
         run: yarn install
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
