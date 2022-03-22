@@ -1,3 +1,16 @@
+# 1.1.7
+* Fix build system
+* Fix release system
+* Fix documentation
+* Fix building if no prebuilt binary found
+
+# 1.1.0
+* Refactor to deprecate Nan in favor of N-API
+* Drop UBS building system to use standard `node-gyp`
+* Support building on Linux, MacOSX and Windows
+* Ability to build from preinstalled libraries as well as download from XZ website
+* Deprecate Travis CI and AppVeyor to use GitHub Workflows
+
 # 1.0.5
 * Added CI for OSX and Windows
 * Implemented use of node-pre-gyp instead of node-gyp
