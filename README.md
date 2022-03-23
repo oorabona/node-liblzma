@@ -36,19 +36,38 @@ In the meantime, [N-API](https://nodejs.org/api/n-api.html) eventually became th
 
 It therefore replaces good ol' [nan](https://github.com/nodejs/nan) !
 
-It supports all NodeJS versions >= 12 and has been tested and works on:
+It supports all NodeJS versions >= 12 and lots has been done to change CICD pipelines and testing.
+
+It has been tested and works on:
 - Linux x64 (Ubuntu)
 - OSX (`macos-11`)
 - Raspberry Pi 2/3/4 (both on 32-bit and 64-bit architectures)
 - Windows (`windows-2019` and `windows-2022` are part of GitHub CI)
 
 > Notes:
-Few build configurations might not be working.
-- For [Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
+> - For [Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
 > There is no "global" installation of the LZMA library on the Windows machine provisionned by GitHub, so it is pointless to build with this config
 - For [Linux](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml)
-
 - For [MacOS](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml)
+
+## Prebuilt images
+
+Several prebuilt versions are bundled within the package.
+- Windows x86_64
+- Linux x86_64
+- MacOS x86_64 / Arm64
+
+If your OS/architecture matches, you will use this version which has been compiled using the following default flags:
+
+Flag | Description | Default value | Possible values
+-----|-------------|---------------|----------------
+USE_GLOBAL | Should the library use the system provided DLL/.so library ? | `yes` (`no` if OS is Windows) | `yes` or `no`
+RUNTIME_LINK | Should the library be linked statically or use the shared LZMA library ? | `shared` | `static` or `shared`
+ENABLE_THREAD_SUPPORT | Does the LZMA library support threads ? | `yes` | `yes` or `no`
+
+If not `node-gyp` will automagically start compiling stuff according to the environment variables set, or the default values above.
+
+If you want to change compilation flags, please read on [here](#installation).
 
 # Related projects
 
@@ -118,20 +137,7 @@ $ npm i node-liblzma --save
 $ yarn add node-liblzma
 ```
 
-Several prebuilt versions are bundled within the package.
-- Windows x86_64
-- Linux x86_64
-- MacOS x86_64 / Arm64
-
-If your OS/architecture matches, you will use this version which has been compiled using the following default flags:
-
-Flag | Description | Default value | Possible values
------|-------------|---------------|----------------
-USE_GLOBAL | Should the library use the system provided DLL/.so library ? | `yes` (`no` if OS is Windows) | `yes` or `no`
-RUNTIME_LINK | Should the library be linked statically or dynamically to LZMA library ? | `dynamic` | `static` or `dynamic`
-ENABLE_THREAD_SUPPORT | Does the LZMA library support threads ? | `yes` | `yes` or `no`
-
-If you want to disable threading support in the module, then you have to opt out with:
+If you want to recompile the source, for example to disable threading support in the module, then you have to opt out with:
 
 ``` bash
 $ ENABLE_THREAD_SUPPORT=no npm install node-liblzma --build-from-source
