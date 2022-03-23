@@ -613,8 +613,12 @@
                 ],
                 "defines": ["LZMA_API_STATIC"]
               },{
-                "libraries": ["<!@(pkg-config --libs liblzma)"],
-                "ldflags": ["-Wl,--disable-new-dtags -Wl,-rpath-link='<(xz_vendor_dir)/lib'"]
+                # "libraries": [],
+                "ldflags": [
+                  "<!@(pkg-config --libs liblzma)",
+                  "-Wl,--disable-new-dtags",
+                  # "-Wl,-rpath-link='<(xz_vendor_dir)/lib'"
+                ]
               }]
             ]
           },{
