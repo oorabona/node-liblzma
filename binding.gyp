@@ -565,7 +565,7 @@
             "include_dirs": ["<!@(pkg-config --cflags-only-I liblzma | sed s\/-I//g)"],
             "conditions": [
               ["runtime_link == \"static\"", {
-                "libraries": ["<!@(pkg-config --libs --static liblzma | sed s#-llzma##g)"],
+                "libraries": ["<!@(pkg-config --libs --static liblzma)"],
                 "ldflags": [
                   "-Wl,--whole-archive",
                   "-Wl,-Bstatic",
@@ -575,13 +575,20 @@
                 ],
                 "defines": ["LZMA_API_STATIC"]
               },{
-                "libraries": ["<!@(pkg-config --libs liblzma)"],
-                "ldflags": ["-Wl,--disable-new-dtags -Wl,-rpath-link='<(xz_vendor_dir)/lib'"]
+                "libraries": [
+                  "<!@(pkg-config --libs liblzma)",
+                ],
+                "ldflags": [
+                  "-Wl,--disable-new-dtags",
+                ]
               }]
             ]
           },{
             "include_dirs": ["<(target_dir)/liblzma/include"],
             "library_dirs": ["<(target_dir)/liblzma/lib"],
+            "libraries": [
+              "-L<(target_dir)/liblzma/lib -llzma -pthread -lpthread"
+            ],
             "ldflags": [
               "-Wl,--whole-archive",
               "-l:liblzma.a",
