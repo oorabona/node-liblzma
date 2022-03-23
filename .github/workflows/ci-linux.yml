@@ -2,6 +2,7 @@ name: Test on Linux
 on:
   push:
     paths:
+      - "**"
       - "!*.md"
       - "!.github"
       - ".github/workflows/ci-linux.yml"
