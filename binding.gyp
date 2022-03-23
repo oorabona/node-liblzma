@@ -555,7 +555,7 @@
           "<(xz_vendor_dir)/src/liblzma/simple"
         ]
       }],
-      ["OS=='linux' or OS=='mac'", {
+      ["OS=='linux'", {
         "conditions": [
           ["enable_thread_support != 'no'", {
             "defines": ["ENABLE_THREAD_SUPPORT"]
@@ -567,6 +567,44 @@
               ["runtime_link == \"static\"", {
                 "libraries": ["<!@(pkg-config --libs --static liblzma | sed s#-llzma##g)"],
                 "ldflags": [
+                  "-Wl,--whole-archive",
+                  "-Wl,-Bstatic",
+                  "-l:liblzma.a",
+                  "-Wl,-Bdynamic",
+                  "-Wl,--no-whole-archive"
+                ],
+                "defines": ["LZMA_API_STATIC"]
+              },{
+                "libraries": ["<!@(pkg-config --libs liblzma)"],
+                "ldflags": ["-Wl,--disable-new-dtags -Wl,-rpath-link='<(xz_vendor_dir)/lib'"]
+              }]
+            ]
+          },{
+            "include_dirs": ["<(target_dir)/liblzma/include"],
+            "library_dirs": ["<(target_dir)/liblzma/lib"],
+            "ldflags": [
+              "-Wl,--whole-archive",
+              "-l:liblzma.a",
+              "-Wl,--no-whole-archive"
+            ],
+            "defines": ["LZMA_API_STATIC"],
+            "dependencies": ["lzma"]
+          }]
+        ]
+      }],
+      ["OS=='mac'", {
+        "conditions": [
+          ["enable_thread_support != 'no'", {
+            "defines": ["ENABLE_THREAD_SUPPORT"]
+          }],
+          ["use_global_liblzma == 'true'", {
+            # Use pkg-config for include and lib
+            "include_dirs": ["<!@(pkg-config --cflags-only-I liblzma | sed s\/-I//g)"],
+            "conditions": [
+              ["runtime_link == \"static\"", {
+                # "libraries": ["<!@(pkg-config --libs --static liblzma | sed s#-llzma##g)"],
+                "ldflags": [
+                  "<!@(pkg-config --libs --static liblzma | sed s#-llzma##g)",
                   "-Wl,--whole-archive",
                   "-Wl,-Bstatic",
                   "-l:liblzma.a",
