@@ -5,7 +5,7 @@
   "main": "./lib/lzma.js",
   "scripts": {
     "install": "node-gyp-build",
-    "prepare": "npx ynpx coffeescript --compile --output lib/ src/",
+    "prepare": "npx ynpx coffeescript --bare --compile --output lib/ src/",
     "prebuildify": "npx prebuildify --napi --strip -t $(node -v)",
     "prebuildify:win": "for /f \"usebackq tokens=*\" %v in (`node -v`) do npx prebuildify -t %v --napi --strip",
     "test": "mocha test/*.coffee"
