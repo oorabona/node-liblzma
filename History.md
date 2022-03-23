@@ -1,8 +1,10 @@
+# 1.1.9
+* Fix building if no prebuilt binary found
+
 # 1.1.7
 * Fix build system
 * Fix release system
 * Fix documentation
-* Fix building if no prebuilt binary found
 
 # 1.1.0
 * Refactor to deprecate Nan in favor of N-API
