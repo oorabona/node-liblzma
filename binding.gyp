@@ -555,7 +555,7 @@
           "<(xz_vendor_dir)/src/liblzma/simple"
         ]
       }],
-      ["OS=='linux'", {
+      ["OS!='win'", {
         "conditions": [
           ["enable_thread_support != 'no'", {
             "defines": ["ENABLE_THREAD_SUPPORT"]
@@ -566,52 +566,6 @@
             "conditions": [
               ["runtime_link == \"static\"", {
                 "libraries": ["<!@(pkg-config --libs --static liblzma)"],
-                "ldflags": [
-                  "-Wl,--whole-archive",
-                  "-Wl,-Bstatic",
-                  "-l:liblzma.a",
-                  "-Wl,-Bdynamic",
-                  "-Wl,--no-whole-archive"
-                ],
-                "defines": ["LZMA_API_STATIC"]
-              },{
-                "libraries": [
-                  "<!@(pkg-config --libs liblzma)",
-                ],
-                "ldflags": [
-                  "-Wl,--disable-new-dtags",
-                ]
-              }]
-            ]
-          },{
-            "include_dirs": ["<(target_dir)/liblzma/include"],
-            "library_dirs": ["<(target_dir)/liblzma/lib"],
-            "libraries": [
-              "-L<(target_dir)/liblzma/lib -llzma -pthread -lpthread"
-            ],
-            "ldflags": [
-              "-Wl,--whole-archive",
-              "-l:liblzma.a",
-              "-Wl,--no-whole-archive"
-            ],
-            "defines": ["LZMA_API_STATIC"],
-            "dependencies": ["lzma"]
-          }]
-        ]
-      }],
-      ["OS=='mac'", {
-        "conditions": [
-          ["enable_thread_support != 'no'", {
-            "defines": ["ENABLE_THREAD_SUPPORT"]
-          }],
-          ["use_global_liblzma == 'true'", {
-            # Use pkg-config for include and lib
-            "include_dirs": ["<!@(pkg-config --cflags-only-I liblzma | sed s\/-I//g)"],
-            "conditions": [
-              ["runtime_link == \"static\"", {
-                "libraries": [
-                  "<!@(pkg-config --libs --static liblzma)"
-                ],
                 "ldflags": [
                   "-Wl,--whole-archive",
                   "-Wl,-Bstatic",
