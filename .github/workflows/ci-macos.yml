@@ -105,7 +105,7 @@ jobs:
           echo use_global_liblzma: ${{ matrix.use_global_liblzma }}
           echo static-has-mt: ${{ needs.check.outputs.static-has-mt }}
           echo shared-has-mt: ${{ needs.check.outputs.shared-has-mt }}
-          echo pkg-config: $(pkg-config --list-all)
+          echo pkg-config: $(pkg-config --libs --static liblzma)
       - name: Install
         if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
         run: yarn install
