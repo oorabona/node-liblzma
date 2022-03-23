@@ -625,6 +625,9 @@
           },{
             "include_dirs": ["<(target_dir)/liblzma/include"],
             "library_dirs": ["<(target_dir)/liblzma/lib"],
+            "libraries": [
+              "-L<(target_dir)/liblzma/lib -llzma -pthread -lpthread"
+            ],
             "ldflags": [
               "-Wl,--whole-archive",
               "-l:liblzma.a",
