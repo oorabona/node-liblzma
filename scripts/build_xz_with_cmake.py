@@ -72,19 +72,6 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     if system == "Windows":
         # Use Visual Studio generator for Windows builds (supports -A x64)
         cmake_args.extend(['-G', 'Visual Studio 17 2022', '-A', 'x64'])
-        
-        # Windows-specific threading configuration
-        if enable_threads.lower() in ['yes', 'true', '1']:
-            # Force threading support for Windows static builds
-            # Windows uses native threads, not pthread
-            cmake_args.extend([
-                '-DENABLE_THREADS=ON',
-                '-DMYTHREAD_ENABLED=1',
-                '-DMYTHREAD_WIN95=ON',  # Use Windows threading
-                '-DHAVE_PTHREAD=OFF'    # Don't use pthread on Windows
-            ])
-            print("[BUILD] Windows native threading flags added for static build support")
-        
         print("[BUILD] Windows x64 build configuration")
     elif system == "Darwin":
         # macOS specific optimizations

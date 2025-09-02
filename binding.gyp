@@ -230,10 +230,16 @@
             ],
             "conditions": [
               ["runtime_link == 'static'", {
-                "libraries": ["<(liblzma_install_dir)/lib/liblzma.lib"],
+                "libraries": [
+                  "<(liblzma_install_dir)/lib/liblzma.lib",
+                  "kernel32.lib"
+                ],
                 "defines": ["LZMA_API_STATIC"]
               }, {
-                "libraries": ["<(liblzma_install_dir)/lib/liblzma.lib"]
+                "libraries": [
+                  "<(liblzma_install_dir)/lib/liblzma.lib",
+                  "kernel32.lib"
+                ]
               }]
             ]
           }]
