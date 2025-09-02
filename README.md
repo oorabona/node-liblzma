@@ -10,6 +10,7 @@ Node-liblzma
 # What is liblzma/XZ ?
 
 [XZ](https://tukaani.org/xz/xz-file-format.txt) is a container for compressed archives. It is among the best compressors out there according to several benchmarks:
+
 * [Gzip vs Bzip2 vs LZMA vs XZ vs LZ4 vs LZO](http://pokecraft.first-world.info/wiki/Quick_Benchmark:_Gzip_vs_Bzip2_vs_LZMA_vs_XZ_vs_LZ4_vs_LZO)
 * [Large Text Compression Benchmark](http://mattmahoney.net/dc/text.html#2118)
 * [Linux Compression Comparison (GZIP vs BZIP2 vs LZMA vs ZIP vs Compress)](http://bashitout.com/2009/08/30/Linux-Compression-Comparison-GZIP-vs-BZIP2-vs-LZMA-vs-ZIP-vs-Compress.html)
@@ -19,6 +20,7 @@ It has a good balance between compression time/ratio and decompression time/memo
 # About this project
 
 This project aims towards providing:
+
 * A quick and easy way to play with XZ compression:
 Quick and easy as it conforms to zlib API, so that switching from __zlib/deflate__ to __xz__ might be as easy as a string search/replace in your code editor :smile:
 
@@ -31,31 +33,46 @@ But the library can open and read any LZMA1 or LZMA2 compressed file.
 
 # What's new ?
 
-It has been quite some time since I first published this package.
-In the meantime, [N-API](https://nodejs.org/api/n-api.html) eventually became the _de facto_ standard to provide stable ABI API for NodeJS Native Modules.
+## Version 2.0 (2025) - Complete Modernization
 
-It therefore replaces good ol' [nan](https://github.com/nodejs/nan) !
+This major release brings the library into 2025 with modern tooling and TypeScript support:
 
-It supports all NodeJS versions >= 12 and lots has been done to change CICD pipelines and testing.
+* **Full TypeScript migration**: Complete rewrite from CoffeeScript to TypeScript for better type safety and developer experience
+* **Promise-based APIs**: New async functions `xzAsync()` and `unxzAsync()` with Promise support
+* **Modern testing**: Migrated from Mocha to Vitest with improved performance and better TypeScript integration
+* **Enhanced tooling**: 
+  - [Biome](https://biomejs.dev/) for fast linting and formatting
+  - Pre-commit hooks with nano-staged and simple-git-hooks
+  - pnpm as package manager for better dependency management
+* **Updated Node.js support**: Requires Node.js >= 16 (updated from >= 12)
+
+## Legacy (N-API migration)
+
+In previous versions, [N-API](https://nodejs.org/api/n-api.html) became the _de facto_ standard to provide stable ABI API for NodeJS Native Modules, replacing [nan](https://github.com/nodejs/nan).
 
 It has been tested and works on:
-- Linux x64 (Ubuntu)
-- OSX (`macos-11`)
-- Raspberry Pi 2/3/4 (both on 32-bit and 64-bit architectures)
-- Windows (`windows-2019` and `windows-2022` are part of GitHub CI)
+
+* Linux x64 (Ubuntu)
+* OSX (`macos-11`)
+* Raspberry Pi 2/3/4 (both on 32-bit and 64-bit architectures)
+* Windows (`windows-2019` and `windows-2022` are part of GitHub CI)
 
 > Notes:
-> - For [Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
+>
+> * For [Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
 > There is no "global" installation of the LZMA library on the Windows machine provisionned by GitHub, so it is pointless to build with this config
-- For [Linux](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml)
-- For [MacOS](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml)
+>
+* For [Linux](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml)
+
+* For [MacOS](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml)
 
 ## Prebuilt images
 
 Several prebuilt versions are bundled within the package.
-- Windows x86_64
-- Linux x86_64
-- MacOS x86_64 / Arm64
+
+* Windows x86_64
+* Linux x86_64
+* MacOS x86_64 / Arm64
 
 If your OS/architecture matches, you will use this version which has been compiled using the following default flags:
 
@@ -72,6 +89,7 @@ If you want to change compilation flags, please read on [here](#installation).
 # Related projects
 
 Thanks to the community, there are several choices out there:
+
 * [lzma-purejs](https://github.com/cscott/lzma-purejs)
 A pure JavaScript implementation of the algorithm
 * [node-xz](https://github.com/robey/node-xz)
@@ -83,7 +101,11 @@ A very complete implementation of XZ library bindings
 # API comparison
 
 ```js
+// CommonJS
 var lzma = require('node-liblzma');
+
+// TypeScript / ES6 modules
+import * as lzma from 'node-liblzma';
 ```
 
 Zlib            | XZlib                   | Arguments
@@ -94,6 +116,8 @@ gzip            | xz                      | (buf, [options], callback)
 gunzip          | unxz                    | (buf, [options], callback)
 gzipSync        | xzSync                  | (buf, [options])
 gunzipSync      | unxzSync                | (buf, [options])
+-               | xzAsync                 | (buf, [options]) ⇒ Promise\<Buffer>
+-               | unxzAsync               | (buf, [options]) ⇒ Promise\<Buffer>
 
 ## Constants
 
@@ -128,25 +152,32 @@ For further information about each of these flags, you will find reference at [X
 Well, as simple as this one-liner:
 
 ```sh
-$ npm i node-liblzma --save
+npm i node-liblzma --save
 ```
 
 --OR--
 
 ```sh
-$ yarn add node-liblzma
+yarn add node-liblzma
+```
+
+--OR-- (recommended for development)
+
+```sh
+pnpm add node-liblzma
 ```
 
 If you want to recompile the source, for example to disable threading support in the module, then you have to opt out with:
 
 ``` bash
-$ ENABLE_THREAD_SUPPORT=no npm install node-liblzma --build-from-source
+ENABLE_THREAD_SUPPORT=no npm install node-liblzma --build-from-source
 ```
 
 > Note:
-Enabling thread support in the library will **NOT** work if the LZMA library itself has been built without such support.
+Enabling thread support in the library will __NOT__ work if the LZMA library itself has been built without such support.
 
 To build the module, you have the following options:
+
 1. Using system development libraries
 2. Ask the build system to download `xz` and build it
 3. Compile `xz` yourself, outside `node-liblzma`, and have it use it after
@@ -166,7 +197,7 @@ If you do not plan on having a local install, you can ask for automatic download
 Just do:
 
 ```sh
-$ npm install node-liblzma --build-from-source
+npm install node-liblzma --build-from-source
 ```
 
 When no option is given in the commandline arguments, it will build with default values.
@@ -178,9 +209,9 @@ So you did install `xz` somewhere outside the module and want the module to use 
 For that, you need to set the include directory and library directory search paths as GCC [environment variables](https://gcc.gnu.org/onlinedocs/gcc/Environment-Variables.html).
 
 ```sh
-$ export CPATH=$HOME/path/to/headers
-$ export LIBRARY_PATH=$HOME/path/to/lib
-$ export LD_LIBRARY_PATH=$HOME/path/to/lib:$LD_LIBRARY_PATH
+export CPATH=$HOME/path/to/headers
+export LIBRARY_PATH=$HOME/path/to/lib
+export LD_LIBRARY_PATH=$HOME/path/to/lib:$LD_LIBRARY_PATH
 ```
 
 The latest is needed for tests to be run right after.
@@ -188,7 +219,7 @@ The latest is needed for tests to be run right after.
 Once done, this should suffice:
 
 ```sh
-$ npm install
+npm install
 ```
 
 # Tests
@@ -196,10 +227,25 @@ $ npm install
 You can run tests with:
 
 ```sh
-$ npm test
+npm test
+# or
+pnpm test
 ```
 
-It will build and launch tests suite with [Mocha](https://github.com/visionmedia/mocha).
+It will build and launch tests suite with [Vitest](https://vitest.dev/) with TypeScript support and coverage reporting.
+
+Additional testing commands:
+
+```sh
+# Watch mode for development
+pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+
+# Type checking
+pnpm type-check
+```
 
 # Usage
 
@@ -207,7 +253,7 @@ As the API is very close to NodeJS Zlib, you will probably find a good reference
 [there](http://www.nodejs.org/api/zlib.html).
 
 Otherwise examples can be found as part of the test suite, so feel free to use them!
-They are written in [CoffeeScript](http://www.coffeescript.org).
+They are written in TypeScript with full type definitions.
 
 # Bugs
 

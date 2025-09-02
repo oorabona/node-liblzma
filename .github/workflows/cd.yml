@@ -1,4 +1,4 @@
-name: Publish @oorabona/liblzma
+name: Publish node-liblzma
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  NPM_TOKEN: ${{ secrets.NPM_PACKAGES_TOKEN }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 jobs:
   build:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-11 # At the time of writing macos-latest is mac 10; we need 11 to build a universal binary
+          - os: macos-latest
             build-group: darwin-x64+arm64
           - os: windows-latest
             build-group: win-x64
@@ -27,28 +27,35 @@ jobs:
       BUILD_GROUP: ${{ matrix.build-group }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Set up node
-        uses: actions/setup-node@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: 16
+          version: 10
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
           architecture: x64
           registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
       - name: Install
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm run build
       - name: Prebuildify for Windows
         if: ${{ matrix.build-group == 'win-x64' }}
-        run: yarn prebuildify:win
+        run: pnpm run prebuildify:win
       - name: Prebuildify for non-Windows
         if: ${{ matrix.build-group != 'win-x64' }}
-        run: yarn prebuildify
+        run: pnpm run prebuildify
       - name: Prepare artifact
         run: tar -zcvf $BUILD_GROUP.tar.gz -C prebuilds .
         shell: bash
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BUILD_GROUP }}
           path: ${{ env.BUILD_GROUP }}.tar.gz
@@ -57,25 +64,37 @@ jobs:
     needs: build
     permissions:
       contents: write
-    name: Publish @oorabona/liblzma
+    name: Publish node-liblzma
     runs-on: ubuntu-latest
     steps:
       - name: Checkout current branch
-        uses: actions/checkout@v2
-      # - name: Set version from git
-      #   run: npm version --no-git-tag-version from-git
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Unzip all binaries
         run: mkdir prebuilds && find artifacts -name "*.tar.gz" -exec tar zxvf {} -C prebuilds \;
-      - name: Setup NPM_TOKEN
-        run: npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm run build
       - name: Set version from branch name
-        run: npm version --no-git-tag-version "${GITHUB_REF##refs/tags/v}"
+        run: pnpm version --no-git-tag-version "${GITHUB_REF##refs/tags/v}"
       - name: Go publish
-        run: npm publish --access public
+        run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
   release:
     needs: build
     permissions:
@@ -84,14 +103,15 @@ jobs:
     name: Release
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Create GitHub release
-        uses: docker://antonyurchenko/git-release:v4
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: artifacts/*/*.tar.gz
+          files: artifacts/*/*.tar.gz
+          generate_release_notes: true

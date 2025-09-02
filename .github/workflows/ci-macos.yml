@@ -23,9 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # At the time of writing macos-latest is mac 10; we need 11 to build a universal binary.
-        os: [macos-11]
-        node: [16]
+        os: [macos-latest]
+        node: [18, 20, 22]
         runtime_link: [static, shared]
         use_global_liblzma: [true, false]
         enable_threads: [no]
@@ -33,26 +32,35 @@ jobs:
     name: Node ${{ matrix.node }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Use node ${{ matrix.node }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
+          cache: 'pnpm'
       - name: Install
-        run: yarn install
+        run: pnpm install --frozen-lockfile
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+      - name: Build
+        run: pnpm run build
+      - name: Lint
+        run: pnpm run check
       - name: Test
-        run: yarn test
+        run: pnpm test
 
   check:
     name: Checking if system library is multi threading capable
-    runs-on: 'macos-11'
+    runs-on: 'macos-latest'
     # Map the job outputs to step outputs
     outputs:
       static-has-mt: ${{ steps.check-mt.outputs.STATIC }}
@@ -64,18 +72,18 @@ jobs:
           if nm -a /usr/local/lib/liblzma.a | grep lzma_stream_encoder_mt
           then
             echo "Static system library is multi threading capable: yes"
-            echo '::set-output name=STATIC::true'
+            echo "STATIC=true" >> $GITHUB_OUTPUT
           else
             echo "Static system library is multi threading capable: no"
-            echo '::set-output name=STATIC::false'
+            echo "STATIC=false" >> $GITHUB_OUTPUT
           fi
           if nm -a /usr/local/lib/liblzma.dylib | grep lzma_stream_encoder_mt
           then
             echo "Dynamic system library is multi threading capable: yes"
-            echo '::set-output name=SHARED::true'
+            echo "SHARED=true" >> $GITHUB_OUTPUT
           else
             echo "Dynamic system library is multi threading capable: no"
-            echo '::set-output name=SHARED::false'
+            echo "SHARED=false" >> $GITHUB_OUTPUT
           fi
 
   test-mt:
@@ -83,9 +91,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # At the time of writing macos-latest is mac 10; we need 11 to build a universal binary.
-        os: [macos-11]
-        node: [16]
+        os: [macos-latest]
+        node: [18, 20, 22]
         runtime_link: [static, shared]
         use_global_liblzma: [true, false]
         enable_threads: [yes]
@@ -93,14 +100,19 @@ jobs:
     name: Node ${{ matrix.node }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Use node ${{ matrix.node }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
+          cache: 'pnpm'
       - name: debug
         run: |
           echo use_global_liblzma: ${{ matrix.use_global_liblzma }}
@@ -109,11 +121,17 @@ jobs:
           echo pkg-config: $(pkg-config --libs --static liblzma)
       - name: Install
         if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
-        run: yarn install
+        run: pnpm install --frozen-lockfile
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+      - name: Build
+        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
+        run: pnpm run build
+      - name: Lint
+        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
+        run: pnpm run check
       - name: Test
         if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
-        run: yarn test
+        run: pnpm test

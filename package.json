@@ -2,27 +2,51 @@
   "name": "node-liblzma",
   "version": "0.0.0",
   "description": "NodeJS wrapper for liblzma",
+  "type": "module",
   "main": "./lib/lzma.js",
+  "exports": {
+    ".": {
+      "import": "./lib/lzma.js",
+      "types": "./index.d.ts"
+    }
+  },
   "scripts": {
     "install": "node-gyp-build",
-    "prepare": "npx ynpx coffeescript --bare --compile --output lib/ src/",
-    "prebuildify": "npx prebuildify --napi --strip -t $(node -v)",
-    "prebuildify:win": "for /f \"usebackq tokens=*\" %v in (`node -v`) do npx prebuildify -t %v --napi --strip",
-    "test": "mocha test/*.coffee"
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "prepare": "simple-git-hooks && pnpm run build",
+    "prebuildify": "pnpm exec prebuildify --napi --strip -t $(node -v)",
+    "prebuildify:win": "for /f \"usebackq tokens=*\" %v in (`node -v`) do pnpm exec prebuildify -t %v --napi --strip",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf lib",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
+    "format": "biome format",
+    "format:write": "biome format --write",
+    "check": "biome check",
+    "check:write": "biome check --write"
   },
   "dependencies": {
-    "node-addon-api": "4.2.0",
-    "node-gyp-build": "4.3.0"
+    "node-addon-api": "^8.2.1",
+    "node-gyp-build": "^4.8.4"
   },
   "devDependencies": {
-    "coffeescript": "2.6.1",
-    "expect.js": "0.3.1",
-    "mocha": "9.2.1",
-    "tsd": "0.19.1"
+    "@biomejs/biome": "^2.2.2",
+    "@types/node": "^24.3.0",
+    "@vitest/coverage-istanbul": "^3.2.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "nano-staged": "^0.8.0",
+    "simple-git-hooks": "^2.13.1",
+    "tsd": "^0.31.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   },
   "types": "index.d.ts",
   "engines": {
-    "node": ">12.0.0"
+    "node": ">=16.0.0"
   },
   "repository": {
     "type": "git",
@@ -54,14 +78,16 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
-  "mocha": {
-    "throw-deprecation": true,
-    "require": [
-      "coffeescript/register"
+  "nano-staged": {
+    "*.{ts,js,mts,cts}": [
+      "biome check --write --no-errors-on-unmatched"
     ],
-    "inline-diffs": true,
-    "timeout": 5000,
-    "reporter": "spec",
-    "recursive": true
-  }
+    "*.json": [
+      "biome format --write"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec nano-staged"
+  },
+  "packageManager": "pnpm@10.15.0+sha512.486ebc259d3e999a4e8691ce03b5cac4a71cbeca39372a9b762cb500cfdf0873e2cb16abe3d951b1ee2cf012503f027b98b6584e4df22524e0c7450d9ec7aa7b"
 }

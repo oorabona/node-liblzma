@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    /* Override settings for tests */
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node", "vitest"],
+
+    /* Allow more flexible imports for tests */
+    "moduleResolution": "node",
+    "allowJs": true,
+
+    /* Less strict for test files */
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": ["./**/*", "../src/**/*"],
+  "exclude": ["../node_modules", "../lib", "../build"]
+}
