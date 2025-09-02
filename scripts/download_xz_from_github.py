@@ -133,7 +133,7 @@ def extract_tarball(tarball_path, extract_dir):
         for member in members:
             # Replace the root directory name with 'xz'
             member.name = member.name.replace(root_dir, 'xz', 1)
-            tfile.extract(member, extract_dir)
+            tfile.extract(member, extract_dir, filter='data')
         
         print(f"✅ Successfully extracted XZ to {extract_dir}/xz")
 
