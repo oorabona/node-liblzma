@@ -183,9 +183,8 @@
                 "inputs": ["<(liblzma_install_dir)/bin/liblzma.dll"],
                 "outputs": ["<(target_dir)/Release/liblzma.dll"],
                 "action": [
-                  "cmd", "/c", "xcopy", "/Y",
-                  "<(liblzma_install_dir)\\bin\\liblzma.dll",
-                  "<(target_dir)\\Release\\"
+                  "powershell", "-Command", 
+                  "Copy-Item '<(liblzma_install_dir)\\bin\\liblzma.dll' '<(target_dir)\\Release\\' -Force"
                 ]
               }]
             }]
