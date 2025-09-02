@@ -110,7 +110,7 @@ export abstract class XzStream extends Transform {
     this._opts = {
       check: opts.check ?? check.NONE,
       preset: opts.preset ?? preset.DEFAULT,
-      filters: opts.filters ?? [filter.LZMA2],
+      filters: opts.filters ? [...opts.filters] : [filter.LZMA2], // Clone the filters array
       mode: opts.mode ?? mode.NORMAL,
       threads: opts.threads ?? 1,
       chunkSize: opts.chunkSize ?? liblzma.BUFSIZ,
