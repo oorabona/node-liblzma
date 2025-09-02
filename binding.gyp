@@ -142,9 +142,19 @@
             "inputs": ["<(xz_vendor_dir)/CMakeLists.txt"],
             "conditions": [
               ["OS == 'win'", {
-                "outputs": [
-                  "<(liblzma_install_dir)/lib/liblzma.lib",
-                  "<(liblzma_install_dir)/include/lzma.h"
+                "conditions": [
+                  ["runtime_link == 'static'", {
+                    "outputs": [
+                      "<(liblzma_install_dir)/lib/liblzma.lib",
+                      "<(liblzma_install_dir)/include/lzma.h"
+                    ]
+                  }, {
+                    "outputs": [
+                      "<(liblzma_install_dir)/lib/liblzma.lib",
+                      "<(liblzma_install_dir)/bin/liblzma.dll",
+                      "<(liblzma_install_dir)/include/lzma.h"
+                    ]
+                  }]
                 ]
               }, {
                 "outputs": [
@@ -160,6 +170,26 @@
               "<(liblzma_install_dir)"
             ]
           }]
+        },
+        {
+          # Copy DLL to build directory for Windows shared builds
+          "target_name": "copy_dlls_windows_shared",
+          "type": "none",
+          "dependencies": ["build_liblzma_cmake"],
+          "conditions": [
+            ["OS == 'win' and use_global_liblzma == 'false' and runtime_link == 'shared'", {
+              "actions": [{
+                "action_name": "copy_liblzma_dll",
+                "inputs": ["<(liblzma_install_dir)/bin/liblzma.dll"],
+                "outputs": ["<(target_dir)/Release/liblzma.dll"],
+                "action": [
+                  "cmd", "/c", "copy",
+                  "<(liblzma_install_dir)\\bin\\liblzma.dll",
+                  "<(target_dir)\\Release\\"
+                ]
+              }]
+            }]
+          ]
         }
       ]
     }]
@@ -184,7 +214,13 @@
         # Windows configuration using CMake-built libraries
         "conditions": [
           ["use_global_liblzma == 'false'", {
-            "dependencies": ["build_liblzma_cmake"],
+            "conditions": [
+              ["runtime_link == 'shared'", {
+                "dependencies": ["build_liblzma_cmake", "copy_dlls_windows_shared"]
+              }, {
+                "dependencies": ["build_liblzma_cmake"]
+              }]
+            ],
             "include_dirs": [
               "<(liblzma_install_dir)/include"
             ],

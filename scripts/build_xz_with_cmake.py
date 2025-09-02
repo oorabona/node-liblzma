@@ -145,7 +145,11 @@ def verify_build(install_dir, runtime_link="static"):
     
     system = platform.system()
     if system == "Windows":
-        expected_files.append('lib/liblzma.lib')
+        if runtime_link == "static":
+            expected_files.append('lib/liblzma.lib')
+        else:
+            # For shared builds on Windows, expect both import lib and DLL
+            expected_files.extend(['lib/liblzma.lib', 'bin/liblzma.dll'])
     else:
         if runtime_link == "static":
             expected_files.append('lib/liblzma.a')
