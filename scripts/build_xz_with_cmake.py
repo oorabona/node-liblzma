@@ -69,8 +69,8 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     # Platform-specific configuration
     system = platform.system()
     if system == "Windows":
-        # Set architecture for Windows builds
-        cmake_args.extend(['-A', 'x64'])
+        # Use Visual Studio generator for Windows builds (supports -A x64)
+        cmake_args.extend(['-G', 'Visual Studio 17 2022', '-A', 'x64'])
         print("[BUILD] Windows x64 build configuration")
     elif system == "Darwin":
         # macOS specific optimizations
@@ -173,14 +173,17 @@ def main():
     parser = argparse.ArgumentParser(
         description='Build XZ Utils using CMake',
         epilog='''
-Configuration is read from environment variables:
-  RUNTIME_LINK: 'static' or 'shared' (default: static)
-  ENABLE_THREAD_SUPPORT: 'yes' or 'no' (default: yes)
+Required environment variables (strict validation):
+  RUNTIME_LINK: 'static' or 'shared' (REQUIRED)
+  ENABLE_THREAD_SUPPORT: 'yes' or 'no' (REQUIRED)
+  USE_GLOBAL: 'true' or 'false' (REQUIRED)
 
 Examples:
-  python3 build_xz_with_cmake.py deps/xz build/liblzma
-  RUNTIME_LINK=shared python3 build_xz_with_cmake.py deps/xz build/liblzma  
-  ENABLE_THREAD_SUPPORT=no python3 build_xz_with_cmake.py deps/xz build/liblzma
+  RUNTIME_LINK=static ENABLE_THREAD_SUPPORT=yes USE_GLOBAL=false \\
+    python3 build_xz_with_cmake.py deps/xz build/liblzma
+  
+  RUNTIME_LINK=shared ENABLE_THREAD_SUPPORT=no USE_GLOBAL=true \\
+    python3 build_xz_with_cmake.py deps/xz build/liblzma
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -192,17 +195,35 @@ Examples:
     
     args = parser.parse_args()
     
-    # Get configuration from environment variables
-    runtime_link = os.environ.get('RUNTIME_LINK', 'static')
-    enable_threads = os.environ.get('ENABLE_THREAD_SUPPORT', 'yes')
+    # Get configuration from environment variables with strict validation
+    runtime_link = os.environ.get('RUNTIME_LINK')
+    enable_threads = os.environ.get('ENABLE_THREAD_SUPPORT')
+    use_global = os.environ.get('USE_GLOBAL')
     
-    # Validate configuration
+    # Strict validation - fail if critical variables are not explicitly set
+    if runtime_link is None:
+        print("[ERROR] RUNTIME_LINK environment variable must be explicitly set ('static' or 'shared')")
+        return 1
+    
+    if enable_threads is None:
+        print("[ERROR] ENABLE_THREAD_SUPPORT environment variable must be explicitly set ('yes' or 'no')")
+        return 1
+        
+    if use_global is None:
+        print("[ERROR] USE_GLOBAL environment variable must be explicitly set ('true' or 'false')")
+        return 1
+    
+    # Validate values
     if runtime_link not in ['static', 'shared']:
         print(f"[ERROR] Invalid RUNTIME_LINK: {runtime_link}. Must be 'static' or 'shared'")
         return 1
     
     if enable_threads.lower() not in ['yes', 'no', 'true', 'false', '1', '0']:
         print(f"[ERROR] Invalid ENABLE_THREAD_SUPPORT: {enable_threads}. Must be yes/no/true/false/1/0")
+        return 1
+        
+    if use_global.lower() not in ['true', 'false']:
+        print(f"[ERROR] Invalid USE_GLOBAL: {use_global}. Must be 'true' or 'false'")
         return 1
     
     # Convert to absolute paths
