@@ -233,10 +233,8 @@ Napi::Value LZMA::Code(const Napi::CallbackInfo &info) {
 
 		// If we do not have input buffer data
 	if (info[1].IsNull()) {
-		// just a flush
-		// uint8_t nada[1] = { 0 };
-		uint8_t nada = 0;
-		in = &nada;
+		// just a flush - use null pointer which is safe for liblzma when avail_in is 0
+		in = nullptr;
 		in_len = 0;
 		in_off = 0;
 	} else {
