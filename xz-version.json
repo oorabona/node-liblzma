@@ -1,8 +1,8 @@
 {
-  "version": "v5.6.3",
-  "comment": "Modern version with complete CMake support and threading. XZ 5.6.3 includes all threading features and modern build system.",
+  "version": "v5.8.1",
+  "comment": "Latest version with full XZ_THREADS support and modern CMake. XZ 5.8+ includes the complete threading API with XZ_THREADS variable.",
   "last_checked": "2025-09-02",
   "allow_override": true,
   "repository": "tukaani-project/xz",
-  "changelog": "https://github.com/tukaani-project/xz/releases/tag/v5.6.3"
+  "changelog": "https://github.com/tukaani-project/xz/releases/tag/v5.8.1"
 }

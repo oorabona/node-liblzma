@@ -61,7 +61,7 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     # Platform-specific configuration
     system = platform.system()
     
-    # Threading support - XZ 5.6+ has full XZ_THREADS support
+    # Threading support - XZ 5.8+ has full XZ_THREADS support
     if enable_threads.lower() in ['yes', 'true', '1']:
         cmake_args.append('-DXZ_THREADS=yes')
         print("[THREAD] Threading support: enabled (XZ_THREADS=yes)")
