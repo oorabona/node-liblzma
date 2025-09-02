@@ -214,9 +214,6 @@
       ["OS=='win'", {
         # Windows configuration using CMake-built libraries
         "conditions": [
-          ["enable_thread_support != 'no'", {
-            "defines": ["ENABLE_THREAD_SUPPORT"]
-          }],
           ["use_global_liblzma == 'false'", {
             "conditions": [
               ["runtime_link == 'shared'", {
@@ -231,9 +228,19 @@
             "conditions": [
               ["runtime_link == 'static'", {
                 "libraries": ["<(liblzma_install_dir)/lib/liblzma.lib"],
-                "defines": ["LZMA_API_STATIC"]
+                "defines": ["LZMA_API_STATIC"],
+                "conditions": [
+                  ["enable_thread_support != 'no'", {
+                    "defines": ["LZMA_API_STATIC", "ENABLE_THREAD_SUPPORT"]
+                  }]
+                ]
               }, {
-                "libraries": ["<(liblzma_install_dir)/lib/liblzma.lib"]
+                "libraries": ["<(liblzma_install_dir)/lib/liblzma.lib"],
+                "conditions": [
+                  ["enable_thread_support != 'no'", {
+                    "defines": ["ENABLE_THREAD_SUPPORT"]
+                  }]
+                ]
               }]
             ]
           }]
