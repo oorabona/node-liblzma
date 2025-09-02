@@ -60,11 +60,11 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     
     # Threading support
     if enable_threads.lower() in ['yes', 'true', '1']:
-        cmake_args.append('-DENABLE_THREADS=ON')
-        print("[THREAD] Threading support: enabled")
+        cmake_args.append('-DXZ_THREADS=yes')
+        print("[THREAD] Threading support: enabled (XZ_THREADS=yes)")
     else:
-        cmake_args.append('-DENABLE_THREADS=OFF')
-        print("[THREAD] Threading support: disabled")
+        cmake_args.append('-DXZ_THREADS=no')
+        print("[THREAD] Threading support: disabled (XZ_THREADS=no)")
     
     # Platform-specific configuration
     system = platform.system()
