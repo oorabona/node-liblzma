@@ -214,6 +214,9 @@
       ["OS=='win'", {
         # Windows configuration using CMake-built libraries
         "conditions": [
+          ["enable_thread_support != 'no'", {
+            "defines": ["ENABLE_THREAD_SUPPORT"]
+          }],
           ["use_global_liblzma == 'false'", {
             "conditions": [
               ["runtime_link == 'shared'", {
