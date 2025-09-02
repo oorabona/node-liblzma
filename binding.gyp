@@ -183,9 +183,7 @@
                 "inputs": ["<(liblzma_install_dir)/bin/liblzma.dll"],
                 "outputs": ["<(target_dir)/Release/liblzma.dll"],
                 "action": [
-                  "cmd", "/c", "copy",
-                  "<(liblzma_install_dir)\\bin\\liblzma.dll",
-                  "<(target_dir)\\Release\\"
+                  "cmd", "/c", "copy \"<(liblzma_install_dir)\\bin\\liblzma.dll\" \"<(target_dir)\\Release\\\""
                 ]
               }]
             }]
