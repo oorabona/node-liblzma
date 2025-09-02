@@ -173,25 +173,37 @@ def main():
     parser = argparse.ArgumentParser(
         description='Build XZ Utils using CMake',
         epilog='''
+Configuration is read from environment variables:
+  RUNTIME_LINK: 'static' or 'shared' (default: static)
+  ENABLE_THREAD_SUPPORT: 'yes' or 'no' (default: yes)
+
 Examples:
-  python3 build_xz_with_cmake.py deps/xz build/liblzma static yes
-  python3 build_xz_with_cmake.py deps/xz build/liblzma shared no
+  python3 build_xz_with_cmake.py deps/xz build/liblzma
+  RUNTIME_LINK=shared python3 build_xz_with_cmake.py deps/xz build/liblzma  
+  ENABLE_THREAD_SUPPORT=no python3 build_xz_with_cmake.py deps/xz build/liblzma
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
     parser.add_argument('source_dir', help='XZ source directory')
     parser.add_argument('install_dir', help='Installation directory')
-    parser.add_argument('runtime_link', nargs='?', default='static',
-                       choices=['static', 'shared'],
-                       help='Runtime linking type (default: static)')
-    parser.add_argument('enable_threads', nargs='?', default='no',
-                       choices=['yes', 'no'],
-                       help='Enable threading support (default: no)')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Verbose output')
     
     args = parser.parse_args()
+    
+    # Get configuration from environment variables
+    runtime_link = os.environ.get('RUNTIME_LINK', 'static')
+    enable_threads = os.environ.get('ENABLE_THREAD_SUPPORT', 'yes')
+    
+    # Validate configuration
+    if runtime_link not in ['static', 'shared']:
+        print(f"[ERROR] Invalid RUNTIME_LINK: {runtime_link}. Must be 'static' or 'shared'")
+        return 1
+    
+    if enable_threads.lower() not in ['yes', 'no', 'true', 'false', '1', '0']:
+        print(f"[ERROR] Invalid ENABLE_THREAD_SUPPORT: {enable_threads}. Must be yes/no/true/false/1/0")
+        return 1
     
     # Convert to absolute paths
     source_dir = os.path.abspath(args.source_dir)
@@ -221,10 +233,10 @@ Examples:
     # Build process
     success = (
         configure_cmake(source_dir, build_dir, install_dir, 
-                       args.runtime_link, args.enable_threads) and
+                       runtime_link, enable_threads) and
         build_cmake(build_dir) and
         install_cmake(build_dir, install_dir) and
-        verify_build(install_dir, args.runtime_link)
+        verify_build(install_dir, runtime_link)
     )
     
     if success:

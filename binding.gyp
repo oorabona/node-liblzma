@@ -148,9 +148,7 @@
               "<(py3)",
               "<(module_root_dir)/scripts/build_xz_with_cmake.py",
               "<(xz_vendor_dir)",
-              "<(liblzma_install_dir)",
-              "<(runtime_link)",
-              "<(enable_thread_support)"
+              "<(liblzma_install_dir)"
             ]
           }]
         }
