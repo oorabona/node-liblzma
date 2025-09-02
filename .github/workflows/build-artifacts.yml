@@ -66,9 +66,9 @@ jobs:
         with:
           path: |
             deps/xz
-            deps/xz.tar.xz
+            deps/xz.tar.gz
             build/liblzma
-          key: build-${{ runner.os }}-xz-${{ hashFiles('scripts/download_extract_deps.py') }}
+          key: build-${{ runner.os }}-xz-default-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
           restore-keys: |
             build-${{ runner.os }}-xz-
       - name: Install dependencies

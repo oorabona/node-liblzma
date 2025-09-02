@@ -11,10 +11,21 @@ on:
       - "releases/**"
     tags-ignore:
       - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      xz_version:
+        description: 'XZ version (e.g., v5.8.1, v5.4.0, latest, or empty for default)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       cache-prefix:
         description: 'Cache prefix for isolation'
+        required: false
+        type: string
+        default: ''
+      xz_version:
+        description: 'XZ version to use'
         required: false
         type: string
         default: ''
@@ -65,13 +76,15 @@ jobs:
         with:
           path: |
             deps/xz
+            deps/xz.tar.gz
             build/liblzma
-          key: ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ hashFiles('scripts/download_extract_deps.py') }}
+          key: ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ inputs.xz_version || github.event.inputs.xz_version || 'default' }}-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
           restore-keys: |
-            ${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
+            ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
+          XZ_VERSION: ${{ inputs.xz_version || github.event.inputs.xz_version || '' }}
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
@@ -157,10 +170,11 @@ jobs:
         with:
           path: |
             deps/xz
+            deps/xz.tar.gz
             build/liblzma
-          key: ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ hashFiles('scripts/download_extract_deps.py') }}
+          key: ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ inputs.xz_version || github.event.inputs.xz_version || 'default' }}-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
           restore-keys: |
-            ${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
+            ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
       - name: debug
         run: |
           echo use_global_liblzma: ${{ matrix.use_global_liblzma }}
@@ -170,6 +184,7 @@ jobs:
         if: ${{ !matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false') }}
         run: pnpm install --frozen-lockfile
         env:
+          XZ_VERSION: ${{ inputs.xz_version || github.event.inputs.xz_version || '' }}
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}

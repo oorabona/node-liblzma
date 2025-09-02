@@ -1,0 +1,173 @@
+name: Check XZ Updates
+on:
+  schedule:
+    # Every Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      create_pr:
+        description: 'Create PR if new version found'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      has_update: ${{ steps.check.outputs.new_version }}
+      current_version: ${{ steps.check.outputs.current }}
+      latest_version: ${{ steps.check.outputs.latest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check for new XZ version
+        id: check
+        run: |
+          # Get current version from config
+          CURRENT=$(jq -r '.version' xz-version.json)
+          echo "Current XZ version: $CURRENT"
+          
+          # Get latest version from GitHub API
+          LATEST=$(curl -s https://api.github.com/repos/tukaani-project/xz/releases/latest | jq -r '.tag_name')
+          echo "Latest XZ version: $LATEST"
+          
+          # Set outputs
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          
+          if [ "$CURRENT" != "$LATEST" ]; then
+            echo "new_version=true" >> $GITHUB_OUTPUT
+            echo "🆕 New XZ version available: $LATEST (current: $CURRENT)"
+          else
+            echo "new_version=false" >> $GITHUB_OUTPUT
+            echo "✅ Already on latest version: $LATEST"
+          fi
+      
+      - name: Setup pnpm
+        if: steps.check.outputs.new_version == 'true'
+        uses: pnpm/action-setup@v4
+      
+      - name: Setup Node.js
+        if: steps.check.outputs.new_version == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      
+      - name: Test with latest XZ version
+        if: steps.check.outputs.new_version == 'true'
+        id: test
+        run: |
+          echo "Testing with XZ ${{ steps.check.outputs.latest }}"
+          
+          # Test installation with new version
+          XZ_VERSION="${{ steps.check.outputs.latest }}" pnpm install --frozen-lockfile
+          
+          # Run build and tests
+          pnpm run build
+          pnpm run type-check
+          pnpm test
+          
+          echo "✅ Tests passed with XZ ${{ steps.check.outputs.latest }}"
+          echo "test_passed=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Update xz-version.json
+        if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
+        run: |
+          # Update the version file
+          jq --arg version "${{ steps.check.outputs.latest }}" \
+             --arg date "$(date -I)" \
+             '.version = $version | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
+             xz-version.json > tmp.json && mv tmp.json xz-version.json
+          
+          echo "Updated xz-version.json to ${{ steps.check.outputs.latest }}"
+      
+      - name: Create Pull Request
+        if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "feat: update XZ to ${{ steps.check.outputs.latest }}"
+          title: "🆙 Update XZ Utils to ${{ steps.check.outputs.latest }}"
+          body: |
+            ## XZ Utils Update Available
+            
+            A new version of XZ Utils is available and has been tested successfully.
+            
+            - **Current version**: `${{ steps.check.outputs.current }}`
+            - **New version**: `${{ steps.check.outputs.latest }}`
+            
+            ### Changes
+            - Updated `xz-version.json` to use XZ ${{ steps.check.outputs.latest }}
+            - Automated tests passed successfully
+            
+            ### Release Notes
+            [View release notes for ${{ steps.check.outputs.latest }}](https://github.com/tukaani-project/xz/releases/tag/${{ steps.check.outputs.latest }})
+            
+            ### Testing
+            ✅ Installation test passed  
+            ✅ Build test passed  
+            ✅ Type check passed  
+            ✅ Unit tests passed  
+            
+            ---
+            🤖 This PR was created automatically by the XZ update checker workflow.
+          branch: update-xz-${{ steps.check.outputs.latest }}
+          labels: |
+            enhancement
+            dependencies
+            automated
+      
+      - name: Create issue on test failure
+        if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `❌ XZ ${{ steps.check.outputs.latest }} Update Failed`,
+              body: `A new version of XZ Utils is available but the automated tests failed.
+              
+              - **Current version**: \`${{ steps.check.outputs.current }}\`
+              - **New version**: \`${{ steps.check.outputs.latest }}\`
+              
+              The automated tests failed, so this update requires manual review.
+              
+              [View release notes](${{ github.server_url }}/tukaani-project/xz/releases/tag/${{ steps.check.outputs.latest }})
+              [View failed workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              
+              Please investigate the compatibility issues before updating manually.`,
+              labels: ['bug', 'dependencies', 'needs-investigation']
+            })
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## XZ Update Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Current version: ${{ steps.check.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest version: ${{ steps.check.outputs.latest }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check.outputs.new_version }}" == "true" ]; then
+            echo "- Status: 🆕 Update available" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.test.outputs.test_passed }}" == "true" ]; then
+              echo "- Tests: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+              echo "- Action: PR created for update" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- Tests: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+              echo "- Action: Issue created for manual review" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- Status: ✅ Up to date" >> $GITHUB_STEP_SUMMARY
+            echo "- Action: No action needed" >> $GITHUB_STEP_SUMMARY
+          fi

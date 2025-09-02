@@ -125,11 +125,11 @@
             "actions": [{
               "action_name": "download_and_extract_deps",
               "inputs": [""],
-              "outputs": ["<(xz_vendor_dir)/autogen.sh"],
+              "outputs": ["<(xz_vendor_dir)/configure"],
               "action": [
                 "<!(node -p \"process.env.npm_config_python || 'python3'\")",
-                "<(module_root_dir)/scripts/download_extract_deps.py",
-                "<(module_root_dir)/deps/xz.tar.xz",
+                "<(module_root_dir)/scripts/download_xz_from_github.py",
+                "<(module_root_dir)/deps/xz.tar.gz",
                 "<(module_root_dir)/deps/"
               ]
             }]
@@ -479,11 +479,11 @@
             "actions": [{
               "action_name": "download",
               "inputs": [""],
-              "outputs": ["<(xz_vendor_dir)/autogen.sh"],
+              "outputs": ["<(xz_vendor_dir)/configure"],
               "action": [
                 "<!(node -p \"process.env.npm_config_python || 'python3'\")",
-                "<(module_root_dir)/scripts/download_extract_deps.py",
-                "<(module_root_dir)/deps/xz.tar.xz",
+                "<(module_root_dir)/scripts/download_xz_from_github.py",
+                "<(module_root_dir)/deps/xz.tar.gz",
                 "<(module_root_dir)/deps/"
               ]
             }]

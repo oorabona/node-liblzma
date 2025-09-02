@@ -56,15 +56,16 @@ jobs:
         with:
           path: |
             deps/xz
-            deps/xz.tar.xz
+            deps/xz.tar.gz
             build/liblzma
-          key: pr-${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ hashFiles('scripts/download_extract_deps.py') }}
+          key: pr-${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-default-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
           restore-keys: |
             pr-${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
             ${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
+          XZ_VERSION: ''  # Use default version from xz-version.json
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}

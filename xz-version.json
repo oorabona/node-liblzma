@@ -1,0 +1,8 @@
+{
+  "version": "v5.4.0",
+  "comment": "Stable version tested and validated for production. XZ 5.4.0 is an LTS version with security fixes.",
+  "last_checked": "2025-01-05",
+  "allow_override": true,
+  "repository": "tukaani-project/xz",
+  "changelog": "https://github.com/tukaani-project/xz/releases/tag/v5.4.0"
+}
