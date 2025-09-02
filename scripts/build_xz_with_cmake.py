@@ -55,23 +55,30 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
         # Enable Position Independent Code for use in shared libraries
         '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
         # Disable compiler warnings that might cause issues in CI
-        '-DCMAKE_C_FLAGS=-w'
+        '-DCMAKE_C_FLAGS=-w',
     ]
     
-    # Threading support
+    # Platform-specific configuration
+    system = platform.system()
+    
+    # Threading support - let XZ autodetect best method
     if enable_threads.lower() in ['yes', 'true', '1']:
         cmake_args.append('-DXZ_THREADS=yes')
-        print("[THREAD] Threading support: enabled (XZ_THREADS=yes)")
+        print("[THREAD] Threading support: enabled (XZ_THREADS=yes - autodetect)")
     else:
         cmake_args.append('-DXZ_THREADS=no')
         print("[THREAD] Threading support: disabled (XZ_THREADS=no)")
     
-    # Platform-specific configuration
-    system = platform.system()
     if system == "Windows":
         # Use Visual Studio generator for Windows builds (supports -A x64)
         cmake_args.extend(['-G', 'Visual Studio 17 2022', '-A', 'x64'])
-        print("[BUILD] Windows x64 build configuration")
+        # Force Windows threading detection
+        if enable_threads.lower() in ['yes', 'true', '1']:
+            cmake_args.extend([
+                '-DCMAKE_USE_WIN32_THREADS_INIT=ON',
+                '-DCMAKE_USE_PTHREADS_INIT=OFF'
+            ])
+        print("[BUILD] Windows x64 build configuration with threading")
     elif system == "Darwin":
         # macOS specific optimizations
         cmake_args.extend([
@@ -91,11 +98,28 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     print(f"   Runtime: {runtime_link}")
     
     try:
-        result = subprocess.run(cmake_args, check=True, cwd=source_dir)
+        result = subprocess.run(cmake_args, check=True, cwd=source_dir, capture_output=True, text=True)
         print("[SUCCESS] CMake configuration successful")
+        
+        # Log all CMake output for threading diagnostics
+        print(f"[DEBUG] Full CMake configuration output:")
+        for line in result.stdout.split('\n'):
+            if line.strip():
+                print(f"[DEBUG]   {line.strip()}")
+        
+        if result.stderr.strip():
+            print(f"[DEBUG] CMake stderr:")
+            for line in result.stderr.split('\n'):
+                if line.strip():
+                    print(f"[DEBUG]   {line.strip()}")
+        
         return True
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] CMake configuration failed with exit code {e.returncode}")
+        if e.stdout:
+            print(f"[ERROR] stdout: {e.stdout}")
+        if e.stderr:
+            print(f"[ERROR] stderr: {e.stderr}")
         return False
 
 def build_cmake(build_dir):
