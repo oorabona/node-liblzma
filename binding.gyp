@@ -140,9 +140,18 @@
           "actions": [{
             "action_name": "build_liblzma_cmake",
             "inputs": ["<(xz_vendor_dir)/CMakeLists.txt"],
-            "outputs": [
-              "<(liblzma_install_dir)/lib/liblzma.a",
-              "<(liblzma_install_dir)/include/lzma.h"
+            "conditions": [
+              ["OS == 'win'", {
+                "outputs": [
+                  "<(liblzma_install_dir)/lib/liblzma.lib",
+                  "<(liblzma_install_dir)/include/lzma.h"
+                ]
+              }, {
+                "outputs": [
+                  "<(liblzma_install_dir)/lib/liblzma.a",
+                  "<(liblzma_install_dir)/include/lzma.h"
+                ]
+              }]
             ],
             "action": [
               "<(py3)",
