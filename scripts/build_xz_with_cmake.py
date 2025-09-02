@@ -14,6 +14,7 @@ import sys
 import subprocess
 import platform
 import argparse
+import shutil
 from pathlib import Path
 
 def detect_cmake():
@@ -31,16 +32,19 @@ def get_cmake_generator():
     """Get appropriate CMake generator for the current platform"""
     system = platform.system()
     if system == "Windows":
-        # Use Visual Studio generator on Windows
-        return "Visual Studio 16 2019"
+        # Use Ninja or Unix Makefiles for better CI compatibility
+        # Visual Studio generator can be problematic in CI environments
+        return "Ninja" if shutil.which('ninja') else "Unix Makefiles"
     else:
         # Use Unix Makefiles on Linux/macOS (works with make, ninja, etc.)
         return "Unix Makefiles"
 
 def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", enable_threads="no"):
     """Configure XZ build with CMake"""
+    generator = get_cmake_generator()
     cmake_args = [
         'cmake',
+        f'-G{generator}',
         f'-B{build_dir}',
         f'-DCMAKE_INSTALL_PREFIX={install_dir}',
         '-DCMAKE_BUILD_TYPE=Release',
@@ -49,7 +53,9 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
         '-DCREATE_XZ_SYMLINKS=OFF',
         '-DCREATE_LZMA_SYMLINKS=OFF',
         # Enable Position Independent Code for use in shared libraries
-        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON'
+        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+        # Disable compiler warnings that might cause issues in CI
+        '-DCMAKE_C_FLAGS=-w'
     ]
     
     # Threading support
@@ -133,21 +139,22 @@ def install_cmake(build_dir, install_dir):
         print(f"❌ CMake install failed with exit code {e.returncode}")
         return False
 
-def verify_build(install_dir):
+def verify_build(install_dir, runtime_link="static"):
     """Verify that the build produced the expected files"""
-    expected_files = []
+    expected_files = ['include/lzma.h']  # Common file for all builds
     
     system = platform.system()
     if system == "Windows":
-        expected_files = [
-            'lib/liblzma.lib',
-            'include/lzma.h'
-        ]
+        expected_files.append('lib/liblzma.lib')
     else:
-        expected_files = [
-            'lib/liblzma.a',
-            'include/lzma.h'
-        ]
+        if runtime_link == "static":
+            expected_files.append('lib/liblzma.a')
+        else:
+            # For shared builds, look for .so files (or .dylib on macOS)
+            if system == "Darwin":
+                expected_files.append('lib/liblzma.dylib')
+            else:
+                expected_files.append('lib/liblzma.so')
     
     missing_files = []
     for file_path in expected_files:
@@ -217,7 +224,7 @@ Examples:
                        args.runtime_link, args.enable_threads) and
         build_cmake(build_dir) and
         install_cmake(build_dir, install_dir) and
-        verify_build(install_dir)
+        verify_build(install_dir, args.runtime_link)
     )
     
     if success:

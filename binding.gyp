@@ -2,8 +2,8 @@
 # This replaces the complex manual configuration with CMake-based builds
 {
   "variables": {
-    "use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (!os.type().startsWith('Win'))\")",
-    "runtime_link%": "<!(node -p \"process.env.RUNTIME_LINK?.length > 0 ? process.env.RUNTIME_LINK : (!os.type().startsWith('Win') ? 'shared' : 'static')\")",
+    "use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (process.platform === 'linux' || process.platform === 'darwin')\")",
+    "runtime_link%": "<!(node -p \"(process.env.RUNTIME_LINK && process.env.RUNTIME_LINK.length > 0) ? process.env.RUNTIME_LINK : (process.platform === 'linux' || process.platform === 'darwin' ? 'shared' : 'static')\")",
     "enable_thread_support%": "<!(node -p \"process.env.ENABLE_THREAD_SUPPORT || 'yes'\")",
     "xz_vendor_dir": "<(module_root_dir)/deps/xz",
     "py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
