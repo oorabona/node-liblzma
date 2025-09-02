@@ -231,15 +231,23 @@
             "conditions": [
               ["runtime_link == 'static'", {
                 "libraries": [
-                  "<(liblzma_install_dir)/lib/liblzma.lib",
-                  "kernel32.lib"
+                  "<(liblzma_install_dir)/lib/liblzma.lib"
                 ],
-                "defines": ["LZMA_API_STATIC"]
+                "defines": ["LZMA_API_STATIC"],
+                "msvs_settings": {
+                  "VCLinkerTool": {
+                    "AdditionalDependencies": ["kernel32.lib", "msvcrt.lib"]
+                  }
+                }
               }, {
                 "libraries": [
-                  "<(liblzma_install_dir)/lib/liblzma.lib",
-                  "kernel32.lib"
-                ]
+                  "<(liblzma_install_dir)/lib/liblzma.lib"
+                ],
+                "msvs_settings": {
+                  "VCLinkerTool": {
+                    "AdditionalDependencies": ["kernel32.lib", "msvcrt.lib"]
+                  }
+                }
               }]
             ]
           }]
