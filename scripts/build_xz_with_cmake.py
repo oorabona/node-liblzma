@@ -61,10 +61,10 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     # Platform-specific configuration
     system = platform.system()
     
-    # Threading support - let XZ autodetect best method
+    # Threading support - XZ 5.6+ has full XZ_THREADS support
     if enable_threads.lower() in ['yes', 'true', '1']:
         cmake_args.append('-DXZ_THREADS=yes')
-        print("[THREAD] Threading support: enabled (XZ_THREADS=yes - autodetect)")
+        print("[THREAD] Threading support: enabled (XZ_THREADS=yes)")
     else:
         cmake_args.append('-DXZ_THREADS=no')
         print("[THREAD] Threading support: disabled (XZ_THREADS=no)")
@@ -72,13 +72,7 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     if system == "Windows":
         # Use Visual Studio generator for Windows builds (supports -A x64)
         cmake_args.extend(['-G', 'Visual Studio 17 2022', '-A', 'x64'])
-        # Force Windows threading detection
-        if enable_threads.lower() in ['yes', 'true', '1']:
-            cmake_args.extend([
-                '-DCMAKE_USE_WIN32_THREADS_INIT=ON',
-                '-DCMAKE_USE_PTHREADS_INIT=OFF'
-            ])
-        print("[BUILD] Windows x64 build configuration with threading")
+        print("[BUILD] Windows x64 build configuration")
     elif system == "Darwin":
         # macOS specific optimizations
         cmake_args.extend([
