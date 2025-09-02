@@ -38,21 +38,12 @@
 
     /* Node.js specific */
     "types": ["node", "vitest"],
-    
+
     /* Emit */
     "noEmitOnError": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "lib",
-    "build",
-    "test",
-    "**/*.coffee",
-    "**/*.d.ts"
-  ],
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "lib", "build", "test", "**/*.coffee", "**/*.d.ts"],
   "ts-node": {
     "esm": true
   }
