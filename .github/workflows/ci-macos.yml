@@ -11,10 +11,13 @@ on:
       - "releases/**"
     tags-ignore:
       - "v[0-9]+.[0-9]+.[0-9]+"
-  pull_request:
-    branches:
-      - master
-      - "releases/**"
+  workflow_call:
+    inputs:
+      cache-prefix:
+        description: 'Cache prefix for isolation'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -45,15 +48,41 @@ jobs:
           node-version: ${{ matrix.node }}
           architecture: x64
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ inputs.cache-prefix }}${{ runner.os }}-ccache-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}
+          max-size: 500M
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/pnpm/store
+          key: ${{ inputs.cache-prefix }}${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup xz deps cache
+        if: ${{ !matrix.use_global_liblzma }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            build/liblzma
+          key: ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ hashFiles('scripts/download_extract_deps.py') }}
+          restore-keys: |
+            ${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+          CC: ccache clang
+          CXX: ccache clang++
       - name: Build
         run: pnpm run build
       - name: Lint
+        if: ${{ matrix.node == '20' && matrix.runtime_link == 'static' && matrix.use_global_liblzma == false }}
         run: pnpm run check
       - name: Test
         run: pnpm test
@@ -126,11 +155,13 @@ jobs:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+          CC: ccache clang
+          CXX: ccache clang++
       - name: Build
         if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
         run: pnpm run build
       - name: Lint
-        if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"
+        if: ${{ matrix.node == '20' && matrix.runtime_link == 'static' && matrix.use_global_liblzma == false && (!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')) }}
         run: pnpm run check
       - name: Test
         if: "!matrix.use_global_liblzma || (matrix.runtime_link == 'static' && needs.check.outputs.static-has-mt != 'false') || (matrix.runtime_link == 'shared' && needs.check.outputs.shared-has-mt != 'false')"

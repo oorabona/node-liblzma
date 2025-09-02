@@ -1,0 +1,54 @@
+name: Full CI Matrix
+on:
+  push:
+    branches:
+      - master
+      - "releases/**"
+  schedule:
+    # Run full CI nightly to catch issues early
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      run-full-matrix:
+        description: 'Run full test matrix'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    uses: ./.github/workflows/ci-linux.yml
+    with:
+      cache-prefix: 'full-'
+    
+  macos:
+    uses: ./.github/workflows/ci-macos.yml  
+    with:
+      cache-prefix: 'full-'
+      
+  windows:
+    uses: ./.github/workflows/ci-windows.yml
+    with:
+      cache-prefix: 'full-'
+      
+  summary:
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux: ${{ needs.linux.result }}" >> $GITHUB_STEP_SUMMARY  
+          echo "- macOS: ${{ needs.macos.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: ${{ needs.windows.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.linux.result }}" == "success" && "${{ needs.macos.result }}" == "success" && "${{ needs.windows.result }}" == "success" ]]; then
+            echo "✅ All platforms passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some platforms failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

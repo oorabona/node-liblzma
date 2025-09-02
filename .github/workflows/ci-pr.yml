@@ -1,39 +1,25 @@
-name: Test on Windows
+name: PR Smoke Tests
 on:
-  push:
-    paths:
-      - "**"
-      - "!*.md"
-      - "!.github"
-      - ".github/workflows/ci-windows.yml"
+  pull_request:
     branches:
       - master
       - "releases/**"
-    tags-ignore:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-  workflow_call:
-    inputs:
-      cache-prefix:
-        description: 'Cache prefix for isolation'
-        required: false
-        type: string
-        default: ''
 
 permissions:
   contents: read
+
 jobs:
-  test:
+  smoke-test:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
-        node: [18, 20, 22]
-        runtime_link: [static, shared]
-        # This OS does not have the ability to install liblzma globally
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20]
+        runtime_link: [static]
         use_global_liblzma: [false]
-        enable_threads: [yes, no]
+        enable_threads: [no]
     runs-on: ${{ matrix.os }}
-    name: Node ${{ matrix.node }} on ${{ matrix.os }} / System Xz ? ${{ matrix.use_global_liblzma }} / Threading enabled ? ${{ matrix.enable_threads }} / Runtime is ${{ matrix.runtime_link }}
+    name: Smoke test on ${{ matrix.os }} / Node ${{ matrix.node }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,12 +36,22 @@ jobs:
           architecture: x64
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
+      - name: Setup ccache (Linux/macOS)
+        if: ${{ runner.os != 'Windows' }}
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: pr-${{ runner.os }}-ccache-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}
+          max-size: 200M
       - name: Setup pnpm store cache
         uses: actions/cache@v4
         with:
-          path: ~\AppData\Local\pnpm\store
-          key: ${{ inputs.cache-prefix }}${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          path: |
+            ~/.local/share/pnpm/store
+            ~/Library/pnpm/store
+            ~\AppData\Local\pnpm\store
+          key: pr-${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
+            pr-${{ runner.os }}-pnpm-store-
             ${{ runner.os }}-pnpm-store-
       - name: Setup xz deps cache
         uses: actions/cache@v4
@@ -63,8 +59,10 @@ jobs:
           path: |
             deps/xz
             deps/xz.tar.xz
-          key: ${{ inputs.cache-prefix }}${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ hashFiles('scripts/download_extract_deps.py') }}
+            build/liblzma
+          key: pr-${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ hashFiles('scripts/download_extract_deps.py') }}
           restore-keys: |
+            pr-${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
             ${{ runner.os }}-xz-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -72,10 +70,13 @@ jobs:
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
           ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+          CC: ${{ runner.os == 'Linux' && 'ccache gcc' || (runner.os == 'macOS' && 'ccache clang' || '') }}
+          CXX: ${{ runner.os == 'Linux' && 'ccache g++' || (runner.os == 'macOS' && 'ccache clang++' || '') }}
       - name: Build
         run: pnpm run build
       - name: Lint
-        if: ${{ matrix.node == '20' && matrix.runtime_link == 'static' && matrix.enable_threads == 'no' }}
         run: pnpm run check
       - name: Test
         run: pnpm test
+      - name: Type check
+        run: pnpm run type-check

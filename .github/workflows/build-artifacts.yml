@@ -1,0 +1,109 @@
+name: Build Artifacts
+on:
+  workflow_call:
+    inputs:
+      upload-artifacts:
+        description: 'Upload build artifacts'
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      artifacts-available:
+        description: 'Whether build artifacts were generated'
+        value: ${{ jobs.build.outputs.artifacts-available }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: macos-latest
+            target: darwin-x64
+          - os: windows-latest
+            target: win32-x64
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.target }}
+    outputs:
+      artifacts-available: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Use node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          architecture: x64
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Setup ccache (Linux/macOS)
+        if: ${{ runner.os != 'Windows' }}
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: build-${{ runner.os }}-ccache
+          max-size: 500M
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            ~/Library/pnpm/store
+            ~\AppData\Local\pnpm\store
+          key: build-${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            build-${{ runner.os }}-pnpm-store-
+      - name: Setup xz deps cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.xz
+            build/liblzma
+          key: build-${{ runner.os }}-xz-${{ hashFiles('scripts/download_extract_deps.py') }}
+          restore-keys: |
+            build-${{ runner.os }}-xz-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          USE_GLOBAL: false
+          RUNTIME_LINK: static
+          ENABLE_THREAD_SUPPORT: yes
+          CC: ${{ runner.os == 'Linux' && 'ccache gcc' || (runner.os == 'macOS' && 'ccache clang' || '') }}
+          CXX: ${{ runner.os == 'Linux' && 'ccache g++' || (runner.os == 'macOS' && 'ccache clang++' || '') }}
+      - name: Build TypeScript
+        run: pnpm run build
+      - name: Prebuild native modules
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            pnpm run prebuildify:win
+          else
+            pnpm run prebuildify
+          fi
+        shell: bash
+      - name: Upload prebuild artifacts
+        if: ${{ inputs.upload-artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilds-${{ matrix.target }}
+          path: prebuilds/
+          retention-days: 7
+      - name: Upload build cache
+        if: ${{ inputs.upload-artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-cache-${{ matrix.target }}
+          path: |
+            lib/
+            build/
+          retention-days: 1
