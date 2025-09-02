@@ -23,7 +23,7 @@ def detect_cmake():
         result = subprocess.run(['cmake', '--version'], 
                               capture_output=True, text=True, check=True)
         version_line = result.stdout.split('\n')[0]
-        print(f"📦 Found {version_line}")
+        print(f"[PACKAGE] Found {version_line}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -61,30 +61,30 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     # Threading support
     if enable_threads.lower() in ['yes', 'true', '1']:
         cmake_args.append('-DENABLE_THREADS=ON')
-        print("🧵 Threading support: enabled")
+        print("[THREAD] Threading support: enabled")
     else:
         cmake_args.append('-DENABLE_THREADS=OFF')
-        print("🧵 Threading support: disabled")
+        print("[THREAD] Threading support: disabled")
     
     # Platform-specific configuration
     system = platform.system()
     if system == "Windows":
         # Set architecture for Windows builds
         cmake_args.extend(['-A', 'x64'])
-        print("🏗️ Windows x64 build configuration")
+        print("[BUILD] Windows x64 build configuration")
     elif system == "Darwin":
         # macOS specific optimizations
         cmake_args.extend([
             '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15'
         ])
-        print("🍎 macOS build configuration")
+        print("[BUILD] macOS build configuration")
     else:
         # Linux and other Unix systems
-        print("🐧 Linux/Unix build configuration")
+        print("[BUILD] Linux/Unix build configuration")
     
     cmake_args.append(source_dir)
     
-    print(f"🔧 Configuring CMake build...")
+    print(f"[CONFIG] Configuring CMake build...")
     print(f"   Source: {source_dir}")
     print(f"   Build: {build_dir}")
     print(f"   Install: {install_dir}")
@@ -92,10 +92,10 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     
     try:
         result = subprocess.run(cmake_args, check=True, cwd=source_dir)
-        print("✅ CMake configuration successful")
+        print("[SUCCESS] CMake configuration successful")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ CMake configuration failed with exit code {e.returncode}")
+        print(f"[ERROR] CMake configuration failed with exit code {e.returncode}")
         return False
 
 def build_cmake(build_dir):
@@ -107,14 +107,14 @@ def build_cmake(build_dir):
         '--parallel'
     ]
     
-    print("🏗️ Building XZ with CMake...")
+    print("[BUILD] Building XZ with CMake...")
     
     try:
         result = subprocess.run(cmake_args, check=True)
-        print("✅ CMake build successful")
+        print("[SUCCESS] CMake build successful")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ CMake build failed with exit code {e.returncode}")
+        print(f"[ERROR] CMake build failed with exit code {e.returncode}")
         return False
 
 def install_cmake(build_dir, install_dir):
@@ -126,17 +126,17 @@ def install_cmake(build_dir, install_dir):
         '--config', 'Release'
     ]
     
-    print(f"📦 Installing to {install_dir}...")
+    print(f"[INSTALL] Installing to {install_dir}...")
     
     # Ensure install directory exists
     os.makedirs(install_dir, exist_ok=True)
     
     try:
         result = subprocess.run(cmake_args, check=True)
-        print("✅ CMake install successful")
+        print("[SUCCESS] CMake install successful")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ CMake install failed with exit code {e.returncode}")
+        print(f"[ERROR] CMake install failed with exit code {e.returncode}")
         return False
 
 def verify_build(install_dir, runtime_link="static"):
@@ -163,10 +163,10 @@ def verify_build(install_dir, runtime_link="static"):
             missing_files.append(file_path)
     
     if missing_files:
-        print(f"⚠️ Warning: Missing expected files: {', '.join(missing_files)}")
+        print(f"[WARNING] Missing expected files: {', '.join(missing_files)}")
         return False
     else:
-        print("✅ Build verification successful - all expected files present")
+        print("[SUCCESS] Build verification successful - all expected files present")
         return True
 
 def main():
@@ -199,23 +199,23 @@ Examples:
     build_dir = os.path.join(source_dir, 'build-cmake')
     
     if args.verbose:
-        print("🔍 Verbose mode enabled")
+        print("[VERBOSE] Verbose mode enabled")
     
     # Validate source directory
     cmake_file = os.path.join(source_dir, 'CMakeLists.txt')
     if not os.path.exists(cmake_file):
-        print(f"❌ Error: CMakeLists.txt not found in {source_dir}")
+        print(f"[ERROR] CMakeLists.txt not found in {source_dir}")
         return 1
     
     # Check CMake availability
     if not detect_cmake():
-        print("❌ Error: CMake not found. Please install CMake to continue.")
+        print("[ERROR] CMake not found. Please install CMake to continue.")
         return 1
     
     # Clean build directory if it exists
     if os.path.exists(build_dir):
         import shutil
-        print(f"🧹 Cleaning existing build directory: {build_dir}")
+        print(f"[CLEAN] Cleaning existing build directory: {build_dir}")
         shutil.rmtree(build_dir)
     
     # Build process
@@ -228,19 +228,19 @@ Examples:
     )
     
     if success:
-        print(f"🎉 XZ build completed successfully!")
+        print(f"[DONE] XZ build completed successfully!")
         print(f"   Libraries installed in: {install_dir}")
         return 0
     else:
-        print("❌ Build failed")
+        print("[ERROR] Build failed")
         return 1
 
 if __name__ == '__main__':
     try:
         sys.exit(main())
     except KeyboardInterrupt:
-        print("\n❌ Interrupted by user")
+        print("\n[ERROR] Interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"[ERROR] Unexpected error: {e}")
         sys.exit(1)

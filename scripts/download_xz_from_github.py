@@ -64,16 +64,16 @@ def determine_version():
     if env_version:
         if env_version.lower() == 'latest':
             version = get_latest_version()
-            print(f"🚀 Using latest XZ version: {version}")
+            print(f"[LAUNCH] Using latest XZ version: {version}")
             return version
         else:
-            print(f"🎯 Using XZ version from environment: {env_version}")
+            print(f"[TARGET] Using XZ version from environment: {env_version}")
             return env_version
     
     # 2. Repository configuration file
     config = load_version_config()
     configured_version = config.get('version', 'v5.4.0')
-    print(f"📋 Using configured XZ version: {configured_version}")
+    print(f"[CONFIG] Using configured XZ version: {configured_version}")
     return configured_version
 
 def validate_version(version):
@@ -101,24 +101,24 @@ def get_tarball_url(version):
 
 def download_tarball(url, tarball_path):
     """Download tarball from GitHub with proper user agent"""
-    print(f"📥 Downloading from: {url}")
+    print(f"[DOWNLOAD] Downloading from: {url}")
     headers = {'User-Agent': 'node-liblzma'}
     req = urllib.request.Request(url, headers=headers)
     
     with urllib.request.urlopen(req) as response:
         # GitHub redirects to the actual download URL
         final_url = response.geturl()
-        print(f"📦 Resolved to: {final_url}")
+        print(f"[PACKAGE] Resolved to: {final_url}")
         
         with urllib.request.urlopen(final_url) as final_response:
             with open(tarball_path, 'wb') as f:
                 data = final_response.read()
                 f.write(data)
-                print(f"✅ Downloaded {len(data)} bytes to {tarball_path}")
+                print(f"[SUCCESS] Downloaded {len(data)} bytes to {tarball_path}")
 
 def extract_tarball(tarball_path, extract_dir):
     """Extract tarball and rename root directory to 'xz'"""
-    print(f"📂 Extracting to {extract_dir}/xz")
+    print(f"[EXTRACT] Extracting to {extract_dir}/xz")
     
     with tarfile.open(tarball_path, 'r:gz') as tfile:
         members = tfile.getmembers()
@@ -127,7 +127,7 @@ def extract_tarball(tarball_path, extract_dir):
         
         # GitHub creates directories like "tukaani-project-xz-{commit_hash}"
         root_dir = members[0].name.split('/')[0]
-        print(f"📁 Root directory: {root_dir}")
+        print(f"[DIR] Root directory: {root_dir}")
         
         # Extract all members, renaming root directory to 'xz'
         for member in members:
@@ -140,7 +140,7 @@ def extract_tarball(tarball_path, extract_dir):
                 # Fallback for Python versions that don't support filter parameter
                 tfile.extract(member, extract_dir)
         
-        print(f"✅ Successfully extracted XZ to {extract_dir}/xz")
+        print(f"[SUCCESS] Successfully extracted XZ to {extract_dir}/xz")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -167,7 +167,7 @@ Examples:
     args = parser.parse_args()
     
     if args.verbose:
-        print("🔍 Verbose mode enabled")
+        print("[VERBOSE] Verbose mode enabled")
     
     # Determine version to use
     version = determine_version()
@@ -175,7 +175,7 @@ Examples:
     # Validate version exists
     validated_version = validate_version(version)
     if not validated_version:
-        print(f"❌ Version {version} not found, falling back to v5.4.0")
+        print(f"[ERROR] Version {version} not found, falling back to v5.4.0")
         validated_version = 'v5.4.0'
     
     # Prepare paths
@@ -185,7 +185,7 @@ Examples:
     # Ensure we're using .tar.gz extension (GitHub uses gzip, not xz)
     if tarball.endswith('.tar.xz'):
         tarball = tarball.replace('.tar.xz', '.tar.gz')
-        print(f"📝 Adjusted tarball name to: {tarball}")
+        print(f"[NOTE] Adjusted tarball name to: {tarball}")
     
     # Create directories if needed
     os.makedirs(os.path.dirname(tarball), exist_ok=True)
@@ -193,7 +193,7 @@ Examples:
     
     # Download if not cached
     if os.path.exists(tarball):
-        print(f"♻️ Using cached tarball: {tarball}")
+        print(f"[CACHED] Using cached tarball: {tarball}")
     else:
         url = get_tarball_url(validated_version)
         download_tarball(url, tarball)
@@ -201,15 +201,15 @@ Examples:
     # Extract
     extract_tarball(tarball, dirname)
     
-    print(f"🎉 Successfully prepared XZ {validated_version}")
+    print(f"[DONE] Successfully prepared XZ {validated_version}")
     return 0
 
 if __name__ == '__main__':
     try:
         sys.exit(main())
     except KeyboardInterrupt:
-        print("\\n❌ Interrupted by user")
+        print("\\n[ERROR] Interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[ERROR] Error: {e}")
         sys.exit(1)
