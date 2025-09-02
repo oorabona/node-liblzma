@@ -16,8 +16,8 @@
 	* along with this program. If not, see <https://www.gnu.org/licenses/>.
 	**/
 
-#include "node-liblzma.hpp"
 #include <node_buffer.h>
+#include "node-liblzma.hpp"
 
 Napi::Value LZMA::Close(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
