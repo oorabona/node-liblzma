@@ -183,8 +183,10 @@
                 "inputs": ["<(liblzma_install_dir)/bin/liblzma.dll"],
                 "outputs": ["<(target_dir)/Release/liblzma.dll"],
                 "action": [
-                  "powershell", "-Command", 
-                  "Copy-Item '<(liblzma_install_dir)\\bin\\liblzma.dll' '<(target_dir)\\Release\\' -Force"
+                  "<(py3)",
+                  "<(module_root_dir)/scripts/copy_dll.py",
+                  "<(liblzma_install_dir)/bin/liblzma.dll",
+                  "<(target_dir)/Release"
                 ]
               }]
             }]
