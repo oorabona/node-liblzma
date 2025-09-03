@@ -42,7 +42,7 @@ public:
 	static void Init(Napi::Env env, Napi::Object exports);
 
 	explicit LZMA(const Napi::CallbackInfo& info);
-	~LZMA() = default;
+	~LZMA();
 
   Napi::Value Close(const Napi::CallbackInfo &info);
   Napi::Value Close(const Napi::Env &env);
@@ -54,10 +54,14 @@ public:
 	static void After(Napi::Env env, LZMA* obj /*, int status */);
 	static Napi::Value AfterSync(const Napi::CallbackInfo &info, LZMA* obj);
 
+	// Allow LZMAWorker access to private members
+	friend class LZMAWorker;
+
 private:
 	lzma_stream _stream;
 	bool _wip;
 	bool _pending_close;
+	bool _callback_scheduled;
 
   LZMAWorker* _worker;
 
@@ -69,7 +73,10 @@ private:
 
 class LZMAWorker : public Napi::AsyncWorker {
 	public:
-		LZMAWorker(Napi::Env env, LZMA* instance) : AsyncWorker(env), lzma(instance) { }
+		LZMAWorker(Napi::Env env, LZMA* instance) : AsyncWorker(env), lzma(instance) {
+			// Set work in progress flag when worker is created
+			lzma->_wip = true;
+		}
 		~LZMAWorker() = default;
 
 		void Execute() {
@@ -81,6 +88,7 @@ class LZMAWorker : public Napi::AsyncWorker {
 		}
 		void OnError(const Napi::Error& e) {
 			Napi::HandleScope scope(Env());
+			// Even on error, call After to clean up properly
 			LZMA::After(Env(), this->lzma);
 		}
 

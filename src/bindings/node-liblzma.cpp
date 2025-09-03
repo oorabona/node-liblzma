@@ -58,7 +58,7 @@ void LZMA::Init(Napi::Env env, Napi::Object exports) {
 }
 
 LZMA::LZMA(const Napi::CallbackInfo& info) : Napi::ObjectWrap<LZMA>(info), _stream(LZMA_STREAM_INIT),
-	_wip(false), _pending_close(false), _worker(nullptr)
+	_wip(false), _pending_close(false), _callback_scheduled(false), _worker(nullptr), filters(nullptr)
 {
 	Napi::Env env = info.Env();
 
@@ -121,6 +121,8 @@ LZMA::LZMA(const Napi::CallbackInfo& info) : Napi::ObjectWrap<LZMA>(info), _stre
 	for(uint32_t i = 0; i < filters_len; ++i) {
 		Napi::Value filter = filters_handle.Get(i);
 		if (!filter.IsNumber()) {
+			delete[] this->filters;
+			this->filters = nullptr;
 			Napi::Error::New(env, "Filter must be an integer").ThrowAsJavaScriptException();
 			return;
 		}
@@ -145,7 +147,9 @@ LZMA::LZMA(const Napi::CallbackInfo& info) : Napi::ObjectWrap<LZMA>(info), _stre
 		case STREAM_ENCODE: {
 			Napi::Value optsThreads = opts.Get("threads");
 			if (!optsThreads.IsNumber()) {
-				Napi::Error::New(env, "Threads must be an integer");
+				delete[] this->filters;
+				this->filters = nullptr;
+				Napi::Error::New(env, "Threads must be an integer").ThrowAsJavaScriptException();
 				return;
 			}
 
@@ -181,11 +185,35 @@ LZMA::LZMA(const Napi::CallbackInfo& info) : Napi::ObjectWrap<LZMA>(info), _stre
 	}
 
 	if (ret != LZMA_OK) {
-		Napi::Error::New(env, "LZMA failure, returned " + std::to_string(ret));
+		delete[] this->filters;
+		this->filters = nullptr;
+		Napi::Error::New(env, "LZMA failure, returned " + std::to_string(ret)).ThrowAsJavaScriptException();
 		return;
 	}
 
 	Napi::MemoryManagement::AdjustExternalMemory(env, sizeof(LZMA));
+}
+
+LZMA::~LZMA() {
+	// Ensure no pending callbacks
+	if (_callback_scheduled) {
+		_callback.Reset();
+		_callback_scheduled = false;
+	}
+	
+	// Cleanup worker if still active
+	if (_worker != nullptr) {
+		_worker = nullptr; // Worker will clean itself up
+	}
+	
+	// Cleanup dynamically allocated filter array
+	if (filters != nullptr) {
+		delete[] filters;
+		filters = nullptr;
+	}
+	
+	// Ensure LZMA stream is properly cleaned up
+	lzma_end(&_stream);
 }
 
 /**<
@@ -270,6 +298,7 @@ Napi::Value LZMA::Code(const Napi::CallbackInfo &info) {
 	// Only if async mode is enabled shall we need a callback function
 	if(async) {
 		this->_callback = Napi::Persistent(info[6].As<Napi::Function>());
+		this->_callback_scheduled = true;
 	}
 
 	this->_stream.next_in = in;
@@ -282,6 +311,8 @@ Napi::Value LZMA::Code(const Napi::CallbackInfo &info) {
 		this->_worker = new LZMAWorker(env, this);
 		this->_worker->Queue();
 	} else {
+		// Ensure _wip is properly set for sync operations
+		this->_wip = true;
 		Process(this);
 		return AfterSync(info, this);
 	}
@@ -293,19 +324,35 @@ Napi::Value LZMA::Code(const Napi::CallbackInfo &info) {
 
 void LZMA::Process(LZMA* obj) {
 	// the real work is done here :)
-	obj->_wip = true;
+	// Note: _wip should already be set by the caller
 	obj->_ret = lzma_code(&(obj->_stream), obj->_action);
 }
 
 void LZMA::After(Napi::Env env, LZMA* obj /*, int status */) {
+	// Check if callback is still valid (object might have been destroyed)
+	if (!obj->_callback_scheduled) {
+		return;
+	}
 
 	Napi::Number ret_code = Napi::Number::New(env, obj->_ret);
 	Napi::Number avail_in = Napi::Number::New(env, obj->_stream.avail_in);
 	Napi::Number avail_out = Napi::Number::New(env, obj->_stream.avail_out);
 
+	// Clear async state atomically
 	obj->_wip = false;
+	obj->_callback_scheduled = false;
+	obj->_worker = nullptr;
 
-	obj->_callback.Call({ ret_code, avail_in, avail_out });
+	// Call the JavaScript callback
+	try {
+		obj->_callback.Call({ ret_code, avail_in, avail_out });
+	} catch (const Napi::Error& e) {
+		// If callback throws, still need to clean up
+		(void)e; // Suppress unused variable warning
+	}
+
+	// Reset callback reference
+	obj->_callback.Reset();
 
 	obj->Unref();
 
