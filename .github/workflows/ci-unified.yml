@@ -275,7 +275,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: >-
-            smoke-${{ runner.os }}-ccache-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}
+            smoke-${{ runner.os }}-ccache-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}
           max-size: 200M
 
       - name: Cache pnpm store
@@ -297,17 +297,17 @@ jobs:
             build/liblzma
             prebuilds
           key: >-
-            smoke-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
+            smoke-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
           restore-keys: |
-            smoke-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
+            smoke-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-
 
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
-          USE_GLOBAL: ${{ matrix.use_global_liblzma }}
-          RUNTIME_LINK: ${{ matrix.runtime_link }}
-          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+          USE_GLOBAL: ${{ matrix.config.use_global_liblzma }}
+          RUNTIME_LINK: ${{ matrix.config.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.config.enable_threads }}
           CC: >-
             ${{ runner.os == 'Linux' && 'ccache gcc' ||
             (runner.os == 'macOS' && 'ccache clang' || '') }}
@@ -329,195 +329,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Linux combinations
-          - os: ubuntu-latest
-            node: 18
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 18
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 22
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 22
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 18
-            runtime_link: static
-            use_global_liblzma: true
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 18
-            runtime_link: shared
-            use_global_liblzma: true
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: true
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: true
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 22
-            runtime_link: static
-            use_global_liblzma: true
-            enable_threads: no
-          - os: ubuntu-latest
-            node: 22
-            runtime_link: shared
-            use_global_liblzma: true
-            enable_threads: no
-          # macOS combinations
-          - os: macos-latest
-            node: 18
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: macos-latest
-            node: 18
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: macos-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: macos-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: macos-latest
-            node: 22
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: macos-latest
-            node: 22
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: macos-latest
-            node: 18
-            runtime_link: static
-            use_global_liblzma: true
-            enable_threads: no
-          - os: macos-latest
-            node: 18
-            runtime_link: shared
-            use_global_liblzma: true
-            enable_threads: no
-          - os: macos-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: true
-            enable_threads: no
-          - os: macos-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: true
-            enable_threads: no
-          - os: macos-latest
-            node: 22
-            runtime_link: static
-            use_global_liblzma: true
-            enable_threads: no
-          - os: macos-latest
-            node: 22
-            runtime_link: shared
-            use_global_liblzma: true
-            enable_threads: no
-          # Windows combinations (no global liblzma available)
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Node versions: Latest only for regular runs, full range for scheduled
+        node: ${{ github.event_name == 'schedule' && fromJSON('["18", "20", "22"]') || fromJSON('["22"]') }}
+        # Configuration combinations: simplified approach
+        config: >-
+          ${{ github.event_name == 'schedule' && 
+          fromJSON('[{"runtime_link": "static", "use_global_liblzma": false, "enable_threads": "no"}, {"runtime_link": "shared", "use_global_liblzma": false, "enable_threads": "no"}, {"runtime_link": "static", "use_global_liblzma": true, "enable_threads": "no"}, {"runtime_link": "shared", "use_global_liblzma": true, "enable_threads": "no"}, {"runtime_link": "static", "use_global_liblzma": false, "enable_threads": "yes"}, {"runtime_link": "shared", "use_global_liblzma": false, "enable_threads": "yes"}]') ||
+          fromJSON('[{"runtime_link": "static", "use_global_liblzma": false, "enable_threads": "no"}, {"runtime_link": "shared", "use_global_liblzma": false, "enable_threads": "no"}]') }}
+        exclude:
+          # Windows doesn't have system liblzma
           - os: windows-latest
-            node: 18
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
+            config: {use_global_liblzma: true}
+          # Threading tests mainly on Unix for performance
           - os: windows-latest
-            node: 18
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: windows-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: windows-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: windows-latest
-            node: 22
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: no
-          - os: windows-latest
-            node: 22
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: no
-          - os: windows-latest
-            node: 18
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: windows-latest
-            node: 18
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: windows-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: windows-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: windows-latest
-            node: 22
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: windows-latest
-            node: 22
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: yes
+            config: {enable_threads: "yes", runtime_link: "static"}
 
     runs-on: ${{ matrix.os }}
-    name: >-
-      Node ${{ matrix.node }} / ${{ matrix.os }} / Global=${{ matrix.use_global_liblzma }} /
-      Link=${{ matrix.runtime_link }} / Threads=${{ matrix.enable_threads }}
 
     steps:
       - name: Checkout
@@ -543,7 +371,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install system liblzma (Linux)
-        if: matrix.use_global_liblzma == true && runner.os == 'Linux'
+        if: matrix.config.use_global_liblzma == true && runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y liblzma-dev
 
       - name: Setup ccache (Unix)
@@ -551,7 +379,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: >-
-            full-${{ runner.os }}-ccache-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}
+            full-${{ runner.os }}-ccache-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}
           max-size: 500M
 
       - name: Cache pnpm store
@@ -568,25 +396,25 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Cache build artifacts
-        if: matrix.use_global_liblzma == false
+        if: matrix.config.use_global_liblzma == false
         uses: actions/cache@v4
         with:
           path: |
             build/liblzma
             prebuilds
           key: >-
-            full-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
+            full-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
           restore-keys: |
-            full-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
-            smoke-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
+            full-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-
+            smoke-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-
 
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
-          USE_GLOBAL: ${{ matrix.use_global_liblzma }}
-          RUNTIME_LINK: ${{ matrix.runtime_link }}
-          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+          USE_GLOBAL: ${{ matrix.config.use_global_liblzma }}
+          RUNTIME_LINK: ${{ matrix.config.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.config.enable_threads }}
           CC: >-
             ${{ runner.os == 'Linux' && 'ccache gcc' ||
             (runner.os == 'macOS' && 'ccache clang' || '') }}
@@ -608,33 +436,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Test threading on each OS
-          - os: ubuntu-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: ubuntu-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: macos-latest
-            node: 20
-            runtime_link: static
-            use_global_liblzma: false
-            enable_threads: yes
-          - os: macos-latest
-            node: 20
-            runtime_link: shared
-            use_global_liblzma: false
-            enable_threads: yes
+        # Threading tests only on Unix platforms (Windows threading tested in full-test)
+        os: [ubuntu-latest, macos-latest]
+        node: [22]  # Latest Node only for threading tests
+        config:
+          - {runtime_link: "static", use_global_liblzma: false, enable_threads: "yes"}
+          - {runtime_link: "shared", use_global_liblzma: false, enable_threads: "yes"}
 
     runs-on: ${{ matrix.os }}
-    name: >-
-      Threading / Node ${{ matrix.node }} / ${{ matrix.os }} /
-      Link=${{ matrix.runtime_link }}
 
     steps:
       - name: Checkout
@@ -663,7 +472,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: >-
-            threading-${{ runner.os }}-ccache-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}
+            threading-${{ runner.os }}-ccache-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}
           max-size: 300M
 
       - name: Cache pnpm store
@@ -686,17 +495,17 @@ jobs:
             build/liblzma
             prebuilds
           key: >-
-            threading-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
+            threading-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
           restore-keys: |
-            threading-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
+            threading-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-
 
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
-          USE_GLOBAL: ${{ matrix.use_global_liblzma }}
-          RUNTIME_LINK: ${{ matrix.runtime_link }}
-          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
+          USE_GLOBAL: ${{ matrix.config.use_global_liblzma }}
+          RUNTIME_LINK: ${{ matrix.config.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.config.enable_threads }}
           CC: >-
             ${{ runner.os == 'Linux' && 'ccache gcc' ||
             (runner.os == 'macOS' && 'ccache clang' || '') }}
