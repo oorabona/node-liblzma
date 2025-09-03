@@ -86,6 +86,7 @@ lib
 .plz
 *.gz
 core
+*.log
 
 # Deps
 deps/*
