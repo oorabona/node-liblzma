@@ -107,14 +107,16 @@ export abstract class XzStream extends Transform {
   constructor(streamMode: number, opts: LZMAOptions = {}, options?: TransformOptions) {
     super(options);
 
+    // Use spread operator for shallow clone, with explicit filter array cloning
     this._opts = {
-      check: opts.check ?? check.NONE,
-      preset: opts.preset ?? preset.DEFAULT,
-      filters: opts.filters ? [...opts.filters] : [filter.LZMA2], // Clone the filters array
-      mode: opts.mode ?? mode.NORMAL,
-      threads: opts.threads ?? 1,
-      chunkSize: opts.chunkSize ?? liblzma.BUFSIZ,
-      flushFlag: opts.flushFlag ?? liblzma.LZMA_RUN,
+      check: check.NONE,
+      preset: preset.DEFAULT,
+      mode: mode.NORMAL,
+      threads: 1,
+      chunkSize: liblzma.BUFSIZ,
+      flushFlag: liblzma.LZMA_RUN,
+      ...opts, // Override defaults with user options
+      filters: opts.filters ? [...opts.filters] : [filter.LZMA2], // Clone filters array to prevent mutation
     };
 
     this._chunkSize = this._opts.chunkSize;
