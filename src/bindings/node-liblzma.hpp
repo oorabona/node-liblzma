@@ -27,9 +27,14 @@
 #include <napi.h>
 
 #include <sstream>
+#include <memory>
+#include <functional>
 
 constexpr unsigned int STREAM_ENCODE = 0;
 constexpr unsigned int STREAM_DECODE = 1;
+constexpr int SYNC_PARAM_COUNT = 6;
+constexpr int ASYNC_PARAM_COUNT = 7;
+
 #ifdef ENABLE_THREAD_SUPPORT
 constexpr bool HAS_THREADS_SUPPORT = true;
 #else
@@ -58,6 +63,29 @@ public:
 	friend class LZMAWorker;
 
 private:
+	// Buffer preparation and validation
+	struct BufferContext
+	{
+		const uint8_t *in;
+		uint8_t *out;
+		size_t in_len, out_len, in_off, out_off;
+	};
+
+	template <bool async>
+	bool ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferContext &ctx);
+
+	Napi::Value StartAsyncWork(const Napi::CallbackInfo &info);
+	Napi::Value ExecuteSyncWork(const Napi::CallbackInfo &info);
+
+	// Constructor helpers
+	bool ValidateConstructorArgs(const Napi::CallbackInfo &info, uint32_t &mode, Napi::Object &opts);
+	bool InitializeFilters(const Napi::Object &opts, uint32_t preset);
+	bool InitializeEncoder(const Napi::Object &opts, uint32_t preset, lzma_check check);
+	bool InitializeDecoder();
+
+	// Common cleanup operations for both sync and async completion
+	void AfterCommon(const Napi::Env &env);
+
 	// Unified completion helpers (overloaded):
 	// - After(env): builds result array, marks done, cleans up, returns array (sync path)
 	// - After(env, cb): builds result array, marks done, calls cb, then cleans up (async path)
@@ -72,7 +100,7 @@ private:
 
 	lzma_action _action;
 	lzma_ret _ret;
-	lzma_filter *filters;
+	std::unique_ptr<lzma_filter[]> filters;
 	// Persist LZMA2 options referenced by filters to avoid dangling pointer
 	lzma_options_lzma _opt_lzma2;
 
@@ -111,8 +139,6 @@ public:
 
 private:
 	LZMA *lzma;
-
-    // No DeliverWithCode here; delegated to LZMA
 };
 
 #endif // NODE_LIBLZMA_H

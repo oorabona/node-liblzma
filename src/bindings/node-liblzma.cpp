@@ -61,33 +61,25 @@ void LZMA::Init(Napi::Env env, Napi::Object exports)
 }
 
 LZMA::LZMA(const Napi::CallbackInfo &info) : Napi::ObjectWrap<LZMA>(info), _stream(LZMA_STREAM_INIT),
-											 _wip(false), _pending_close(false), _worker(nullptr), filters(nullptr)
+											 _wip(false), _pending_close(false), _worker(nullptr)
 {
 	Napi::Env env = info.Env();
 
-	if (info.Length() != 2)
+	// Validate constructor arguments
+	uint32_t mode;
+	Napi::Object opts;
+	if (!ValidateConstructorArgs(info, mode, opts))
 	{
-		Napi::TypeError::New(env, "Wrong number of arguments, expected mode(int) and opts(object)").ThrowAsJavaScriptException();
 		return;
 	}
 
-	uint32_t mode = info[0].ToNumber().Uint32Value();
-
-	if (!info[1].IsObject())
-	{
-		Napi::TypeError::New(env, "Expected object as second argument").ThrowAsJavaScriptException();
-		return;
-	}
-
-	Napi::Object opts = info[1].ToObject();
-
+	// Validate and extract options
 	Napi::Value optsCheck = opts.Get("check");
 	if (!optsCheck.IsNumber())
 	{
 		Napi::TypeError::New(env, "Expected 'check' to be an integer").ThrowAsJavaScriptException();
 		return;
 	}
-
 	lzma_check check = static_cast<lzma_check>(optsCheck.ToNumber().Uint32Value());
 
 	Napi::Value optsPreset = opts.Get("preset");
@@ -96,126 +88,35 @@ LZMA::LZMA(const Napi::CallbackInfo &info) : Napi::ObjectWrap<LZMA>(info), _stre
 		Napi::TypeError::New(env, "Expected 'preset' to be an integer").ThrowAsJavaScriptException();
 		return;
 	}
-
 	uint32_t preset = optsPreset.ToNumber().Uint32Value();
 
-	Napi::Value optsFilters = opts.Get("filters");
-	if (!optsFilters.IsArray())
+	// Initialize filters
+	if (!InitializeFilters(opts, preset))
 	{
-		Napi::TypeError::New(env, "Expected 'filters' to be an array").ThrowAsJavaScriptException();
 		return;
 	}
 
-	Napi::Array filters_handle = optsFilters.As<Napi::Array>();
-
-	uint32_t filters_len = filters_handle.Length();
-
-	// We will need to add LZMA_VLI_UNKNOWN after, so user defined filters may
-	// not exceed LZMA_FILTERS_MAX - 1.
-	if (filters_len > LZMA_FILTERS_MAX - 1)
-	{
-		Napi::RangeError::New(env, "More filters than allowed maximum").ThrowAsJavaScriptException();
-		return;
-	}
-
-	// Initialize persistent LZMA2 options from preset
-	if (lzma_lzma_preset(&this->_opt_lzma2, preset))
-	{
-		Napi::Error::New(env, "Unsupported preset, possibly a bug").ThrowAsJavaScriptException();
-		return;
-	}
-
-	// Add extra slot for LZMA_VLI_UNKNOWN.
-	this->filters = new lzma_filter[filters_len + 1];
-
-	for (uint32_t i = 0; i < filters_len; ++i)
-	{
-		Napi::Value filter = filters_handle.Get(i);
-		if (!filter.IsNumber())
-		{
-			delete[] this->filters;
-			this->filters = nullptr;
-			Napi::Error::New(env, "Filter must be an integer").ThrowAsJavaScriptException();
-			return;
-		}
-
-		uint64_t current = filter.ToNumber().Uint32Value();
-		this->filters[i].id = current;
-		if (current == LZMA_FILTER_LZMA2)
-		{
-			this->filters[i].options = &this->_opt_lzma2;
-		}
-		else
-		{
-			this->filters[i].options = nullptr;
-		}
-	}
-
-	this->filters[filters_len] = {.id = LZMA_VLI_UNKNOWN, .options = nullptr};
-
-	lzma_ret ret;
+	// Initialize encoder or decoder based on mode
+	bool success = false;
 	switch (mode)
 	{
 	case STREAM_DECODE:
-	{
-		// For decoding, the third parameter is flags (e.g., LZMA_CONCATENATED), not the check enum.
-		// Enable LZMA_CONCATENATED by default to properly decode .xz files and trailing concatenated streams.
-		ret = lzma_stream_decoder(&this->_stream, UINT64_MAX, LZMA_CONCATENATED);
+		success = InitializeDecoder();
 		break;
-	}
 	case STREAM_ENCODE:
-	{
-		Napi::Value optsThreads = opts.Get("threads");
-		if (!optsThreads.IsNumber())
-		{
-			delete[] this->filters;
-			this->filters = nullptr;
-			Napi::Error::New(env, "Threads must be an integer").ThrowAsJavaScriptException();
-			return;
-		}
-
-#ifdef ENABLE_THREAD_SUPPORT
-		unsigned int threads = optsThreads.ToNumber().Uint32Value();
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-
-		lzma_mt mt = {
-			.flags = 0,
-			.threads = threads,
-			.block_size = 0,
-			.timeout = 0,
-			.preset = preset,
-			.filters = this->filters,
-			.check = check,
-		};
-
-#pragma GCC diagnostic pop
-
-		if (threads > 1)
-		{
-			ret = lzma_stream_encoder_mt(&this->_stream, &mt);
-		}
-		else
-		{
-			ret = lzma_stream_encoder(&this->_stream, this->filters, check);
-		}
-#else
-		ret = lzma_stream_encoder(&this->_stream, this->filters, check);
-#endif
+		success = InitializeEncoder(opts, preset, check);
 		break;
-	}
 	default:
-		ret = LZMA_OPTIONS_ERROR;
-	}
-
-	if (ret != LZMA_OK)
-	{
-		delete[] this->filters;
-		this->filters = nullptr;
-		Napi::Error::New(env, "LZMA failure, returned " + std::to_string(ret)).ThrowAsJavaScriptException();
+		Napi::Error::New(env, "Invalid stream mode").ThrowAsJavaScriptException();
 		return;
 	}
 
+	if (!success)
+	{
+		return;
+	}
+
+	// Register external memory
 	Napi::MemoryManagement::AdjustExternalMemory(env, sizeof(LZMA));
 }
 
@@ -233,12 +134,8 @@ LZMA::~LZMA()
 		_worker = nullptr; // Worker will clean itself up
 	}
 
-	// Cleanup dynamically allocated filter array
-	if (filters != nullptr)
-	{
-		delete[] filters;
-		filters = nullptr;
-	}
+	// Smart pointer will automatically cleanup filter array
+	// filters.reset() is called automatically
 
 	// Ensure LZMA stream is properly cleaned up
 	lzma_end(&_stream);
@@ -264,124 +161,34 @@ LZMA::~LZMA()
 template <bool async>
 Napi::Value LZMA::Code(const Napi::CallbackInfo &info)
 {
-	Napi::Env env = info.Env();
-
-	// Validate parameters first, before taking references
-	if (info.Length() != 6 + (int)async)
-	{
-		Napi::Error::New(env, "BUG?: LZMA::Code requires all these arguments: "
-							  "flushFlag, input_buffer, input_offset, availInBefore, "
-							  "output_buffer, output_offset, [callback]")
-			.ThrowAsJavaScriptException();
-		return env.Undefined();
-	}
-
+	// Setup with manual guard (safer than RAII for JS exceptions)
 	this->_wip = true;
 	this->Ref();
 
-	if (!info[0].IsNumber())
+	// Validate and prepare buffers
+	BufferContext ctx;
+	if (!ValidateAndPrepareBuffers<async>(info, ctx))
 	{
 		this->_wip = false;
 		this->Unref();
-		Napi::Error::New(env, "flushFlag must be an integer").ThrowAsJavaScriptException();
-		return env.Undefined();
+		return info.Env().Undefined();
 	}
-	this->_action = static_cast<lzma_action>(info[0].ToNumber().Uint32Value());
 
-	// Evaluate parameters passed to us
-	const uint8_t *in;
-	uint8_t *out;
-	size_t in_off, in_len, out_off, out_len;
+	// Configure stream with prepared buffers
+	this->_stream.next_in = ctx.in;
+	this->_stream.avail_in = ctx.in_len;
+	this->_stream.next_out = ctx.out;
+	this->_stream.avail_out = ctx.out_len;
 
-	// If we do not have input buffer data
-	if (info[1].IsNull())
+	// Execute based on mode with minimal branching
+	if constexpr (async)
 	{
-		// just a flush - use null pointer which is safe for liblzma when avail_in is 0
-		in = nullptr;
-		in_len = 0;
-		in_off = 0;
+		return StartAsyncWork(info);
 	}
 	else
 	{
-		// if (!node::Buffer::HasInstance(info[1])) {
-		if (!info[1].IsBuffer())
-		{
-			this->_wip = false;
-			this->Unref();
-			Napi::TypeError::New(env, "BUG?: LZMA::Code 'input_buffer' argument must be a Buffer").ThrowAsJavaScriptException();
-			return env.Undefined();
-		}
-
-		uint8_t *in_buf = info[1].As<Napi::Buffer<uint8_t>>().Data();
-		in_off = info[2].ToNumber().Uint32Value();
-		in_len = info[3].ToNumber().Uint32Value();
-		size_t in_max = info[1].As<Napi::Buffer<uint8_t>>().Length();
-
-		if (!node::Buffer::IsWithinBounds(in_off, in_len, in_max))
-		{
-			this->_wip = false;
-			this->Unref();
-			Napi::Error::New(env, "Offset out of bounds!").ThrowAsJavaScriptException();
-			return env.Undefined();
-		}
-		in = in_buf + in_off;
+		return ExecuteSyncWork(info);
 	}
-
-	// Check if output buffer is also a Buffer
-	if (!info[4].IsBuffer())
-	{
-		this->_wip = false;
-		this->Unref();
-		Napi::TypeError::New(env, "BUG?: LZMA::Code 'output_buffer' argument must be a Buffer").ThrowAsJavaScriptException();
-		return env.Undefined();
-	}
-
-	uint8_t *out_buf = info[4].As<Napi::Buffer<uint8_t>>().Data();
-	out_off = info[5].ToNumber().Uint32Value();
-	out_len = info[4].As<Napi::Buffer<uint8_t>>().Length() - out_off;
-	out = out_buf + out_off;
-
-	// Only if async mode is enabled shall we need a callback function
-	if (async)
-	{
-		if (!info[6].IsFunction())
-		{
-			this->_wip = false;
-			this->Unref();
-			Napi::TypeError::New(env, "BUG?: LZMA::Code 'callback' argument must be a Function").ThrowAsJavaScriptException();
-			return env.Undefined();
-		}
-	}
-
-	this->_stream.next_in = in;
-	this->_stream.avail_in = in_len;
-	this->_stream.next_out = out;
-	this->_stream.avail_out = out_len;
-
-	// do it synchronously
-	if (async)
-	{
-		// Persist buffers so V8 GC can't free them while the async worker runs
-		if (!info[1].IsNull() && info[1].IsBuffer())
-		{
-			this->_in_buf_ref = Napi::Persistent(info[1].As<Napi::Buffer<uint8_t>>());
-		}
-		this->_out_buf_ref = Napi::Persistent(info[4].As<Napi::Buffer<uint8_t>>());
-
-		// Use the real callback for the worker to own and call
-		this->_worker = new LZMAWorker(env, this, info[6].As<Napi::Function>());
-		this->_worker->Queue();
-	}
-	else
-	{
-		// Ensure _wip is properly set for sync operations
-		this->_wip = true;
-		Process(this);
-		return AfterSync(info, this);
-	}
-
-	// otherwise queue work
-	return env.Undefined();
 }
 
 void LZMA::Process(LZMA *obj)
@@ -397,6 +204,274 @@ Napi::Value LZMA::AfterSync(const Napi::CallbackInfo &info, LZMA *obj)
 	return obj->After(env);
 }
 
+template <bool async>
+bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferContext &ctx)
+{
+	Napi::Env env = info.Env();
+	constexpr int expected_args = async ? ASYNC_PARAM_COUNT : SYNC_PARAM_COUNT;
+
+	// Validate parameter count
+	if (info.Length() != expected_args)
+	{
+		Napi::Error::New(env, "BUG?: LZMA::Code requires all these arguments: "
+							  "flushFlag, input_buffer, input_offset, availInBefore, "
+							  "output_buffer, output_offset" +
+								  std::string(async ? ", callback" : ""))
+			.ThrowAsJavaScriptException();
+		return false;
+	}
+
+	// Validate flush flag
+	if (!info[0].IsNumber())
+	{
+		Napi::Error::New(env, "flushFlag must be an integer").ThrowAsJavaScriptException();
+		return false;
+	}
+	this->_action = static_cast<lzma_action>(info[0].ToNumber().Uint32Value());
+
+	// Handle input buffer (can be null for flush operations)
+	if (info[1].IsNull())
+	{
+		ctx.in = nullptr;
+		ctx.in_len = 0;
+		ctx.in_off = 0;
+	}
+	else
+	{
+		if (!info[1].IsBuffer())
+		{
+			Napi::TypeError::New(env, "BUG?: LZMA::Code 'input_buffer' argument must be a Buffer").ThrowAsJavaScriptException();
+			return false;
+		}
+
+		uint8_t *in_buf = info[1].As<Napi::Buffer<uint8_t>>().Data();
+		ctx.in_off = info[2].ToNumber().Uint32Value();
+		ctx.in_len = info[3].ToNumber().Uint32Value();
+		size_t in_max = info[1].As<Napi::Buffer<uint8_t>>().Length();
+
+		if (!node::Buffer::IsWithinBounds(ctx.in_off, ctx.in_len, in_max))
+		{
+			Napi::Error::New(env, "Input offset out of bounds!").ThrowAsJavaScriptException();
+			return false;
+		}
+		ctx.in = in_buf + ctx.in_off;
+	}
+
+	// Handle output buffer (required)
+	if (!info[4].IsBuffer())
+	{
+		Napi::TypeError::New(env, "BUG?: LZMA::Code 'output_buffer' argument must be a Buffer").ThrowAsJavaScriptException();
+		return false;
+	}
+
+	uint8_t *out_buf = info[4].As<Napi::Buffer<uint8_t>>().Data();
+	ctx.out_off = info[5].ToNumber().Uint32Value();
+	ctx.out_len = info[4].As<Napi::Buffer<uint8_t>>().Length() - ctx.out_off;
+	ctx.out = out_buf + ctx.out_off;
+
+	// Validate callback for async mode
+	if constexpr (async)
+	{
+		if (!info[6].IsFunction())
+		{
+			Napi::TypeError::New(env, "BUG?: LZMA::Code 'callback' argument must be a Function").ThrowAsJavaScriptException();
+			return false;
+		}
+	}
+
+	return true;
+}
+
+Napi::Value LZMA::StartAsyncWork(const Napi::CallbackInfo &info)
+{
+	// Persist buffers so V8 GC can't free them while the async worker runs
+	if (!info[1].IsNull() && info[1].IsBuffer())
+	{
+		this->_in_buf_ref = Napi::Persistent(info[1].As<Napi::Buffer<uint8_t>>());
+	}
+	this->_out_buf_ref = Napi::Persistent(info[4].As<Napi::Buffer<uint8_t>>());
+
+	// Use the real callback for the worker to own and call
+	this->_worker = new LZMAWorker(info.Env(), this, info[6].As<Napi::Function>());
+	this->_worker->Queue();
+
+	return info.Env().Undefined();
+}
+
+Napi::Value LZMA::ExecuteSyncWork(const Napi::CallbackInfo &info)
+{
+	Process(this);
+	return AfterSync(info, this);
+}
+
+bool LZMA::ValidateConstructorArgs(const Napi::CallbackInfo &info, uint32_t &mode, Napi::Object &opts)
+{
+	Napi::Env env = info.Env();
+
+	if (info.Length() != 2)
+	{
+		Napi::TypeError::New(env, "Wrong number of arguments, expected mode(int) and opts(object)").ThrowAsJavaScriptException();
+		return false;
+	}
+
+	if (!info[0].IsNumber())
+	{
+		Napi::TypeError::New(env, "Expected mode to be an integer").ThrowAsJavaScriptException();
+		return false;
+	}
+	mode = info[0].ToNumber().Uint32Value();
+
+	if (!info[1].IsObject())
+	{
+		Napi::TypeError::New(env, "Expected object as second argument").ThrowAsJavaScriptException();
+		return false;
+	}
+	opts = info[1].ToObject();
+
+	return true;
+}
+
+bool LZMA::InitializeFilters(const Napi::Object &opts, uint32_t preset)
+{
+	Napi::Env env = opts.Env();
+
+	// Validate and get filters array
+	Napi::Value optsFilters = opts.Get("filters");
+	if (!optsFilters.IsArray())
+	{
+		Napi::TypeError::New(env, "Expected 'filters' to be an array").ThrowAsJavaScriptException();
+		return false;
+	}
+
+	Napi::Array filters_handle = optsFilters.As<Napi::Array>();
+	uint32_t filters_len = filters_handle.Length();
+
+	// Validate filter count
+	if (filters_len > LZMA_FILTERS_MAX - 1)
+	{
+		Napi::RangeError::New(env, "More filters than allowed maximum").ThrowAsJavaScriptException();
+		return false;
+	}
+
+	// Initialize LZMA2 options from preset
+	if (lzma_lzma_preset(&this->_opt_lzma2, preset))
+	{
+		Napi::Error::New(env, "Unsupported preset, possibly a bug").ThrowAsJavaScriptException();
+		return false;
+	}
+
+	// Allocate filter array with smart pointer
+	this->filters = std::make_unique<lzma_filter[]>(filters_len + 1);
+
+	// Configure filters
+	for (uint32_t i = 0; i < filters_len; ++i)
+	{
+		Napi::Value filter = filters_handle.Get(i);
+		if (!filter.IsNumber())
+		{
+			Napi::Error::New(env, "Filter must be an integer").ThrowAsJavaScriptException();
+			return false;
+		}
+
+		uint64_t current = filter.ToNumber().Uint32Value();
+		this->filters[i].id = current;
+		if (current == LZMA_FILTER_LZMA2)
+		{
+			this->filters[i].options = &this->_opt_lzma2;
+		}
+		else
+		{
+			this->filters[i].options = nullptr;
+		}
+	}
+
+	// Set terminator
+	this->filters[filters_len] = {.id = LZMA_VLI_UNKNOWN, .options = nullptr};
+
+	return true;
+}
+
+bool LZMA::InitializeEncoder(const Napi::Object &opts, uint32_t preset, lzma_check check)
+{
+	Napi::Env env = opts.Env();
+
+	// Validate threads parameter
+	Napi::Value optsThreads = opts.Get("threads");
+	if (!optsThreads.IsNumber())
+	{
+		Napi::Error::New(env, "Threads must be an integer").ThrowAsJavaScriptException();
+		return false;
+	}
+
+#ifdef ENABLE_THREAD_SUPPORT
+	unsigned int threads = optsThreads.ToNumber().Uint32Value();
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
+	lzma_mt mt = {
+		.flags = 0,
+		.threads = threads,
+		.block_size = 0,
+		.timeout = 0,
+		.preset = preset,
+		.filters = this->filters.get(),
+		.check = check,
+	};
+
+#pragma GCC diagnostic pop
+
+	lzma_ret ret;
+	if (threads > 1)
+	{
+		ret = lzma_stream_encoder_mt(&this->_stream, &mt);
+	}
+	else
+	{
+		ret = lzma_stream_encoder(&this->_stream, this->filters.get(), check);
+	}
+#else
+	lzma_ret ret = lzma_stream_encoder(&this->_stream, this->filters.get(), check);
+#endif
+
+	if (ret != LZMA_OK)
+	{
+		Napi::Error::New(env, "LZMA encoder failure, returned " + std::to_string(ret)).ThrowAsJavaScriptException();
+		return false;
+	}
+
+	return true;
+}
+
+bool LZMA::InitializeDecoder()
+{
+	lzma_ret ret = lzma_stream_decoder(&this->_stream, UINT64_MAX, LZMA_CONCATENATED);
+	return ret == LZMA_OK;
+}
+
+void LZMA::AfterCommon(const Napi::Env &env)
+{
+	// Mark work done
+	this->_wip = false;
+
+	// Clear worker pointer if any
+	_worker = nullptr;
+
+	// Release any Buffer references (async path uses these)
+	if (!_in_buf_ref.IsEmpty())
+		_in_buf_ref.Reset();
+	if (!_out_buf_ref.IsEmpty())
+		_out_buf_ref.Reset();
+
+	// Balance reference taken in Code()
+	Unref();
+
+	// Honor pending close requests
+	if (_pending_close)
+	{
+		Close(env);
+	}
+}
+
 Napi::Array LZMA::After(const Napi::Env &env)
 {
 	Napi::HandleScope scope(env);
@@ -409,26 +484,7 @@ Napi::Array LZMA::After(const Napi::Env &env)
 	result[(uint32_t)1] = avail_in;
 	result[(uint32_t)2] = avail_out;
 
-	// Mark work done before returning to JS
-	this->_wip = false;
-
-	// Clear worker pointer if any
-	_worker = nullptr;
-
-	// Release any Buffer references (async path uses these)
-	if (!_in_buf_ref.IsEmpty())
-		_in_buf_ref.Reset();
-	if (!_out_buf_ref.IsEmpty())
-		_out_buf_ref.Reset();
-
-	// Balance reference taken in Code()
-	Unref();
-
-	// Honor pending close requests
-	if (_pending_close)
-	{
-		Close(env);
-	}
+	AfterCommon(env);
 
 	return result;
 }
@@ -440,27 +496,8 @@ void LZMA::After(const Napi::Env &env, const Napi::Function &cb)
 	Napi::Number avail_in = Napi::Number::New(env, this->_stream.avail_in);
 	Napi::Number avail_out = Napi::Number::New(env, this->_stream.avail_out);
 
-	// Mark work done before invoking JS
-	this->_wip = false;
-
 	// Call the provided JS callback with the three numeric results
 	cb.Call({ret, avail_in, avail_out});
 
-	// Clear worker pointer if any
-	_worker = nullptr;
-
-	// Release any Buffer references (async path uses these)
-	if (!_in_buf_ref.IsEmpty())
-		_in_buf_ref.Reset();
-	if (!_out_buf_ref.IsEmpty())
-		_out_buf_ref.Reset();
-
-	// Balance reference taken in Code()
-	Unref();
-
-	// Honor pending close requests
-	if (_pending_close)
-	{
-		Close(env);
-	}
+	AfterCommon(env);
 }
