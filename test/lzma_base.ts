@@ -8,6 +8,20 @@ describe('Xz Compressor options', () => {
     }).toThrowError('Filters need to be in an array!');
   });
 
+  it('should handle malformed array-like filters', () => {
+    // Create an object that passes Array.isArray but fails on spread
+    const malformedArray = [];
+    Object.defineProperty(malformedArray, Symbol.iterator, {
+      value: () => {
+        throw new Error('Iterator failed');
+      },
+    });
+
+    expect(() => {
+      new Xz({ filters: malformedArray as unknown as number[] });
+    }).toThrowError('Filters need to be in an array!');
+  });
+
   it('should throw error if more than LZMA_MAX_FILTERS set', () => {
     expect(() => {
       new Xz({
