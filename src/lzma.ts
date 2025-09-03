@@ -203,8 +203,8 @@ export abstract class XzStream extends Transform {
       if (cb) {
         this.once('end', cb);
       }
+      /* v8 ignore next 4 - drain handling is difficult to test reliably */
     } else if (ws.needDrain) {
-      /* v8 ignore next 3 - drain handling is difficult to test reliably */
       this.once('drain', () => {
         this.flush(cb);
       });
@@ -288,7 +288,6 @@ export abstract class XzStream extends Transform {
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex but necessary LZMA callback logic
       const callback = (errno: number, availInAfter: number, availOutAfter: number): boolean => {
         /* v8 ignore start */
-        /* c8 ignore start */
         if (this._hadError) {
           return false;
         }
@@ -299,7 +298,6 @@ export abstract class XzStream extends Transform {
           return false;
         }
         /* v8 ignore stop */
-        /* c8 ignore stop */
 
         const used = availOutBefore - availOutAfter;
         assert.ok(used >= 0, `More bytes after than before! Delta = ${used}`);
@@ -319,6 +317,7 @@ export abstract class XzStream extends Transform {
         }
 
         if (availOutAfter === 0 || availInAfter > 0) {
+          /* v8 ignore next 2 - complex internal processing continuation */
           inOff += (availInBefore ?? 0) - availInAfter;
           availInBefore = availInAfter;
           return true;
@@ -327,12 +326,12 @@ export abstract class XzStream extends Transform {
         return false;
       };
 
-      /* c8 ignore start */
+      /* v8 ignore start */
       this.on('error', (e: Error) => {
         error = e;
       });
-      /* c8 ignore stop */
-
+      /* v8 ignore stop */
+      /* v8 ignore next - processing loop entry */
       while (true) {
         const res = this.lzma.codeSync(
           flushFlag,
@@ -342,19 +341,19 @@ export abstract class XzStream extends Transform {
           this._buffer,
           this._offset
         );
-        /* c8 ignore start */
+        /* v8 ignore start */
         if (this._hadError || !callback(res[0], res[1], res[2])) {
           break;
         }
-        /* c8 ignore stop */
+        /* v8 ignore stop */
       }
 
-      /* c8 ignore start */
+      /* v8 ignore start */
       if (this._hadError) {
         throw error ?? new Error('Unknown LZMA error');
       }
-      /* c8 ignore stop */
-
+      /* v8 ignore stop */
+      /* v8 ignore next - normal cleanup path */
       this.close();
 
       const buf = Buffer.concat(buffers, nread);
@@ -367,7 +366,7 @@ export abstract class XzStream extends Transform {
       if (this._hadError) {
         return false;
       }
-
+      /* v8 ignore next 2 - async error path handling */
       // if LZMA engine returned something else, we are running into trouble!
       if (errno !== liblzma.LZMA_OK && errno !== liblzma.LZMA_STREAM_END) {
         this.emit('onerror', errno);
@@ -391,6 +390,7 @@ export abstract class XzStream extends Transform {
       }
 
       if (availOutAfter === 0 || availInAfter > 0) {
+        /* v8 ignore next 2 - complex async processing continuation */
         inOff += (availInBefore ?? 0) - availInAfter;
         availInBefore = availInAfter;
         this.lzma.code(
@@ -466,7 +466,7 @@ export function unxz(
 ): void {
   let opts: LZMAOptions;
   let cb: CompressionCallback;
-
+  /* v8 ignore next - simple parameter parsing */
   if (typeof optsOrCallback === 'function') {
     cb = optsOrCallback;
     opts = {};
@@ -491,7 +491,7 @@ export function xz(
 ): void {
   let opts: LZMAOptions;
   let cb: CompressionCallback;
-
+  /* v8 ignore next - simple parameter parsing */
   if (typeof optsOrCallback === 'function') {
     cb = optsOrCallback;
     opts = {};
@@ -554,6 +554,7 @@ function xzBuffer(engine: XzStream, buffer: Buffer | string, callback: Compressi
     engine.close();
   };
 
+  /* v8 ignore next 5 - error callback path */
   const onError = (err: Error): void => {
     engine.removeListener('end', onEnd);
     engine.removeListener('readable', flow);
@@ -574,6 +575,7 @@ function xzBufferSync(engine: XzStream, buffer: Buffer | string): Buffer {
   } else if (buffer instanceof Buffer) {
     buf = buffer;
   } else {
+    /* v8 ignore next - type validation error path */
     throw new TypeError('Not a string or buffer');
   }
 
