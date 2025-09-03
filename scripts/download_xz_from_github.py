@@ -21,6 +21,8 @@ import tarfile
 import os
 import argparse
 from datetime import datetime
+from pathlib import Path
+import tempfile
 
 def load_version_config():
     """Load version configuration from xz-version.json"""
@@ -116,9 +118,53 @@ def download_tarball(url, tarball_path):
                 f.write(data)
                 print(f"[SUCCESS] Downloaded {len(data)} bytes to {tarball_path}")
 
+def is_safe_path(member_path, extract_dir):
+    """Validate that the extraction path is safe and within bounds."""
+    # Reject obviously dangerous patterns first
+    if not member_path or member_path.startswith('/') or member_path.startswith('\\'):
+        return False
+    
+    # Normalize path separators and check for traversal patterns
+    normalized_path = member_path.replace('\\', '/')
+    if '..' in normalized_path:
+        return False
+    
+    # Check each path component
+    path_parts = Path(normalized_path).parts
+    for part in path_parts:
+        # Reject dangerous components
+        if part in ('..', '.', '') or part.startswith('..'):
+            return False
+        # Reject absolute path indicators
+        if os.path.isabs(part) or ':' in part:
+            return False
+        # Reject null bytes and other control characters
+        if '\x00' in part or any(ord(c) < 32 for c in part if c not in '\t'):
+            return False
+    
+    # Final validation: resolve the full path and ensure it's within bounds
+    extract_dir = os.path.abspath(extract_dir)
+    try:
+        member_abs_path = os.path.abspath(os.path.join(extract_dir, normalized_path))
+        # Ensure the resolved path is within the extraction directory
+        common_path = os.path.commonpath([member_abs_path, extract_dir])
+        if common_path != extract_dir:
+            return False
+        # Double-check with string prefix (for additional safety)
+        if not member_abs_path.startswith(extract_dir + os.sep) and member_abs_path != extract_dir:
+            return False
+    except (ValueError, OSError):
+        return False
+    
+    return True
+
 def extract_tarball(tarball_path, extract_dir):
-    """Extract tarball and rename root directory to 'xz'"""
+    """Extract tarball and rename root directory to 'xz' with security validation."""
     print(f"[EXTRACT] Extracting to {extract_dir}/xz")
+    
+    # Ensure extract_dir exists and is absolute
+    extract_dir = os.path.abspath(extract_dir)
+    os.makedirs(extract_dir, exist_ok=True)
     
     with tarfile.open(tarball_path, 'r:gz') as tfile:
         members = tfile.getmembers()
@@ -129,16 +175,51 @@ def extract_tarball(tarball_path, extract_dir):
         root_dir = members[0].name.split('/')[0]
         print(f"[DIR] Root directory: {root_dir}")
         
-        # Extract all members, renaming root directory to 'xz'
+        # Security validation: check all members before extraction
+        safe_members = []
         for member in members:
-            # Replace the root directory name with 'xz'
-            member.name = member.name.replace(root_dir, 'xz', 1)
-            # Use safer extraction method that's compatible with older Python versions
+            # Create the new path by replacing root directory with 'xz'
+            if not member.name.startswith(root_dir):
+                print(f"[SKIP] Skipping member not in root directory: {member.name}")
+                continue
+                
+            new_name = member.name.replace(root_dir, 'xz', 1)
+            
+            # Validate the new path is safe
+            if not is_safe_path(new_name, extract_dir):
+                print(f"[SECURITY] Rejecting unsafe path: {member.name} -> {new_name}")
+                continue
+            
+            # Additional safety checks for member properties
+            if member.islink() or member.issym():
+                # Validate link targets are also safe
+                if member.linkname and not is_safe_path(member.linkname, extract_dir):
+                    print(f"[SECURITY] Rejecting unsafe link target: {member.linkname}")
+                    continue
+            
+            # Create a new member with the safe name
+            safe_member = member
+            safe_member.name = new_name
+            safe_members.append(safe_member)
+        
+        if not safe_members:
+            raise ValueError("No safe members to extract")
+        
+        # Extract all validated members
+        for member in safe_members:
             try:
+                # Use data filter for additional safety on Python 3.12+
                 tfile.extract(member, extract_dir, filter='data')
             except TypeError:
                 # Fallback for Python versions that don't support filter parameter
+                # Manual validation since we can't use the data filter
+                if member.isfile() and member.size > 100 * 1024 * 1024:  # 100MB limit
+                    print(f"[SECURITY] Skipping oversized file: {member.name} ({member.size} bytes)")
+                    continue
                 tfile.extract(member, extract_dir)
+            except Exception as e:
+                print(f"[ERROR] Failed to extract {member.name}: {e}")
+                continue
         
         print(f"[SUCCESS] Successfully extracted XZ to {extract_dir}/xz")
 
@@ -178,9 +259,21 @@ Examples:
         print(f"[ERROR] Version {version} not found, falling back to v5.4.0")
         validated_version = 'v5.4.0'
     
-    # Prepare paths
+    # Prepare and validate paths
     tarball = os.path.abspath(args.tarball)
     dirname = os.path.abspath(args.dirname)
+    
+    # Additional security validation for output paths
+    if not tarball or not dirname:
+        print("[ERROR] Invalid paths provided")
+        return 1
+    
+    # Ensure paths don't contain suspicious patterns
+    suspicious_patterns = ['..', '~', '$']
+    for pattern in suspicious_patterns:
+        if pattern in args.tarball or pattern in args.dirname:
+            print(f"[ERROR] Suspicious pattern '{pattern}' detected in paths")
+            return 1
     
     # Ensure we're using .tar.gz extension (GitHub uses gzip, not xz)
     if tarball.endswith('.tar.xz'):

@@ -92,3 +92,8 @@ deps/*
 
 # Claude Code local settings
 .claude/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
