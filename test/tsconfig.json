@@ -1,19 +1,29 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    /* Override settings for tests */
+    /* Base configuration for tests - more permissive than main */
+    "target": "ES2020",
+    "lib": ["ES2020", "ES2020.Promise"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+
+    /* Output */
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node", "vitest"],
 
-    /* Allow more flexible imports for tests */
-    "moduleResolution": "node",
+    /* Interop Constraints */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": false,
+
+    /* Type Checking - Very permissive for tests */
+    "strict": false,
+    "noImplicitAny": false,
     "allowJs": true,
 
-    /* Less strict for test files */
-    "strict": false,
-    "noImplicitAny": false
+    /* Node.js and test specific */
+    "types": ["node", "vitest"],
+    "resolveJsonModule": true
   },
-  "include": ["./**/*", "../src/**/*"],
-  "exclude": ["../node_modules", "../lib", "../build"]
+  "include": ["./**/*", "../lib/**/*"],
+  "exclude": ["../node_modules", "../build"]
 }

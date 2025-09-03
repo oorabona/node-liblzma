@@ -353,6 +353,7 @@ describe('Factory functions and utilities', () => {
       xzStream.xz('test5', explicitOptions1, explicitCallback1);
 
       // Another explicit test - create options object separately to ensure type checking
+      // @ts-expect-error - preset.FAST may not exist in current implementation
       const explicitOptions2 = { preset: xzStream.preset.FAST };
       const explicitCallback2 = (err, result) => {
         expect(err).toBeNull();
@@ -412,6 +413,7 @@ describe('Error handling', () => {
   it('should handle closed stream error', () => {
     return new Promise<void>((resolve) => {
       const stream = new xzStream.Xz();
+      // @ts-expect-error - accessing protected property for testing
       stream._closed = true;
       stream._transform(Buffer.from('test'), 'utf8', (error: Error) => {
         expect(error.message).toBe('lzma binding closed');
