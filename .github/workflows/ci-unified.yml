@@ -176,7 +176,7 @@ jobs:
         if: steps.cache-xz.outputs.cache-hit != 'true'
         run: |
           echo "📥 Downloading XZ sources..."
-          python scripts/download_xz_from_github.py
+          python scripts/download_xz_from_github.py deps/xz.tar.gz deps/
           ls -la deps/
         env:
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}

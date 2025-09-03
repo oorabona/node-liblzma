@@ -191,7 +191,7 @@ def extract_tarball(tarball_path, extract_dir):
                 continue
             
             # Additional safety checks for member properties
-            if member.islink() or member.issym():
+            if member.islnk() or member.issym():
                 # Validate link targets are also safe
                 if member.linkname and not is_safe_path(member.linkname, extract_dir):
                     print(f"[SECURITY] Rejecting unsafe link target: {member.linkname}")
