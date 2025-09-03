@@ -23,18 +23,25 @@ import * as path from 'node:path';
 import { Transform, type TransformCallback, type TransformOptions } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import type { NativeLZMA } from '../index.js';
+import type {
+  CheckType,
+  CompressionCallback,
+  FilterType,
+  LZMAActionType,
+  LZMAOptions,
+  LZMAStatusType,
+  ModeType,
+  PresetType,
+} from './types.js';
 
-// Helper to safely access Node.js internal _writableState
-interface InternalWritableState {
-  ending: boolean;
-  ended: boolean;
-  length: number;
-  needDrain: boolean;
-}
-
-function getWritableState(stream: Transform): InternalWritableState {
-  // biome-ignore lint/suspicious/noExplicitAny: Need to access Node.js internal _writableState property
-  return (stream as any)._writableState as InternalWritableState;
+// Helper to safely access Node.js internal _writableState using official properties
+function getWritableState(stream: Transform) {
+  return {
+    ending: (stream as any)._writableState?.ending ?? false,
+    ended: (stream as any)._writableState?.ended ?? false,
+    length: stream.writableLength,
+    needDrain: stream.writableNeedDrain,
+  };
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,7 +54,7 @@ const liblzma = require('node-gyp-build')(bindingPath);
 // Should not change over time... :)
 const maxThreads = os.cpus().length;
 
-// Export constants first so they can be used in classes
+// Export constants grouped by category for better organization
 export const check = {
   NONE: liblzma.LZMA_CHECK_NONE,
   CRC32: liblzma.LZMA_CHECK_CRC32,
@@ -82,45 +89,76 @@ export const mode = {
   NORMAL: liblzma.LZMA_MODE_NORMAL,
 } as const;
 
-// Export LZMA action constants
-export const LZMA_RUN = liblzma.LZMA_RUN;
-export const LZMA_SYNC_FLUSH = liblzma.LZMA_SYNC_FLUSH;
-export const LZMA_FULL_FLUSH = liblzma.LZMA_FULL_FLUSH;
-export const LZMA_FINISH = liblzma.LZMA_FINISH;
+// LZMA action constants - grouped for better organization
+export const LZMAAction = {
+  RUN: liblzma.LZMA_RUN,
+  SYNC_FLUSH: liblzma.LZMA_SYNC_FLUSH,
+  FULL_FLUSH: liblzma.LZMA_FULL_FLUSH,
+  FINISH: liblzma.LZMA_FINISH,
+} as const;
 
-// Export LZMA status/error constants
-export const LZMA_OK = liblzma.LZMA_OK;
-export const LZMA_STREAM_END = liblzma.LZMA_STREAM_END;
-export const LZMA_NO_CHECK = liblzma.LZMA_NO_CHECK;
-export const LZMA_UNSUPPORTED_CHECK = liblzma.LZMA_UNSUPPORTED_CHECK;
-export const LZMA_GET_CHECK = liblzma.LZMA_GET_CHECK;
-export const LZMA_MEM_ERROR = liblzma.LZMA_MEM_ERROR;
-export const LZMA_MEMLIMIT_ERROR = liblzma.LZMA_MEMLIMIT_ERROR;
-export const LZMA_FORMAT_ERROR = liblzma.LZMA_FORMAT_ERROR;
-export const LZMA_OPTIONS_ERROR = liblzma.LZMA_OPTIONS_ERROR;
-export const LZMA_DATA_ERROR = liblzma.LZMA_DATA_ERROR;
-export const LZMA_BUF_ERROR = liblzma.LZMA_BUF_ERROR;
-export const LZMA_PROG_ERROR = liblzma.LZMA_PROG_ERROR;
+// LZMA status/return constants
+export const LZMAStatus = {
+  OK: liblzma.LZMA_OK,
+  STREAM_END: liblzma.LZMA_STREAM_END,
+  NO_CHECK: liblzma.LZMA_NO_CHECK,
+  UNSUPPORTED_CHECK: liblzma.LZMA_UNSUPPORTED_CHECK,
+  GET_CHECK: liblzma.LZMA_GET_CHECK,
+  MEM_ERROR: liblzma.LZMA_MEM_ERROR,
+  MEMLIMIT_ERROR: liblzma.LZMA_MEMLIMIT_ERROR,
+  FORMAT_ERROR: liblzma.LZMA_FORMAT_ERROR,
+  OPTIONS_ERROR: liblzma.LZMA_OPTIONS_ERROR,
+  DATA_ERROR: liblzma.LZMA_DATA_ERROR,
+  BUF_ERROR: liblzma.LZMA_BUF_ERROR,
+  PROG_ERROR: liblzma.LZMA_PROG_ERROR,
+} as const;
 
-// Export missing filter constants
-export const LZMA_FILTER_X86 = liblzma.LZMA_FILTER_X86;
-export const LZMA_FILTER_POWERPC = liblzma.LZMA_FILTER_POWERPC;
-export const LZMA_FILTER_IA64 = liblzma.LZMA_FILTER_IA64;
-export const LZMA_FILTER_ARM = liblzma.LZMA_FILTER_ARM;
-export const LZMA_FILTER_ARMTHUMB = liblzma.LZMA_FILTER_ARMTHUMB;
-export const LZMA_FILTERS_MAX = liblzma.LZMA_FILTERS_MAX;
+// Additional filter constants
+export const LZMAFilter = {
+  ...filter,
+  X86_ALT: liblzma.LZMA_FILTER_X86,
+  POWERPC_ALT: liblzma.LZMA_FILTER_POWERPC,
+  IA64_ALT: liblzma.LZMA_FILTER_IA64,
+  ARM_ALT: liblzma.LZMA_FILTER_ARM,
+  ARMTHUMB_ALT: liblzma.LZMA_FILTER_ARMTHUMB,
+  FILTERS_MAX: liblzma.LZMA_FILTERS_MAX,
+} as const;
 
-export interface LZMAOptions {
-  check?: number;
-  preset?: number;
-  filters?: number[];
-  mode?: number;
-  threads?: number;
-  chunkSize?: number;
-  flushFlag?: number;
-}
+// Legacy individual exports for backward compatibility
+export const LZMA_RUN = LZMAAction.RUN;
+export const LZMA_SYNC_FLUSH = LZMAAction.SYNC_FLUSH;
+export const LZMA_FULL_FLUSH = LZMAAction.FULL_FLUSH;
+export const LZMA_FINISH = LZMAAction.FINISH;
+export const LZMA_OK = LZMAStatus.OK;
+export const LZMA_STREAM_END = LZMAStatus.STREAM_END;
+export const LZMA_NO_CHECK = LZMAStatus.NO_CHECK;
+export const LZMA_UNSUPPORTED_CHECK = LZMAStatus.UNSUPPORTED_CHECK;
+export const LZMA_GET_CHECK = LZMAStatus.GET_CHECK;
+export const LZMA_MEM_ERROR = LZMAStatus.MEM_ERROR;
+export const LZMA_MEMLIMIT_ERROR = LZMAStatus.MEMLIMIT_ERROR;
+export const LZMA_FORMAT_ERROR = LZMAStatus.FORMAT_ERROR;
+export const LZMA_OPTIONS_ERROR = LZMAStatus.OPTIONS_ERROR;
+export const LZMA_DATA_ERROR = LZMAStatus.DATA_ERROR;
+export const LZMA_BUF_ERROR = LZMAStatus.BUF_ERROR;
+export const LZMA_PROG_ERROR = LZMAStatus.PROG_ERROR;
+export const LZMA_FILTER_X86 = LZMAFilter.X86_ALT;
+export const LZMA_FILTER_POWERPC = LZMAFilter.POWERPC_ALT;
+export const LZMA_FILTER_IA64 = LZMAFilter.IA64_ALT;
+export const LZMA_FILTER_ARM = LZMAFilter.ARM_ALT;
+export const LZMA_FILTER_ARMTHUMB = LZMAFilter.ARMTHUMB_ALT;
+export const LZMA_FILTERS_MAX = LZMAFilter.FILTERS_MAX;
 
-export type CompressionCallback = (error: Error | null, result?: Buffer) => void;
+// Re-export types for public API
+export type {
+  LZMAOptions,
+  CompressionCallback,
+  LZMAActionType,
+  LZMAStatusType,
+  CheckType,
+  PresetType,
+  FilterType,
+  ModeType,
+};
 
 export abstract class XzStream extends Transform {
   protected _opts: Required<LZMAOptions>;
@@ -466,19 +504,36 @@ export function hasThreads(): boolean {
   return liblzma.HAS_THREADS_SUPPORT;
 }
 
+// Error messages enum for better type safety
+export enum LZMAErrorMessage {
+  SUCCESS = 'Operation completed successfully',
+  STREAM_END = 'End of stream was reached',
+  NO_CHECK = 'Input stream has no integrity check',
+  UNSUPPORTED_CHECK = 'Cannot calculate the integrity check',
+  GET_CHECK = 'Integrity check type is not available',
+  MEM_ERROR = 'Cannot allocate memory',
+  MEMLIMIT_ERROR = 'Memory usage limit was reached',
+  FORMAT_ERROR = 'File format not recognized',
+  OPTIONS_ERROR = 'Invalid or unsupported options',
+  DATA_ERROR = 'Data is corrupt',
+  BUF_ERROR = 'No progress is possible',
+  PROG_ERROR = 'Programming error',
+}
+
+// Legacy array export for backward compatibility
 export const messages: readonly string[] = [
-  'Operation completed successfully',
-  'End of stream was reached',
-  'Input stream has no integrity check',
-  'Cannot calculate the integrity check',
-  'Integrity check type is not available',
-  'Cannot allocate memory',
-  'Memory usage limit was reached',
-  'File format not recognized',
-  'Invalid or unsupported options',
-  'Data is corrupt',
-  'No progress is possible',
-  'Programming error',
+  LZMAErrorMessage.SUCCESS,
+  LZMAErrorMessage.STREAM_END,
+  LZMAErrorMessage.NO_CHECK,
+  LZMAErrorMessage.UNSUPPORTED_CHECK,
+  LZMAErrorMessage.GET_CHECK,
+  LZMAErrorMessage.MEM_ERROR,
+  LZMAErrorMessage.MEMLIMIT_ERROR,
+  LZMAErrorMessage.FORMAT_ERROR,
+  LZMAErrorMessage.OPTIONS_ERROR,
+  LZMAErrorMessage.DATA_ERROR,
+  LZMAErrorMessage.BUF_ERROR,
+  LZMAErrorMessage.PROG_ERROR,
 ];
 
 export function createXz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Xz {
@@ -618,7 +673,7 @@ function xzBufferSync(engine: XzStream, buffer: Buffer | string): Buffer {
   return engine._processChunk(buf, liblzma.LZMA_FINISH) as Buffer;
 }
 
-// Export default object for CommonJS compatibility
+// Export default object for CommonJS compatibility - use individual exports to avoid duplication
 export default {
   Xz,
   Unxz,
@@ -638,29 +693,27 @@ export default {
   xzSync,
   xzAsync,
   unxzAsync,
-  // LZMA action constants
-  LZMA_RUN: liblzma.LZMA_RUN,
-  LZMA_SYNC_FLUSH: liblzma.LZMA_SYNC_FLUSH,
-  LZMA_FULL_FLUSH: liblzma.LZMA_FULL_FLUSH,
-  LZMA_FINISH: liblzma.LZMA_FINISH,
-  // LZMA status/error constants
-  LZMA_OK: liblzma.LZMA_OK,
-  LZMA_STREAM_END: liblzma.LZMA_STREAM_END,
-  LZMA_NO_CHECK: liblzma.LZMA_NO_CHECK,
-  LZMA_UNSUPPORTED_CHECK: liblzma.LZMA_UNSUPPORTED_CHECK,
-  LZMA_GET_CHECK: liblzma.LZMA_GET_CHECK,
-  LZMA_MEM_ERROR: liblzma.LZMA_MEM_ERROR,
-  LZMA_MEMLIMIT_ERROR: liblzma.LZMA_MEMLIMIT_ERROR,
-  LZMA_FORMAT_ERROR: liblzma.LZMA_FORMAT_ERROR,
-  LZMA_OPTIONS_ERROR: liblzma.LZMA_OPTIONS_ERROR,
-  LZMA_DATA_ERROR: liblzma.LZMA_DATA_ERROR,
-  LZMA_BUF_ERROR: liblzma.LZMA_BUF_ERROR,
-  LZMA_PROG_ERROR: liblzma.LZMA_PROG_ERROR,
-  // Missing filter constants
-  LZMA_FILTER_X86: liblzma.LZMA_FILTER_X86,
-  LZMA_FILTER_POWERPC: liblzma.LZMA_FILTER_POWERPC,
-  LZMA_FILTER_IA64: liblzma.LZMA_FILTER_IA64,
-  LZMA_FILTER_ARM: liblzma.LZMA_FILTER_ARM,
-  LZMA_FILTER_ARMTHUMB: liblzma.LZMA_FILTER_ARMTHUMB,
-  LZMA_FILTERS_MAX: liblzma.LZMA_FILTERS_MAX,
+  // Reference individual exports to avoid duplication
+  LZMA_RUN,
+  LZMA_SYNC_FLUSH,
+  LZMA_FULL_FLUSH,
+  LZMA_FINISH,
+  LZMA_OK,
+  LZMA_STREAM_END,
+  LZMA_NO_CHECK,
+  LZMA_UNSUPPORTED_CHECK,
+  LZMA_GET_CHECK,
+  LZMA_MEM_ERROR,
+  LZMA_MEMLIMIT_ERROR,
+  LZMA_FORMAT_ERROR,
+  LZMA_OPTIONS_ERROR,
+  LZMA_DATA_ERROR,
+  LZMA_BUF_ERROR,
+  LZMA_PROG_ERROR,
+  LZMA_FILTER_X86,
+  LZMA_FILTER_POWERPC,
+  LZMA_FILTER_IA64,
+  LZMA_FILTER_ARM,
+  LZMA_FILTER_ARMTHUMB,
+  LZMA_FILTERS_MAX,
 };
