@@ -491,6 +491,14 @@ describe('Flush method edge cases', () => {
     });
   });
 
+  it('should call flush with completely no arguments', () => {
+    const stream = new xzStream.Xz();
+    // Test the specific branch where kindOrCallback is undefined and callback is undefined
+    // This covers the line: (typeof kindOrCallback === 'undefined' && !callback)
+    expect(() => stream.flush()).not.toThrow();
+    stream.close();
+  });
+
   it('should call flush with kind and callback', () => {
     return new Promise<void>((resolve) => {
       const stream = new xzStream.Xz();

@@ -142,6 +142,14 @@ export abstract class XzStream extends Transform {
       this._opts.filters.push(filter.LZMA2);
     }
 
+    // Ensure LZMA2 is always the last filter (requirement of liblzma)
+    const lzma2Index = this._opts.filters.indexOf(filter.LZMA2);
+    if (lzma2Index !== -1 && lzma2Index !== this._opts.filters.length - 1) {
+      // Remove LZMA2 from its current position and add it to the end
+      this._opts.filters.splice(lzma2Index, 1);
+      this._opts.filters.push(filter.LZMA2);
+    }
+
     // Multithreading is only available for encoding, so if we are encoding, check
     // opts threads value.
     if (streamMode === liblzma.STREAM_ENCODE) {
