@@ -82,6 +82,34 @@ export const mode = {
   NORMAL: liblzma.LZMA_MODE_NORMAL,
 } as const;
 
+// Export LZMA action constants
+export const LZMA_RUN = liblzma.LZMA_RUN;
+export const LZMA_SYNC_FLUSH = liblzma.LZMA_SYNC_FLUSH;
+export const LZMA_FULL_FLUSH = liblzma.LZMA_FULL_FLUSH;
+export const LZMA_FINISH = liblzma.LZMA_FINISH;
+
+// Export LZMA status/error constants
+export const LZMA_OK = liblzma.LZMA_OK;
+export const LZMA_STREAM_END = liblzma.LZMA_STREAM_END;
+export const LZMA_NO_CHECK = liblzma.LZMA_NO_CHECK;
+export const LZMA_UNSUPPORTED_CHECK = liblzma.LZMA_UNSUPPORTED_CHECK;
+export const LZMA_GET_CHECK = liblzma.LZMA_GET_CHECK;
+export const LZMA_MEM_ERROR = liblzma.LZMA_MEM_ERROR;
+export const LZMA_MEMLIMIT_ERROR = liblzma.LZMA_MEMLIMIT_ERROR;
+export const LZMA_FORMAT_ERROR = liblzma.LZMA_FORMAT_ERROR;
+export const LZMA_OPTIONS_ERROR = liblzma.LZMA_OPTIONS_ERROR;
+export const LZMA_DATA_ERROR = liblzma.LZMA_DATA_ERROR;
+export const LZMA_BUF_ERROR = liblzma.LZMA_BUF_ERROR;
+export const LZMA_PROG_ERROR = liblzma.LZMA_PROG_ERROR;
+
+// Export missing filter constants
+export const LZMA_FILTER_X86 = liblzma.LZMA_FILTER_X86;
+export const LZMA_FILTER_POWERPC = liblzma.LZMA_FILTER_POWERPC;
+export const LZMA_FILTER_IA64 = liblzma.LZMA_FILTER_IA64;
+export const LZMA_FILTER_ARM = liblzma.LZMA_FILTER_ARM;
+export const LZMA_FILTER_ARMTHUMB = liblzma.LZMA_FILTER_ARMTHUMB;
+export const LZMA_FILTERS_MAX = liblzma.LZMA_FILTERS_MAX;
+
 export interface LZMAOptions {
   check?: number;
   preset?: number;
@@ -590,8 +618,8 @@ function xzBufferSync(engine: XzStream, buffer: Buffer | string): Buffer {
   return engine._processChunk(buf, liblzma.LZMA_FINISH) as Buffer;
 }
 
-// Export everything for backward compatibility
-module.exports = {
+// Export default object for CommonJS compatibility
+export default {
   Xz,
   Unxz,
   XzStream,
@@ -610,4 +638,29 @@ module.exports = {
   xzSync,
   xzAsync,
   unxzAsync,
+  // LZMA action constants
+  LZMA_RUN: liblzma.LZMA_RUN,
+  LZMA_SYNC_FLUSH: liblzma.LZMA_SYNC_FLUSH,
+  LZMA_FULL_FLUSH: liblzma.LZMA_FULL_FLUSH,
+  LZMA_FINISH: liblzma.LZMA_FINISH,
+  // LZMA status/error constants
+  LZMA_OK: liblzma.LZMA_OK,
+  LZMA_STREAM_END: liblzma.LZMA_STREAM_END,
+  LZMA_NO_CHECK: liblzma.LZMA_NO_CHECK,
+  LZMA_UNSUPPORTED_CHECK: liblzma.LZMA_UNSUPPORTED_CHECK,
+  LZMA_GET_CHECK: liblzma.LZMA_GET_CHECK,
+  LZMA_MEM_ERROR: liblzma.LZMA_MEM_ERROR,
+  LZMA_MEMLIMIT_ERROR: liblzma.LZMA_MEMLIMIT_ERROR,
+  LZMA_FORMAT_ERROR: liblzma.LZMA_FORMAT_ERROR,
+  LZMA_OPTIONS_ERROR: liblzma.LZMA_OPTIONS_ERROR,
+  LZMA_DATA_ERROR: liblzma.LZMA_DATA_ERROR,
+  LZMA_BUF_ERROR: liblzma.LZMA_BUF_ERROR,
+  LZMA_PROG_ERROR: liblzma.LZMA_PROG_ERROR,
+  // Missing filter constants
+  LZMA_FILTER_X86: liblzma.LZMA_FILTER_X86,
+  LZMA_FILTER_POWERPC: liblzma.LZMA_FILTER_POWERPC,
+  LZMA_FILTER_IA64: liblzma.LZMA_FILTER_IA64,
+  LZMA_FILTER_ARM: liblzma.LZMA_FILTER_ARM,
+  LZMA_FILTER_ARMTHUMB: liblzma.LZMA_FILTER_ARMTHUMB,
+  LZMA_FILTERS_MAX: liblzma.LZMA_FILTERS_MAX,
 };
