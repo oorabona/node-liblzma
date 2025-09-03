@@ -341,7 +341,7 @@ export abstract class XzStream extends Transform {
       /* v8 ignore stop */
       /* v8 ignore next - processing loop entry */
       while (true) {
-        const res = this.lzma.codeSync(
+        const [status, availInAfter, availOutAfter] = this.lzma.codeSync(
           flushFlag,
           chunk,
           inOff,
@@ -350,7 +350,7 @@ export abstract class XzStream extends Transform {
           this._offset
         );
         /* v8 ignore start */
-        if (this._hadError || !callback(res[0], res[1], res[2])) {
+        if (this._hadError || !callback(status, availInAfter, availOutAfter)) {
           break;
         }
         /* v8 ignore stop */
