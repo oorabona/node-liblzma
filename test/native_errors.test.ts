@@ -326,5 +326,20 @@ describe('Native LZMA Error Codes', () => {
       // Second close should not crash
       expect(() => stream.close()).not.toThrow();
     });
+
+    it('should handle errno out of bounds in error handler', () => {
+      const xz = new lzma.Xz();
+
+      return new Promise<void>((resolve) => {
+        xz.on('error', (error) => {
+          expect(error).toBeInstanceOf(Error);
+          // Should handle errno beyond messages array bounds gracefully
+          resolve();
+        });
+
+        // Emit onerror with out-of-bounds errno
+        xz.emit('onerror', 99999);
+      });
+    });
   });
 });
