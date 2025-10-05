@@ -1,0 +1,170 @@
+name: Pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease-type:
+        description: 'Pre-release type'
+        required: true
+        type: choice
+        options:
+          - alpha
+          - beta
+          - rc
+      version:
+        description: 'Version number (e.g., 2.1.0-alpha.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build TypeScript
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Type check
+        run: pnpm type-check
+
+  build-prebuilds:
+    name: Build Prebuilds
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [16, 18, 20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build prebuild
+        run: pnpm prebuildify
+        if: matrix.os != 'windows-latest'
+
+      - name: Build prebuild (Windows)
+        run: pnpm prebuildify:win
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+
+      - name: Upload prebuilds
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilds-${{ matrix.os }}-node${{ matrix.node }}
+          path: prebuilds/
+
+  publish-prerelease:
+    name: Publish Pre-release to npm
+    needs: build-prebuilds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download all prebuilds
+        uses: actions/download-artifact@v4
+        with:
+          path: prebuilds-temp/
+
+      - name: Merge prebuilds
+        run: |
+          mkdir -p prebuilds
+          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
+
+      - name: Update version
+        run: |
+          pnpm version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Build TypeScript
+        run: pnpm build
+
+      - name: Publish to npm with tag
+        run: pnpm publish --access public --tag ${{ github.event.inputs.prerelease-type }} --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-prerelease:
+    name: Create GitHub Pre-release
+    needs: publish-prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create pre-release tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag v${{ github.event.inputs.version }}
+          git push origin v${{ github.event.inputs.version }}
+
+      - name: Create GitHub Pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: v${{ github.event.inputs.version }}
+          body: |
+            Pre-release ${{ github.event.inputs.version }}
+
+            This is a ${{ github.event.inputs.prerelease-type }} pre-release for testing purposes.
+
+            Install with:
+            ```bash
+            pnpm add node-liblzma@${{ github.event.inputs.prerelease-type }}
+            ```
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

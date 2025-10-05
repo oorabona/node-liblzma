@@ -1,0 +1,3 @@
+{
+  "extends": "@oorabona/release-it-preset/config/default"
+}

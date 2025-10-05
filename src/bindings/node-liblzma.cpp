@@ -53,9 +53,16 @@ void LZMA::Init(Napi::Env env, Napi::Object exports)
 					 InstanceMethod("codeSync", &LZMA::Code<false>),
 					 InstanceMethod("close", &LZMA::Close)});
 
-	Napi::FunctionReference *constructor = new Napi::FunctionReference();
+	auto constructor = std::make_unique<Napi::FunctionReference>();
 	*constructor = Napi::Persistent(func);
-	env.SetInstanceData(constructor);
+
+	// SetInstanceData with deleter to prevent memory leak
+	env.SetInstanceData(
+		constructor.release(),
+		[](Napi::Env /*env*/, Napi::FunctionReference* data) {
+			delete data;
+		}
+	);
 
 	exports.Set("LZMA", func);
 }
@@ -209,15 +216,16 @@ bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferConte
 {
 	Napi::Env env = info.Env();
 	constexpr int expected_args = async ? ASYNC_PARAM_COUNT : SYNC_PARAM_COUNT;
+	// Maximum buffer size: 512MB to prevent DoS via resource exhaustion
+	constexpr size_t MAX_BUFFER_SIZE = 512UL * 1024 * 1024;
 
 	// Validate parameter count
 	if (info.Length() != expected_args)
 	{
-		Napi::Error::New(env, "BUG?: LZMA::Code requires all these arguments: "
-							  "flushFlag, input_buffer, input_offset, availInBefore, "
-							  "output_buffer, output_offset" +
-								  std::string(async ? ", callback" : ""))
-			.ThrowAsJavaScriptException();
+		std::string msg = async
+			? "Invalid arguments: LZMA::Code requires 7 arguments (flushFlag, input_buffer, input_offset, availInBefore, output_buffer, output_offset, callback)"
+			: "Invalid arguments: LZMA::Code requires 6 arguments (flushFlag, input_buffer, input_offset, availInBefore, output_buffer, output_offset)";
+		Napi::Error::New(env, msg).ThrowAsJavaScriptException();
 		return false;
 	}
 
@@ -240,7 +248,7 @@ bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferConte
 	{
 		if (!info[1].IsBuffer())
 		{
-			Napi::TypeError::New(env, "BUG?: LZMA::Code 'input_buffer' argument must be a Buffer").ThrowAsJavaScriptException();
+			Napi::TypeError::New(env, "Invalid argument: 'input_buffer' must be a Buffer").ThrowAsJavaScriptException();
 			return false;
 		}
 
@@ -248,6 +256,13 @@ bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferConte
 		ctx.in_off = info[2].ToNumber().Uint32Value();
 		ctx.in_len = info[3].ToNumber().Uint32Value();
 		size_t in_max = info[1].As<Napi::Buffer<uint8_t>>().Length();
+
+		// Validate buffer size limit
+		if (in_max > MAX_BUFFER_SIZE)
+		{
+			Napi::RangeError::New(env, "Input buffer exceeds maximum size of 512MB").ThrowAsJavaScriptException();
+			return false;
+		}
 
 		if (!node::Buffer::IsWithinBounds(ctx.in_off, ctx.in_len, in_max))
 		{
@@ -260,13 +275,22 @@ bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferConte
 	// Handle output buffer (required)
 	if (!info[4].IsBuffer())
 	{
-		Napi::TypeError::New(env, "BUG?: LZMA::Code 'output_buffer' argument must be a Buffer").ThrowAsJavaScriptException();
+		Napi::TypeError::New(env, "Invalid argument: 'output_buffer' must be a Buffer").ThrowAsJavaScriptException();
 		return false;
 	}
 
 	uint8_t *out_buf = info[4].As<Napi::Buffer<uint8_t>>().Data();
+	size_t out_max = info[4].As<Napi::Buffer<uint8_t>>().Length();
+
+	// Validate output buffer size limit
+	if (out_max > MAX_BUFFER_SIZE)
+	{
+		Napi::RangeError::New(env, "Output buffer exceeds maximum size of 512MB").ThrowAsJavaScriptException();
+		return false;
+	}
+
 	ctx.out_off = info[5].ToNumber().Uint32Value();
-	ctx.out_len = info[4].As<Napi::Buffer<uint8_t>>().Length() - ctx.out_off;
+	ctx.out_len = out_max - ctx.out_off;
 	ctx.out = out_buf + ctx.out_off;
 
 	// Validate callback for async mode
@@ -274,7 +298,7 @@ bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferConte
 	{
 		if (!info[6].IsFunction())
 		{
-			Napi::TypeError::New(env, "BUG?: LZMA::Code 'callback' argument must be a Function").ThrowAsJavaScriptException();
+			Napi::TypeError::New(env, "Invalid argument: 'callback' must be a Function").ThrowAsJavaScriptException();
 			return false;
 		}
 	}

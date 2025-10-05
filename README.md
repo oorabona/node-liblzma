@@ -3,9 +3,8 @@ Node-liblzma
 
 [![NPM Version](https://img.shields.io/npm/v/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
 [![NPM Downloads](https://img.shields.io/npm/dm/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
-[![Test on Linux](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-linux.yml)
-[![Test on MacOS](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-macos.yml)
-[![Test on Windows](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-windows.yml)
+[![CI Status](https://github.com/oorabona/node-liblzma/actions/workflows/ci-unified.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-unified.yml)
+[![Code Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
 
 # What is liblzma/XZ ?
 
@@ -147,6 +146,207 @@ filters | Array | LZMA2 (added by default)
 
 For further information about each of these flags, you will find reference at [XZ SDK](http://7-zip.org/sdk.html).
 
+## Advanced Configuration
+
+### Thread Support
+
+The library supports multi-threaded compression when built with `ENABLE_THREAD_SUPPORT=yes` (default). Thread support allows parallel compression on multi-core systems, significantly improving performance for large files.
+
+**Using threads in compression:**
+
+```typescript
+import { xz, createXz } from 'node-liblzma';
+
+// Specify number of threads (1-N, where N is CPU core count)
+const options = {
+  preset: lzma.preset.DEFAULT,
+  threads: 4  // Use 4 threads for compression
+};
+
+// With buffer compression
+xz(buffer, options, (err, compressed) => {
+  // ...
+});
+
+// With streams
+const compressor = createXz(options);
+inputStream.pipe(compressor).pipe(outputStream);
+```
+
+**Important notes:**
+- Thread support only applies to **compression**, not decompression
+- Requires LZMA library built with pthread support
+- `threads: 1` disables multi-threading (falls back to single-threaded encoder)
+- Check if threads are available: `import { hasThreads } from 'node-liblzma';`
+
+### Buffer Size Optimization
+
+For optimal performance, the library uses configurable chunk sizes:
+
+```typescript
+const stream = createXz({
+  preset: lzma.preset.DEFAULT,
+  chunkSize: 256 * 1024  // 256KB chunks (default: 64KB)
+});
+```
+
+**Recommendations:**
+- **Small files (< 1MB)**: Use default 64KB chunks
+- **Medium files (1-10MB)**: Use 128-256KB chunks
+- **Large files (> 10MB)**: Use 512KB-1MB chunks
+- **Maximum buffer size**: 512MB per operation (security limit)
+
+### Memory Usage Limits
+
+The library enforces a 512MB maximum buffer size to prevent DoS attacks via resource exhaustion. For files larger than 512MB, use streaming APIs:
+
+```typescript
+import { createReadStream, createWriteStream } from 'fs';
+import { createXz } from 'node-liblzma';
+
+createReadStream('large-file.bin')
+  .pipe(createXz())
+  .pipe(createWriteStream('large-file.xz'));
+```
+
+### Error Handling
+
+The library provides typed error classes for better error handling:
+
+```typescript
+import {
+  xzAsync,
+  LZMAError,
+  LZMAMemoryError,
+  LZMADataError,
+  LZMAFormatError
+} from 'node-liblzma';
+
+try {
+  const compressed = await xzAsync(buffer);
+} catch (error) {
+  if (error instanceof LZMAMemoryError) {
+    console.error('Out of memory:', error.message);
+  } else if (error instanceof LZMADataError) {
+    console.error('Corrupt data:', error.message);
+  } else if (error instanceof LZMAFormatError) {
+    console.error('Invalid format:', error.message);
+  } else {
+    console.error('Unknown error:', error);
+  }
+}
+```
+
+**Available error classes:**
+- `LZMAError` - Base error class
+- `LZMAMemoryError` - Memory allocation failed
+- `LZMAMemoryLimitError` - Memory limit exceeded
+- `LZMAFormatError` - Unrecognized file format
+- `LZMAOptionsError` - Invalid compression options
+- `LZMADataError` - Corrupt compressed data
+- `LZMABufferError` - Buffer size issues
+- `LZMAProgrammingError` - Internal errors
+
+### Error Recovery
+
+Streams automatically handle recoverable errors and provide state transition hooks:
+
+```typescript
+const decompressor = createUnxz();
+
+decompressor.on('error', (error) => {
+  console.error('Decompression error:', error.errno, error.message);
+  // Stream will emit 'close' event after error
+});
+
+decompressor.on('close', () => {
+  console.log('Stream closed, safe to cleanup');
+});
+```
+
+### Concurrency Control with LZMAPool
+
+For production environments with high concurrency needs, use `LZMAPool` to limit simultaneous operations:
+
+```typescript
+import { LZMAPool } from 'node-liblzma';
+
+const pool = new LZMAPool(10); // Max 10 concurrent operations
+
+// Monitor pool metrics
+pool.on('metrics', (metrics) => {
+  console.log(`Active: ${metrics.active}, Queued: ${metrics.queued}`);
+  console.log(`Completed: ${metrics.completed}, Failed: ${metrics.failed}`);
+});
+
+// Compress with automatic queuing
+const compressed = await pool.compress(buffer);
+const decompressed = await pool.decompress(compressed);
+
+// Get current metrics
+const status = pool.getMetrics();
+```
+
+**Pool Events:**
+- `queue` - Task added to queue
+- `start` - Task started processing
+- `complete` - Task completed successfully
+- `error-task` - Task failed
+- `metrics` - Metrics updated (after each state change)
+
+**Benefits:**
+- ✅ Automatic backpressure
+- ✅ Prevents resource exhaustion
+- ✅ Production-ready monitoring
+- ✅ Zero breaking changes (opt-in)
+
+### File Compression Helpers
+
+Simplified API for file-based compression:
+
+```typescript
+import { xzFile, unxzFile } from 'node-liblzma';
+
+// Compress a file
+await xzFile('input.txt', 'output.txt.xz');
+
+// Decompress a file
+await unxzFile('output.txt.xz', 'restored.txt');
+
+// With options
+await xzFile('large-file.bin', 'compressed.xz', {
+  preset: 9,
+  threads: 4
+});
+```
+
+**Advantages over buffer APIs:**
+- ✅ Handles files > 512MB automatically
+- ✅ Built-in backpressure via streams
+- ✅ Lower memory footprint
+- ✅ Simpler API for common use cases
+
+## Async callback contract (errno-based)
+
+The low-level native callback used internally by streams follows an errno-style contract to match liblzma behavior and to avoid mixing exception channels:
+
+- Signature: `(errno: number, availInAfter: number, availOutAfter: number)`
+- Success: `errno` is either `LZMA_OK` or `LZMA_STREAM_END`.
+- Recoverable/other conditions: any other `errno` value (for example, `LZMA_BUF_ERROR`, `LZMA_DATA_ERROR`, `LZMA_PROG_ERROR`) indicates an error state.
+- Streams emit `onerror` with the numeric `errno` when `errno !== LZMA_OK && errno !== LZMA_STREAM_END`.
+
+Why errno instead of JS exceptions?
+
+- The binding mirrors liblzma’s status codes and keeps a single error channel that’s easy to reason about in tight processing loops.
+- This avoids throwing across async worker boundaries and keeps cleanup deterministic.
+
+High-level APIs remain ergonomic:
+
+- Promise-based functions `xzAsync()`/`unxzAsync()` still resolve to `Buffer` or reject with `Error` as expected.
+- Stream users can listen to `error` events, where we map `errno` to a human-friendly message (`messages[errno]`).
+
+If you prefer Node’s error-first callbacks, you can wrap the APIs and translate `errno` to `Error` objects at your boundaries without changing the native layer.
+
 # Installation
 
 Well, as simple as this one-liner:
@@ -222,7 +422,9 @@ Once done, this should suffice:
 npm install
 ```
 
-# Tests
+# Testing
+
+This project maintains **100% code coverage** across all statements, branches, functions, and lines.
 
 You can run tests with:
 
@@ -232,7 +434,7 @@ npm test
 pnpm test
 ```
 
-It will build and launch tests suite with [Vitest](https://vitest.dev/) with TypeScript support and coverage reporting.
+It will build and launch the test suite (51 tests) with [Vitest](https://vitest.dev/) with TypeScript support and coverage reporting.
 
 Additional testing commands:
 
@@ -254,6 +456,478 @@ As the API is very close to NodeJS Zlib, you will probably find a good reference
 
 Otherwise examples can be found as part of the test suite, so feel free to use them!
 They are written in TypeScript with full type definitions.
+
+# Migration Guide
+
+## Migrating from v1.x to v2.0
+
+Version 2.0 introduces several breaking changes along with powerful new features.
+
+### Breaking Changes
+
+1. **Node.js Version Requirement**
+   ```diff
+   - Requires Node.js >= 12
+   + Requires Node.js >= 16
+   ```
+
+2. **ESM Module Format**
+   ```diff
+   - CommonJS: var lzma = require('node-liblzma');
+   + ESM: import * as lzma from 'node-liblzma';
+   + CommonJS still works via dynamic import
+   ```
+
+3. **TypeScript Migration**
+   - Source code migrated from CoffeeScript to TypeScript
+   - Full type definitions included
+   - Better IDE autocomplete and type safety
+
+### New Features You Should Adopt
+
+1. **Promise-based APIs** (Recommended for new code)
+   ```typescript
+   // Old callback style (still works)
+   xz(buffer, (err, compressed) => {
+     if (err) throw err;
+     // use compressed
+   });
+
+   // New Promise style
+   try {
+     const compressed = await xzAsync(buffer);
+     // use compressed
+   } catch (err) {
+     // handle error
+   }
+   ```
+
+2. **Typed Error Classes** (Better error handling)
+   ```typescript
+   import { LZMAMemoryError, LZMADataError } from 'node-liblzma';
+
+   try {
+     await unxzAsync(corruptData);
+   } catch (error) {
+     if (error instanceof LZMADataError) {
+       console.error('Corrupt compressed data');
+     } else if (error instanceof LZMAMemoryError) {
+       console.error('Out of memory');
+     }
+   }
+   ```
+
+3. **Concurrency Control** (For high-throughput applications)
+   ```typescript
+   import { LZMAPool } from 'node-liblzma';
+
+   const pool = new LZMAPool(10); // Max 10 concurrent operations
+
+   // Automatic queuing and backpressure
+   const results = await Promise.all(
+     files.map(file => pool.compress(file))
+   );
+   ```
+
+4. **File Helpers** (Simpler file compression)
+   ```typescript
+   import { xzFile, unxzFile } from 'node-liblzma';
+
+   // Compress a file (handles streaming automatically)
+   await xzFile('input.txt', 'output.txt.xz');
+
+   // Decompress a file
+   await unxzFile('output.txt.xz', 'restored.txt');
+   ```
+
+### Testing Framework Change
+
+If you maintain tests for code using node-liblzma:
+
+```diff
+- Mocha test framework
++ Vitest test framework (faster, better TypeScript support)
+```
+
+### Tooling Updates
+
+Development tooling has been modernized:
+
+- **Linter**: Biome (replaces ESLint + Prettier)
+- **Package Manager**: pnpm recommended (npm/yarn still work)
+- **Pre-commit Hooks**: nano-staged + simple-git-hooks
+
+# Troubleshooting
+
+## Common Build Issues
+
+### Issue: "Cannot find liblzma library"
+
+**Solution**: Install system development package or let node-gyp download it:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install liblzma-dev
+
+# macOS
+brew install xz
+
+# Windows (let node-gyp download and build)
+npm install node-liblzma --build-from-source
+```
+
+### Issue: "node-gyp rebuild failed"
+
+**Symptoms**: Build fails with C++ compilation errors
+
+**Solutions**:
+1. Install build tools:
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get install build-essential python3
+
+   # macOS (install Xcode Command Line Tools)
+   xcode-select --install
+
+   # Windows
+   npm install --global windows-build-tools
+   ```
+
+2. Clear build cache and retry:
+   ```bash
+   rm -rf build node_modules
+   npm install
+   ```
+
+### Issue: "Prebuilt binary not found"
+
+**Solution**: Your platform might not have prebuilt binaries. Build from source:
+
+```bash
+npm install node-liblzma --build-from-source
+```
+
+## Runtime Issues
+
+### Issue: "Memory allocation failed" (LZMAMemoryError)
+
+**Causes**:
+- Input buffer exceeds 512MB limit (security protection)
+- System out of memory
+- Trying to decompress extremely large archive
+
+**Solutions**:
+1. For files > 512MB, use streaming APIs:
+   ```typescript
+   import { createReadStream, createWriteStream } from 'fs';
+   import { createXz } from 'node-liblzma';
+
+   createReadStream('large-file.bin')
+     .pipe(createXz())
+     .pipe(createWriteStream('large-file.xz'));
+   ```
+
+2. Or use file helpers (automatically handle large files):
+   ```typescript
+   await xzFile('large-file.bin', 'large-file.xz');
+   ```
+
+### Issue: "Corrupt compressed data" (LZMADataError)
+
+**Symptoms**: Decompression fails with `LZMADataError`
+
+**Causes**:
+- File is not actually XZ/LZMA compressed
+- File is corrupted or incomplete
+- Wrong file format (LZMA1 vs LZMA2)
+
+**Solutions**:
+1. Verify file format:
+   ```bash
+   file compressed.xz
+   # Should show: "XZ compressed data"
+   ```
+
+2. Check file integrity:
+   ```bash
+   xz -t compressed.xz
+   ```
+
+3. Handle errors gracefully:
+   ```typescript
+   try {
+     const data = await unxzAsync(buffer);
+   } catch (error) {
+     if (error instanceof LZMADataError) {
+       console.error('Invalid or corrupt XZ file');
+     }
+   }
+   ```
+
+### Issue: Thread support warnings during compilation
+
+**Symptoms**: Compiler warnings about `-Wmissing-field-initializers`
+
+**Status**: This is normal and does not affect functionality. Thread support still works correctly.
+
+**Disable thread support** (if warnings are problematic):
+```bash
+ENABLE_THREAD_SUPPORT=no npm install node-liblzma --build-from-source
+```
+
+## Performance Issues
+
+### Issue: Compression is slow on multi-core systems
+
+**Solution**: Enable multi-threaded compression:
+
+```typescript
+import { xz } from 'node-liblzma';
+
+xz(buffer, { threads: 4 }, (err, compressed) => {
+  // 4 threads used for compression
+});
+```
+
+**Note**: Threads only apply to compression, not decompression.
+
+### Issue: High memory usage with concurrent operations
+
+**Solution**: Use `LZMAPool` to limit concurrency:
+
+```typescript
+import { LZMAPool } from 'node-liblzma';
+
+const pool = new LZMAPool(5); // Limit to 5 concurrent operations
+
+// Pool automatically queues excess operations
+const results = await Promise.all(
+  largeArray.map(item => pool.compress(item))
+);
+```
+
+## Windows-Specific Issues
+
+### Issue: Build fails on Windows
+
+**Solutions**:
+1. Install Visual Studio Build Tools:
+   ```powershell
+   npm install --global windows-build-tools
+   ```
+
+2. Use the correct Python version:
+   ```powershell
+   npm config set python python3
+   ```
+
+3. Let the build system download XZ automatically:
+   ```powershell
+   npm install node-liblzma --build-from-source
+   ```
+
+### Issue: "Cannot find module" on Windows
+
+**Cause**: Path separator issues in Windows
+
+**Solution**: Use forward slashes or `path.join()`:
+```typescript
+import { join } from 'path';
+await xzFile(join('data', 'input.txt'), join('data', 'output.xz'));
+```
+
+# Contributing
+
+We welcome contributions! Here's how to get started.
+
+## Development Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/oorabona/node-liblzma.git
+   cd node-liblzma
+   ```
+
+2. **Install dependencies** (pnpm recommended):
+   ```bash
+   pnpm install
+   # or
+   npm install
+   ```
+
+3. **Build the project**:
+   ```bash
+   pnpm build
+   ```
+
+4. **Run tests**:
+   ```bash
+   pnpm test
+   ```
+
+## Development Workflow
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Watch mode (re-run on changes)
+pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+
+# Interactive UI
+pnpm test:ui
+```
+
+### Code Quality
+
+We use [Biome](https://biomejs.dev/) for linting and formatting:
+
+```bash
+# Check code style
+pnpm check
+
+# Auto-fix issues
+pnpm check:write
+
+# Lint only
+pnpm lint
+
+# Format only
+pnpm format:write
+```
+
+### Type Checking
+
+```bash
+pnpm type-check
+```
+
+## Code Style
+
+- **Linter**: Biome (configured in `biome.json`)
+- **Formatting**: Biome handles both linting and formatting
+- **Pre-commit hooks**: Automatically run via nano-staged + simple-git-hooks
+- **TypeScript**: Strict mode enabled
+
+## Commit Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types**:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `test`: Test changes
+- `chore`: Build/tooling changes
+- `perf`: Performance improvements
+
+**Examples**:
+```bash
+git commit -m "feat(pool): add LZMAPool for concurrency control"
+git commit -m "fix(bindings): resolve memory leak in FunctionReference"
+git commit -m "docs(readme): add migration guide for v2.0"
+```
+
+## Pull Request Process
+
+1. **Fork the repository** and create a feature branch:
+   ```bash
+   git checkout -b feat/my-new-feature
+   ```
+
+2. **Make your changes** following code style guidelines
+
+3. **Add tests** for new functionality:
+   - All new code must have 100% test coverage
+   - Tests go in `test/` directory
+   - Use Vitest testing framework
+
+4. **Ensure all checks pass**:
+   ```bash
+   pnpm check:write   # Fix code style
+   pnpm type-check    # Verify TypeScript types
+   pnpm test          # Run test suite
+   ```
+
+5. **Commit with conventional commits**:
+   ```bash
+   git add .
+   git commit -m "feat: add new feature"
+   ```
+
+6. **Push and create Pull Request**:
+   ```bash
+   git push origin feat/my-new-feature
+   ```
+
+7. **Wait for CI checks** to pass (GitHub Actions will run automatically)
+
+## Testing Guidelines
+
+- **Coverage**: Maintain 100% code coverage (statements, branches, functions, lines)
+- **Test files**: Name tests `*.test.ts` in `test/` directory
+- **Structure**: Use `describe` and `it` blocks with clear descriptions
+- **Assertions**: Use Vitest's `expect()` API
+
+**Example test**:
+```typescript
+import { describe, it, expect } from 'vitest';
+import { xzAsync, unxzAsync } from '../src/lzma.js';
+
+describe('Compression', () => {
+  it('should compress and decompress data', async () => {
+    const original = Buffer.from('test data');
+    const compressed = await xzAsync(original);
+    const decompressed = await unxzAsync(compressed);
+
+    expect(decompressed.equals(original)).toBe(true);
+  });
+});
+```
+
+## Release Process
+
+Releases are automated using [@oorabona/release-it-preset](https://github.com/oorabona/release-it-preset):
+
+```bash
+# Standard release (patch/minor/major based on commits)
+pnpm release
+
+# Manual changelog editing
+pnpm release:manual
+
+# Hotfix release
+pnpm release:hotfix
+
+# Update changelog only (no release)
+pnpm changelog:update
+```
+
+**For maintainers only**. Contributors should submit PRs; maintainers handle releases.
+
+## Getting Help
+
+- **Questions**: Open a [Discussion](https://github.com/oorabona/node-liblzma/discussions)
+- **Bugs**: Open an [Issue](https://github.com/oorabona/node-liblzma/issues)
+- **Security**: Email security@example.com (do not open public issues)
+
+## License
+
+By contributing, you agree that your contributions will be licensed under [LGPL-3.0+](LICENSE).
 
 # Bugs
 

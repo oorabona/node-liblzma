@@ -98,3 +98,9 @@ deps/*
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Test artifacts
+test_*.cjs
+test-*.sh
+test-*.md
+*_OPTIMIZATION.md

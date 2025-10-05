@@ -23,6 +23,17 @@ import * as path from 'node:path';
 import { Transform, type TransformCallback, type TransformOptions } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import type { NativeLZMA } from '../index.js';
+import {
+  createLZMAError,
+  LZMABufferError,
+  LZMADataError,
+  LZMAError,
+  LZMAFormatError,
+  LZMAMemoryError,
+  LZMAMemoryLimitError,
+  LZMAOptionsError,
+  LZMAProgrammingError,
+} from './errors.js';
 import type {
   CheckType,
   CompressionCallback,
@@ -33,6 +44,21 @@ import type {
   ModeType,
   PresetType,
 } from './types.js';
+
+// Re-export error classes for public API
+export {
+  LZMAError,
+  LZMAMemoryError,
+  LZMAMemoryLimitError,
+  LZMAFormatError,
+  LZMAOptionsError,
+  LZMADataError,
+  LZMABufferError,
+  LZMAProgrammingError,
+};
+
+// Re-export pool for concurrency control
+export { LZMAPool, type PoolMetrics } from './pool.js';
 
 // Helper to safely access Node.js internal _writableState using official properties
 function getWritableState(stream: Transform) {
@@ -266,12 +292,7 @@ export abstract class XzStream extends Transform {
   }
 
   private _createLZMAError(errno: number): Error & { errno: number; code: number } {
-    // Handle errno out of bounds safely
-    const messageIndex = Math.max(0, Math.min(errno, messages.length - 1));
-    const error = new Error(messages[messageIndex]) as Error & { errno: number; code: number };
-    error.errno = errno;
-    error.code = errno;
-    return error;
+    return createLZMAError(errno) as Error & { errno: number; code: number };
   }
 
   private _reallocateBuffer(): void {
@@ -726,6 +747,48 @@ function xzBufferSync(engine: XzStream, buffer: Buffer | string): Buffer {
   }
 
   return engine._processChunk(buf, liblzma.LZMA_FINISH) as Buffer;
+}
+
+// File-based compression/decompression helpers
+import { createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+
+/**
+ * Compress a file using XZ compression
+ * @param inputPath Path to input file
+ * @param outputPath Path to output compressed file
+ * @param opts LZMA compression options
+ * @returns Promise that resolves when compression is complete
+ */
+export async function xzFile(
+  inputPath: string,
+  outputPath: string,
+  opts?: LZMAOptions
+): Promise<void> {
+  const input = createReadStream(inputPath);
+  const output = createWriteStream(outputPath);
+  const compressor = createXz(opts);
+
+  await pipeline(input, compressor, output);
+}
+
+/**
+ * Decompress an XZ compressed file
+ * @param inputPath Path to compressed input file
+ * @param outputPath Path to output decompressed file
+ * @param opts LZMA decompression options
+ * @returns Promise that resolves when decompression is complete
+ */
+export async function unxzFile(
+  inputPath: string,
+  outputPath: string,
+  opts?: LZMAOptions
+): Promise<void> {
+  const input = createReadStream(inputPath);
+  const output = createWriteStream(outputPath);
+  const decompressor = createUnxz(opts);
+
+  await pipeline(input, decompressor, output);
 }
 
 // Export default object for CommonJS compatibility - use individual exports to avoid duplication

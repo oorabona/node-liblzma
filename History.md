@@ -1,3 +1,23 @@
+# History.md
+
+> **Note**: This file is deprecated. Please see [CHANGELOG.md](./CHANGELOG.md) for the current changelog following the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
+
+# 2.0.0
+* **Breaking**: Modernized testing framework from Mocha to Vitest
+* **Breaking**: Modernized stack from Coffeescript to Typescript
+* **Feature**: Added 100% code coverage (51 tests covering all statements, branches, functions, and lines)
+* **Feature**: Implemented automatic filter reordering (LZMA2 filter automatically moved to end as required by liblzma)
+* **Fix**: Resolved C++ exception handling issues with NAPI_DISABLE_CPP_EXCEPTIONS for better performance
+* **Fix**: Corrected memory management in async operations (Ref/Unref balance)
+* **Fix**: Fixed filter validation bug causing LZMA_OPTIONS_ERROR with multiple filters
+* **CI**: Consolidated GitHub Actions workflows from 5 separate workflows to 1 unified pipeline
+* **CI**: Enhanced caching strategy and matrix testing with conditional execution
+* **CI**: Added path filters to avoid unnecessary CI runs for documentation-only changes
+* **CI**: Optimized XZ source downloading with single download shared across all jobs
+* **Performance**: Improved async callback handling and error management
+* **Testing**: Added comprehensive edge case coverage including malformed inputs and threading tests
+* **Testing**: Enhanced TypeScript configuration for better test reliability
+
 # 1.1.9
 * Fix building if no prebuilt binary found
 
