@@ -47,8 +47,6 @@ jobs:
       - name: Install pnpm
         if: matrix.language == 'javascript'
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
