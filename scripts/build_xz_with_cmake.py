@@ -157,6 +157,31 @@ def install_cmake(build_dir, install_dir):
         print(f"[ERROR] CMake install failed with exit code {e.returncode}")
         return False
 
+def fix_windows_lib_names(install_dir):
+    """Fix Windows library naming: CMake creates lzma.lib but binding.gyp expects liblzma.lib"""
+    if platform.system() != "Windows":
+        return True
+
+    import shutil
+    lib_dir = os.path.join(install_dir, 'lib')
+    source_lib = os.path.join(lib_dir, 'lzma.lib')
+    target_lib = os.path.join(lib_dir, 'liblzma.lib')
+
+    if os.path.exists(source_lib) and not os.path.exists(target_lib):
+        try:
+            shutil.copy2(source_lib, target_lib)
+            print(f"[FIX] Created {target_lib} from {source_lib}")
+            return True
+        except Exception as e:
+            print(f"[WARNING] Could not create liblzma.lib: {e}")
+            return False
+    elif os.path.exists(target_lib):
+        print(f"[OK] {target_lib} already exists")
+        return True
+    else:
+        print(f"[WARNING] Source file {source_lib} not found")
+        return False
+
 def verify_build(install_dir, runtime_link="static"):
     """Verify that the build produced the expected files"""
     expected_files = ['include/lzma.h']  # Common file for all builds
@@ -275,10 +300,11 @@ Examples:
     
     # Build process
     success = (
-        configure_cmake(source_dir, build_dir, install_dir, 
+        configure_cmake(source_dir, build_dir, install_dir,
                        runtime_link, enable_threads) and
         build_cmake(build_dir) and
         install_cmake(build_dir, install_dir) and
+        fix_windows_lib_names(install_dir) and
         verify_build(install_dir, runtime_link)
     )
     
