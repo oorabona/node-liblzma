@@ -52,6 +52,11 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
         # Build only liblzma, not the command-line tools
         '-DCREATE_XZ_SYMLINKS=OFF',
         '-DCREATE_LZMA_SYMLINKS=OFF',
+        # Disable CLI tools completely (they have libintl dependency issues on macOS)
+        '-DXZ_TOOL_XZ=OFF',
+        '-DXZ_TOOL_LZMAINFO=OFF',
+        '-DXZ_TOOL_XZDEC=OFF',
+        '-DXZ_TOOL_LZMADEC=OFF',
         # Enable Position Independent Code for use in shared libraries
         '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
         # Disable compiler warnings that might cause issues in CI
