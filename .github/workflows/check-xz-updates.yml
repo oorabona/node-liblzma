@@ -68,17 +68,19 @@ jobs:
         id: test
         run: |
           echo "Testing with XZ ${{ steps.check.outputs.latest }}"
-          
+
           # Test installation with new version
           XZ_VERSION="${{ steps.check.outputs.latest }}" pnpm install --frozen-lockfile
-          
+
           # Run build and tests
           pnpm run build
           pnpm run type-check
           pnpm test
-          
+
           echo "✅ Tests passed with XZ ${{ steps.check.outputs.latest }}"
           echo "test_passed=true" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
       
       - name: Update xz-version.json

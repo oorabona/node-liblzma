@@ -39,8 +39,19 @@ jobs:
           architecture: x64
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
+      - name: Cache XZ sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.gz
+          key: cd-${{ runner.os }}-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          restore-keys: |
+            cd-${{ runner.os }}-xz-
       - name: Install
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
         run: pnpm run build
       - name: Prebuildify for Windows
@@ -81,8 +92,19 @@ jobs:
           path: artifacts
       - name: Unzip all binaries
         run: mkdir prebuilds && find artifacts -name "*.tar.gz" -exec tar zxvf {} -C prebuilds \;
+      - name: Cache XZ sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.gz
+          key: cd-publish-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          restore-keys: |
+            cd-publish-xz-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
         run: pnpm run build
       - name: Set version from branch name

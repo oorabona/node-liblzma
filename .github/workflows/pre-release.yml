@@ -36,8 +36,20 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - name: Cache XZ sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.gz
+          key: pre-release-test-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          restore-keys: |
+            pre-release-test-xz-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build TypeScript
         run: pnpm build
@@ -68,8 +80,21 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: 'pnpm'
 
+      - name: Cache XZ sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.gz
+          key: pre-release-${{ runner.os }}-node${{ matrix.node }}-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          restore-keys: |
+            pre-release-${{ runner.os }}-node${{ matrix.node }}-xz-
+            pre-release-${{ runner.os }}-xz-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build prebuild
         run: pnpm prebuildify
@@ -105,8 +130,20 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Cache XZ sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.gz
+          key: pre-release-publish-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          restore-keys: |
+            pre-release-publish-xz-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download all prebuilds
         uses: actions/download-artifact@v4

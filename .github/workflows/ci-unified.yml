@@ -180,6 +180,7 @@ jobs:
           ls -la deps/
         env:
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload XZ sources as artifact
         uses: actions/upload-artifact@v4
