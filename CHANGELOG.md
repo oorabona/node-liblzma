@@ -28,25 +28,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added 512MB buffer size validation to prevent DoS attacks
   - CodeQL workflow for continuous security scanning
   - Dependabot configuration for automated dependency updates
+  - Enhanced tarball extraction with path validation and safety checks against path traversal
 - **Thread Support**: Multi-threaded compression with configurable thread count
 - **Automatic Filter Reordering**: LZMA2 filter automatically moved to end as required by liblzma
+- **Factory Functions**: `createXz()` and `createUnxz()` to avoid circular dependencies in ESM
+- **XZ Version Management**: Automated version tracking and update workflows for XZ Utils
+- **CI/CD Enhancements**:
+  - Unified CI pipeline with smart smoke/full test detection
+  - Conditional test execution based on PR vs push vs schedule
+  - Composite GitHub Actions for dependency installation and environment setup
+  - XZ source caching with GitHub token support
+  - Upgraded to setup-node v5 across all workflows
+  - GITHUB_TOKEN environment variable for authenticated downloads
+- **.gitattributes**: Line ending normalization for cross-platform consistency
 
 ### Changed
 - **Breaking**: Requires Node.js >= 16 (updated from >= 12)
 - **Breaking**: Module is now ESM-only (`"type": "module"`)
+- **Build System**: Modernized to use CMake for XZ Utils compilation
+  - Environment variable configuration for runtime linking (`RUNTIME_LINK=static|shared`)
+  - Threading support configuration (`ENABLE_THREAD_SUPPORT=yes|no`)
+  - Global liblzma usage option (`USE_GLOBAL=true|false`)
+  - Disabled CLI tools to avoid libintl dependency on macOS
+- **XZ Utils**: Updated from 5.6.3 to 5.8.1 with complete CMake support
+- **macOS Support**: Enhanced dylib handling with proper RPATH configuration
+  - Smart install_name verification and fixing for shared libraries
+  - Proper linker flags via xcode_settings
+  - Only applies install_name fixes to shared library builds
+- **Windows Support**: Improved threading and DLL handling
+  - Thread support now works with both static and shared builds
+  - Fixed kernel32.lib linking for MSVC
+  - Automated library name fixing for binding.gyp compatibility
+  - Python-based DLL copying for better reliability
+- **Vitest Configuration**: Fork-based worker pool on macOS to avoid IPC channel errors
+- **CI Workflows**:
+  - Consolidated from 5 workflows to 1 unified pipeline
+  - Smoke tests and full tests are now mutually exclusive
+  - Proper handling of skipped job states in CI summary
+  - Enhanced caching strategy and matrix testing
+  - Path filters to avoid unnecessary runs
+- **Code Quality**: Simplified instance data management and improved buffer handling
 - Standardized error messages (removed "BUG?" prefixes) for production-ready error handling
 - Improved async callback handling and error management
 - Enhanced TypeScript configuration for better test reliability
-- Consolidated GitHub Actions workflows from 5 separate workflows to 1 unified pipeline
-- Enhanced CI caching strategy and matrix testing with conditional execution
-- Added path filters to avoid unnecessary CI runs for documentation-only changes
-- Optimized XZ source downloading with single download shared across all jobs
 
 ### Fixed
-- Resolved C++ exception handling issues with `NAPI_DISABLE_CPP_EXCEPTIONS` for better performance
-- Corrected memory management in async operations (Ref/Unref balance)
-- Fixed filter validation bug causing `LZMA_OPTIONS_ERROR` with multiple filters
-- Fixed memory leak in FunctionReference lifecycle management
+- **macOS Build Issues**:
+  - Fixed dylib loading errors (`Library not loaded: @rpath/liblzma.5.dylib`)
+  - Resolved libintl dependency issues by disabling XZ CLI tools
+  - Fixed RPATH configuration in binding.gyp and CMake
+  - Corrected install_name verification for shared vs static builds
+- **Windows Build Issues**:
+  - Fixed NAPI_VERSION redefinition error
+  - Resolved DLL loading for shared library builds
+  - Fixed threading support configuration
+  - Corrected Windows library naming for compatibility
+- **CI/CD Issues**:
+  - Fixed pipeline failure when smoke test is skipped
+  - Fixed conditional check for global liblzma usage
+  - Removed unnecessary shell specifications
+  - Fixed caching strategy and matrix configuration
+- **Test Issues**:
+  - Skip negative threads test if threading not supported
+  - Fixed TypeScript error handling in tests
+- **Code Issues**:
+  - Resolved C++ exception handling with `NAPI_DISABLE_CPP_EXCEPTIONS`
+  - Corrected memory management in async operations (Ref/Unref balance)
+  - Fixed filter validation bug causing `LZMA_OPTIONS_ERROR` with multiple filters
+  - Fixed memory leak in FunctionReference lifecycle management
+  - Fixed memory leaks and race conditions in C++ bindings
+  - Fixed filters array mutation by cloning in LZMAOptions
+  - Fixed XzStream destructuring for clarity
+  - Fixed LZMA2 filter ordering to ensure it's always last
+- **General**:
+  - Fixed download script symbolic link safety checks
+  - Added `*.log` to .gitignore
+  - Fixed tsconfig formatting
+  - Improved code formatting consistency
 
 ## [1.1.9] - Previous Release
 

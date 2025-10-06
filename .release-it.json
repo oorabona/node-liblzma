@@ -1,3 +1,7 @@
 {
-  "extends": "@oorabona/release-it-preset/config/default"
+  "extends": "@oorabona/release-it-preset/config/default",
+  "git": {
+    "requireBranch": "master",
+    "requireCleanWorkingDir": true
+  }
 }
