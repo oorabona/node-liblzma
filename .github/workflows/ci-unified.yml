@@ -478,9 +478,18 @@ jobs:
 
           # Overall status
           QUALITY_OK="${{ needs.quality.result == 'success' }}"
-          SMOKE_OK="${{ needs.smoke-test.result == 'success' || needs.smoke-test.result == '' }}"
-          FULL_OK="${{ needs.full-test.result == 'success' || needs.full-test.result == '' }}"
-          THREADING_OK="${{ needs.threading-test.result == 'success' || needs.threading-test.result == '' }}"
+          SMOKE_OK="${{ needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped' }}"
+          FULL_OK="${{ needs.full-test.result == 'success' || needs.full-test.result == 'skipped' }}"
+          THREADING_OK="${{ needs.threading-test.result == 'success' || needs.threading-test.result == 'skipped' }}"
+
+          # Ensure at least one test suite actually ran (not just skipped)
+          SMOKE_RAN="${{ needs.smoke-test.result == 'success' }}"
+          FULL_RAN="${{ needs.full-test.result == 'success' }}"
+
+          if [[ "$SMOKE_RAN" != "true" && "$FULL_RAN" != "true" ]]; then
+            echo "### ❌ No test suite executed!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
           if [[ "$QUALITY_OK" == "true" && "$SMOKE_OK" == "true" && "$FULL_OK" == "true" && "$THREADING_OK" == "true" ]]; then
             echo "### ✅ All checks passed!" >> $GITHUB_STEP_SUMMARY
