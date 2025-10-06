@@ -60,6 +60,16 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
 
+      - name: Install pnpm (C++)
+        if: matrix.language == 'cpp'
+        uses: pnpm/action-setup@v4
+
+      - name: Install system dependencies (C++)
+        if: matrix.language == 'cpp'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzma-dev pkg-config
+
       - name: Build native addon (C++)
         if: matrix.language == 'cpp'
         run: |
