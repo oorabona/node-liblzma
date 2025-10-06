@@ -574,6 +574,17 @@ export class Unxz extends XzStream {
 }
 /* v8 ignore next */
 
+// Factory functions - placed immediately after class definitions to avoid circular dependencies
+export function createXz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Xz {
+  return new Xz(lzmaOptions, options);
+}
+/* v8 ignore next */
+
+export function createUnxz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Unxz {
+  return new Unxz(lzmaOptions, options);
+}
+/* v8 ignore next */
+
 export function hasThreads(): boolean {
   return liblzma.HAS_THREADS_SUPPORT;
 }
@@ -610,15 +621,6 @@ export const messages: readonly string[] = [
   LZMAErrorMessage.BUF_ERROR,
   LZMAErrorMessage.PROG_ERROR,
 ];
-
-export function createXz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Xz {
-  return new Xz(lzmaOptions, options);
-}
-/* v8 ignore next */
-
-export function createUnxz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Unxz {
-  return new Unxz(lzmaOptions, options);
-}
 
 export function unxz(buffer: Buffer | string, callback: CompressionCallback): void;
 export function unxz(
