@@ -1,5 +1,5 @@
 {
-  "extends": "@oorabona/release-it-preset/config/default",
+  "extends": "@oorabona/release-it-preset/config/manual-changelog",
   "git": {
     "requireBranch": "master",
     "requireCleanWorkingDir": true
