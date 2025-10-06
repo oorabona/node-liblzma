@@ -48,6 +48,11 @@ jobs:
         if: matrix.language == 'javascript'
         uses: pnpm/action-setup@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzma-dev pkg-config
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -59,22 +64,20 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm run build
+        env:
+          USE_GLOBAL: true
 
       - name: Install pnpm (C++)
         if: matrix.language == 'cpp'
         uses: pnpm/action-setup@v4
-
-      - name: Install system dependencies (C++)
-        if: matrix.language == 'cpp'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y liblzma-dev pkg-config
 
       - name: Build native addon (C++)
         if: matrix.language == 'cpp'
         run: |
           pnpm install --frozen-lockfile
           # Native build happens during pnpm install via node-gyp
+        env:
+          USE_GLOBAL: true
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
