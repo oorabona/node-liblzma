@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2025-10-06
+
 ### Added
 - **TypeScript Support**: Complete migration from CoffeeScript to TypeScript for better type safety and developer experience
 - **Promise APIs**: New async functions `xzAsync()` and `unxzAsync()` with Promise support
@@ -207,3 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial version
 - C++ binding support ENCODE/DECODE
 - Async support
+
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...HEAD
+[v2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
+[2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
