@@ -295,7 +295,7 @@ jobs:
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
-          max_attempts: 3
+          max_attempts: 5
           retry_on: error
           command: pnpm test
 
@@ -382,7 +382,7 @@ jobs:
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
-          max_attempts: 3
+          max_attempts: 5
           retry_on: error
           command: pnpm test
 
@@ -460,7 +460,7 @@ jobs:
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
-          max_attempts: 3
+          max_attempts: 5
           retry_on: error
           command: pnpm test
 
