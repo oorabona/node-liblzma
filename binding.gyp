@@ -299,12 +299,17 @@
               }, {
                 "conditions": [
                   ["OS == 'mac'", {
-                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.dylib"]
+                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.dylib"],
+                    "ldflags": [
+                      "-pthread",
+                      "-Wl,-rpath,@loader_path/../liblzma/lib",
+                      "-Wl,-rpath,<(liblzma_install_dir)/lib"
+                    ]
                   }, {
-                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.so"]
+                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.so"],
+                    "ldflags": ["-pthread"]
                   }]
-                ],
-                "ldflags": ["-pthread"]
+                ]
               }]
             ]
           }]
