@@ -56,13 +56,8 @@ void LZMA::Init(Napi::Env env, Napi::Object exports)
 	auto constructor = std::make_unique<Napi::FunctionReference>();
 	*constructor = Napi::Persistent(func);
 
-	// SetInstanceData with deleter to prevent memory leak
-	env.SetInstanceData(
-		constructor.release(),
-		[](Napi::Env /*env*/, Napi::FunctionReference* data) {
-			delete data;
-		}
-	);
+	// SetInstanceData with automatic cleanup (node-addon-api v8.5.0+)
+	env.SetInstanceData<Napi::FunctionReference>(constructor.release());
 
 	exports.Set("LZMA", func);
 }
