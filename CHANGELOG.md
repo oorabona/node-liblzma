@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Vitest Configuration**: Universal fork-based worker pool with increased timeouts to resolve Vitest bug #8201
+  - Changed from conditional forks (macOS only) to universal forks for all platforms
+  - Increased testTimeout from 5000ms to 10000ms
+  - Added hookTimeout of 10000ms
+  - Configured singleFork and isolate options for better stability
+- **CI/CD Workflow Architecture**:
+  - Extracted hardcoded Node.js version to environment variable (NODE_VERSION: '22')
+  - Added retry mechanism for all test executions (3 attempts with 10-minute timeout)
+  - Changed `tags-ignore` to `tags` in ci-unified.yml to allow CI validation before releases
+  - Removed duplicate test execution from release.yml (violates DRY and SRP principles)
+  - Added check-ci job to verify CI passed before building prebuilds and publishing
+
+### Fixed
+- **Test Stability**: Fixed "Channel closed" (ERR_IPC_CHANNEL_CLOSED) errors on GitHub Actions macOS runners
+- **Workflow Duplication**: Eliminated duplicate test execution between ci-unified.yml and release.yml
+- **Release Safety**: Added CI verification step to ensure all checks pass before publishing to npm
+
 ## [2.0.1] - 2025-10-06
 
 ### Added
