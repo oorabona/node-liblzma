@@ -9,6 +9,14 @@ export default defineConfig({
     // Timeout for tests (similar to Mocha config)
     testTimeout: 5000,
 
+    // Use forks instead of threads on macOS to avoid IPC channel issues
+    pool: process.platform === 'darwin' ? 'forks' : 'threads',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+
     // Coverage configuration - V8 optimisé pour précision max
     coverage: {
       provider: 'v8',
