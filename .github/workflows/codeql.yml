@@ -65,6 +65,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_GLOBAL: true
 
       - name: Install pnpm (C++)
@@ -77,6 +78,7 @@ jobs:
           pnpm install --frozen-lockfile
           # Native build happens during pnpm install via node-gyp
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_GLOBAL: true
 
       - name: Perform CodeQL Analysis

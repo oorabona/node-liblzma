@@ -74,6 +74,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_GLOBAL: false
           RUNTIME_LINK: static
           ENABLE_THREAD_SUPPORT: yes

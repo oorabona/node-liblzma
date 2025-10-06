@@ -275,6 +275,7 @@ jobs:
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
           USE_GLOBAL: ${{ matrix.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.runtime_link }}
@@ -356,6 +357,7 @@ jobs:
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
           USE_GLOBAL: ${{ matrix.config.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.config.runtime_link }}
@@ -428,6 +430,7 @@ jobs:
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
           USE_GLOBAL: ${{ matrix.config.use_global_liblzma }}
           RUNTIME_LINK: ${{ matrix.config.runtime_link }}
