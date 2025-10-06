@@ -1,0 +1,32 @@
+name: 'Install System Dependencies'
+description: 'Install liblzma and build dependencies based on OS and configuration'
+author: 'Olivier ORABONA'
+
+inputs:
+  use-global-liblzma:
+    description: 'Whether to use system-installed liblzma (true/false)'
+    required: true
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install liblzma-dev (Linux)
+      if: runner.os == 'Linux' && inputs.use-global-liblzma == 'true'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y liblzma-dev pkg-config
+
+    - name: Install XZ (macOS)
+      if: runner.os == 'macOS' && inputs.use-global-liblzma == 'true'
+      shell: bash
+      run: |
+        brew install xz pkg-config
+
+    - name: Info - Using bundled liblzma
+      if: inputs.use-global-liblzma == 'false'
+      shell: bash
+      run: |
+        echo "📦 Using bundled XZ/liblzma (downloaded from GitHub)"
+        echo "USE_GLOBAL=${{ inputs.use-global-liblzma }}"
