@@ -90,6 +90,10 @@ jobs:
             pnpm run prebuildify
           fi
         shell: bash
+        env:
+          USE_GLOBAL: false
+          RUNTIME_LINK: static
+          ENABLE_THREAD_SUPPORT: yes
       - name: Upload prebuild artifacts
         if: ${{ inputs.upload-artifacts }}
         uses: actions/upload-artifact@v4
