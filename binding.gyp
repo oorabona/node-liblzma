@@ -297,7 +297,13 @@
                 ],
                 "defines": ["LZMA_API_STATIC"]
               }, {
-                "libraries": ["<(liblzma_install_dir)/lib/liblzma.so"],
+                "conditions": [
+                  ["OS == 'mac'", {
+                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.dylib"]
+                  }, {
+                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.so"]
+                  }]
+                ],
                 "ldflags": ["-pthread"]
               }]
             ]
