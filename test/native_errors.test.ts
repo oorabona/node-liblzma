@@ -55,7 +55,7 @@ describe('Native LZMA Error Codes', () => {
       }).toThrow();
     });
 
-    it('should fail with negative threads', () => {
+    it.skipIf(!lzma.hasThreads())('should fail with negative threads', () => {
       expect(() => {
         new lzma.Xz({
           check: lzma.check.CRC32,
