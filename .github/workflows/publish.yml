@@ -1,0 +1,85 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build-artifacts:
+    uses: ./.github/workflows/build-artifacts.yml
+    with:
+      upload-artifacts: true
+    secrets: inherit
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build-artifacts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Cache XZ sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/xz
+            deps/xz.tar.gz
+          key: publish-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          restore-keys: |
+            publish-xz-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download prebuilds artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: prebuilds-*
+          path: prebuilds-temp/
+          merge-multiple: true
+
+      - name: Merge prebuilds
+        run: |
+          mkdir -p prebuilds
+          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
+          echo "✅ Prebuilds merged:"
+          ls -lh prebuilds/
+
+      - name: Update GitHub release and publish to npm
+        run: pnpm release-it-preset retry-publish --ci
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_PUBLISH: 'true'
+          GITHUB_RELEASE: 'true'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summarize
+        run: |
+          echo "## 🎉 Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Published to npm" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Updated GitHub Release" >> $GITHUB_STEP_SUMMARY
