@@ -198,9 +198,10 @@ def fix_windows_lib_names(install_dir):
         print(f"[WARNING] Source file {source_lib} not found")
         return False
 
-def verify_and_fix_dylib_install_name(install_dir):
+def verify_and_fix_dylib_install_name(install_dir, runtime_link="static"):
     """Verify and fix macOS dylib install_name to use @rpath"""
-    if platform.system() != "Darwin":
+    # Only relevant for macOS shared library builds
+    if platform.system() != "Darwin" or runtime_link != "shared":
         return True
 
     dylib_path = os.path.join(install_dir, 'lib', 'liblzma.dylib')
@@ -366,7 +367,7 @@ Examples:
         build_cmake(build_dir) and
         install_cmake(build_dir, install_dir) and
         fix_windows_lib_names(install_dir) and
-        verify_and_fix_dylib_install_name(install_dir) and
+        verify_and_fix_dylib_install_name(install_dir, runtime_link) and
         verify_build(install_dir, runtime_link)
     )
     
