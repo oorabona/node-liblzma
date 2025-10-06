@@ -30,7 +30,7 @@
     "check": "biome check",
     "check:write": "biome check --write",
     "release": "release-it-preset default",
-    "release:manual": "release-it-preset manual-changelog",
+    "release:manual": "release-it-preset --config .release-it.manual.json",
     "release:hotfix": "release-it-preset hotfix",
     "changelog:update": "release-it-preset changelog-only"
   },
@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.3",
-    "@oorabona/release-it-preset": "^0.8.0",
+    "@oorabona/release-it-preset": "^0.9.0",
     "@oorabona/vitest-monocart-coverage": "^2.0.1",
     "@types/node": "^24.3.1",
     "@vitest/coverage-istanbul": "^3.2.4",
