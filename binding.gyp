@@ -299,12 +299,20 @@
               }, {
                 "conditions": [
                   ["OS == 'mac'", {
-                    "libraries": ["<(liblzma_install_dir)/lib/liblzma.dylib"],
-                    "ldflags": [
-                      "-pthread",
-                      "-Wl,-rpath,@loader_path/../liblzma/lib",
-                      "-Wl,-rpath,<(liblzma_install_dir)/lib"
-                    ]
+                    "libraries": [
+                      "-L<(liblzma_install_dir)/lib",
+                      "-llzma"
+                    ],
+                    "xcode_settings": {
+                      "OTHER_LDFLAGS": [
+                        "-Wl,-rpath,@loader_path",
+                        "-Wl,-rpath,@loader_path/../liblzma/lib"
+                      ]
+                    },
+                    "copies": [{
+                      "destination": "<(PRODUCT_DIR)",
+                      "files": ["<(liblzma_install_dir)/lib/liblzma.dylib"]
+                    }]
                   }, {
                     "libraries": ["<(liblzma_install_dir)/lib/liblzma.so"],
                     "ldflags": ["-pthread"]

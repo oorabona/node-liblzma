@@ -83,6 +83,17 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
         cmake_args.extend([
             '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15'
         ])
+
+        # For shared libraries on macOS, configure proper install_name
+        if runtime_link == "shared":
+            cmake_args.extend([
+                '-DCMAKE_INSTALL_NAME_DIR=@rpath',
+                '-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON',
+                '-DCMAKE_INSTALL_RPATH=@loader_path;@loader_path/../lib',
+                '-DCMAKE_MACOSX_RPATH=ON'
+            ])
+            print("[BUILD] macOS shared library: configured @rpath install_name")
+
         print("[BUILD] macOS build configuration")
     else:
         # Linux and other Unix systems
@@ -187,10 +198,55 @@ def fix_windows_lib_names(install_dir):
         print(f"[WARNING] Source file {source_lib} not found")
         return False
 
+def verify_and_fix_dylib_install_name(install_dir):
+    """Verify and fix macOS dylib install_name to use @rpath"""
+    if platform.system() != "Darwin":
+        return True
+
+    dylib_path = os.path.join(install_dir, 'lib', 'liblzma.dylib')
+    if not os.path.exists(dylib_path):
+        print(f"[WARNING] Dylib not found at {dylib_path}")
+        return False
+
+    try:
+        # Check current install_name using otool
+        result = subprocess.run(['otool', '-D', dylib_path],
+                              capture_output=True, text=True, check=True)
+        current_install_name = result.stdout.strip().split('\n')[-1]
+
+        print(f"[VERIFY] Current install_name: {current_install_name}")
+
+        # If install_name doesn't start with @rpath, fix it
+        if not current_install_name.startswith('@rpath'):
+            print(f"[FIX] Fixing install_name to use @rpath")
+            subprocess.run(['install_name_tool', '-id', '@rpath/liblzma.dylib', dylib_path],
+                         check=True)
+
+            # Verify the fix
+            result = subprocess.run(['otool', '-D', dylib_path],
+                                  capture_output=True, text=True, check=True)
+            new_install_name = result.stdout.strip().split('\n')[-1]
+            print(f"[SUCCESS] Updated install_name: {new_install_name}")
+
+            if not new_install_name.startswith('@rpath'):
+                print(f"[ERROR] Failed to update install_name")
+                return False
+        else:
+            print(f"[OK] install_name already uses @rpath")
+
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Failed to verify/fix install_name: {e}")
+        return False
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in install_name verification: {e}")
+        return False
+
 def verify_build(install_dir, runtime_link="static"):
     """Verify that the build produced the expected files"""
     expected_files = ['include/lzma.h']  # Common file for all builds
-    
+
     system = platform.system()
     if system == "Windows":
         if runtime_link == "static":
@@ -207,13 +263,13 @@ def verify_build(install_dir, runtime_link="static"):
                 expected_files.append('lib/liblzma.dylib')
             else:
                 expected_files.append('lib/liblzma.so')
-    
+
     missing_files = []
     for file_path in expected_files:
         full_path = os.path.join(install_dir, file_path)
         if not os.path.exists(full_path):
             missing_files.append(file_path)
-    
+
     if missing_files:
         print(f"[WARNING] Missing expected files: {', '.join(missing_files)}")
         return False
@@ -310,6 +366,7 @@ Examples:
         build_cmake(build_dir) and
         install_cmake(build_dir, install_dir) and
         fix_windows_lib_names(install_dir) and
+        verify_and_fix_dylib_install_name(install_dir) and
         verify_build(install_dir, runtime_link)
     )
     
