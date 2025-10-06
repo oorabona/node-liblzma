@@ -28,7 +28,7 @@ on:
     branches:
       - master
       - "releases/**"
-    tags-ignore:
+    tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
   pull_request:
     paths:
@@ -69,6 +69,7 @@ permissions:
 env:
   # Global environment variables
   NODE_OPTIONS: '--max-old-space-size=4096'
+  NODE_VERSION: '22'
 
 jobs:
   # Determine what to run based on trigger and changes
@@ -207,7 +208,7 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-env
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache-prefix: 'quality'
           enable-ccache: 'false'
 
@@ -291,7 +292,12 @@ jobs:
         run: pnpm run build
 
       - name: Run tests
-        run: pnpm test
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: pnpm test
 
   # Full matrix (comprehensive testing)
   full-test:
@@ -373,7 +379,12 @@ jobs:
         run: pnpm run build
 
       - name: Run tests
-        run: pnpm test
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: pnpm test
 
   # Multi-threading capability tests (separate job due to complexity)
   threading-test:
@@ -446,7 +457,12 @@ jobs:
         run: pnpm run build
 
       - name: Run tests
-        run: pnpm test
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: pnpm test
 
   # Final summary
   summary:

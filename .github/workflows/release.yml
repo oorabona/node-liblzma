@@ -9,49 +9,53 @@ permissions:
   contents: write
   id-token: write
 
+env:
+  NODE_VERSION: '22'
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
 jobs:
-  test:
-    name: Run Tests
+  check-ci:
+    name: Verify CI Passed
     runs-on: ubuntu-latest
+    outputs:
+      ci-passed: ${{ steps.check.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          fetch-depth: 0
 
-      - name: Cache XZ sources
-        uses: actions/cache@v4
+      - name: Check CI status for commit
+        id: check
+        uses: actions/github-script@v7
         with:
-          path: |
-            deps/xz
-            deps/xz.tar.gz
-          key: release-test-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
-          restore-keys: |
-            release-test-xz-
+          script: |
+            const sha = context.sha;
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              per_page: 100
+            });
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            const ciRuns = checkRuns.check_runs.filter(run =>
+              run.name.includes('CI') || run.name.includes('Test') || run.name.includes('Quality')
+            );
 
-      - name: Build TypeScript
-        run: pnpm build
+            const failedRuns = ciRuns.filter(run => run.conclusion !== 'success');
 
-      - name: Run tests
-        run: pnpm test
-
-      - name: Type check
-        run: pnpm type-check
+            if (failedRuns.length > 0) {
+              core.setFailed(
+                `CI checks failed or pending:\n${failedRuns.map(r => `- ${r.name}: ${r.conclusion}`).join('\n')}`
+              );
+              core.setOutput('passed', 'false');
+            } else {
+              core.setOutput('passed', 'true');
+            }
 
   build-prebuilds:
     name: Build Prebuilds
-    needs: test
+    needs: check-ci
+    if: needs.check-ci.outputs.ci-passed == 'true'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -115,7 +119,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
@@ -167,7 +171,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
       - name: Extract version from tag

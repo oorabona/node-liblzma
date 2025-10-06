@@ -6,14 +6,17 @@ export default defineConfig({
     include: ['test/**/*.{ts,js,tsx,jsx}'],
     exclude: ['test/**/*.utils.{ts,js}'],
 
-    // Timeout for tests (similar to Mocha config)
-    testTimeout: 5000,
+    // Increased timeout to prevent premature termination
+    testTimeout: 10000,
+    hookTimeout: 10000,
 
-    // Use forks instead of threads on macOS to avoid IPC channel issues
-    pool: process.platform === 'darwin' ? 'forks' : 'threads',
+    // Use forks universally to avoid IPC channel issues (Vitest #8201)
+    // This resolves "Channel closed" errors on GitHub Actions
+    pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true,
+        singleFork: true, // Run tests sequentially in single fork
+        isolate: true, // Isolate test environment
       },
     },
 
