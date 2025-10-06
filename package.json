@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.3",
-    "@oorabona/release-it-preset": "^0.6.0",
+    "@oorabona/release-it-preset": "^0.7.0",
     "@oorabona/vitest-monocart-coverage": "^2.0.1",
     "@types/node": "^24.3.1",
     "@vitest/coverage-istanbul": "^3.2.4",
