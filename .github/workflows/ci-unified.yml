@@ -259,6 +259,12 @@ jobs:
           name: xz-sources
           path: .
 
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux' && matrix.use_global_liblzma
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzma-dev pkg-config
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
@@ -275,7 +281,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: >-
-            smoke-${{ runner.os }}-ccache-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}
+            smoke-${{ runner.os }}-ccache-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}
           max-size: 200M
 
       - name: Cache pnpm store
@@ -297,17 +303,17 @@ jobs:
             build/liblzma
             prebuilds
           key: >-
-            smoke-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
+            smoke-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-${{ needs.download-xz.outputs.xz-cache-key }}
           restore-keys: |
-            smoke-${{ runner.os }}-build-${{ matrix.config.runtime_link }}-${{ matrix.config.enable_threads }}-
+            smoke-${{ runner.os }}-build-${{ matrix.runtime_link }}-${{ matrix.enable_threads }}-
 
       - name: Install and build
         run: pnpm install --frozen-lockfile
         env:
           XZ_VERSION: ${{ needs.setup.outputs.xz-version }}
-          USE_GLOBAL: ${{ matrix.config.use_global_liblzma }}
-          RUNTIME_LINK: ${{ matrix.config.runtime_link }}
-          ENABLE_THREAD_SUPPORT: ${{ matrix.config.enable_threads }}
+          USE_GLOBAL: ${{ matrix.use_global_liblzma }}
+          RUNTIME_LINK: ${{ matrix.runtime_link }}
+          ENABLE_THREAD_SUPPORT: ${{ matrix.enable_threads }}
           CC: >-
             ${{ runner.os == 'Linux' && 'ccache gcc' ||
             (runner.os == 'macOS' && 'ccache clang' || '') }}
@@ -358,6 +364,12 @@ jobs:
         with:
           name: xz-sources
           path: .
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux' && matrix.use_global_liblzma
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzma-dev pkg-config
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -456,6 +468,12 @@ jobs:
         with:
           name: xz-sources
           path: .
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux' && matrix.use_global_liblzma
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzma-dev pkg-config
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
