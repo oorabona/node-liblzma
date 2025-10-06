@@ -7,11 +7,17 @@ Version priority:
 2. xz-version.json configuration file (stable default)
 3. Fallback to v5.4.0 if no config found
 
+Features:
+- Smart caching: Skip download if correct version already extracted
+- GitHub API authentication: Use GITHUB_TOKEN to avoid rate limiting (60/h → 5000/h)
+- Security: Path traversal protection and safe tarball extraction
+
 Usage:
   python3 download_xz_from_github.py <tarball_path> <extract_dir>
 
 Environment variables:
   XZ_VERSION: Specific version (e.g., 'v5.8.1', 'latest')
+  GITHUB_TOKEN: GitHub token for authenticated API requests (optional, increases rate limit)
 """
 
 import urllib.request
@@ -23,6 +29,19 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 import tempfile
+
+def get_github_headers():
+    """Get headers with optional GitHub token for authentication"""
+    headers = {'User-Agent': 'node-liblzma'}
+
+    # Use GITHUB_TOKEN if available (in CI) to avoid rate limiting
+    # Increases limit from 60/hour to 5000/hour
+    token = os.environ.get('GITHUB_TOKEN', '').strip()
+    if token:
+        headers['Authorization'] = f'token {token}'
+        print("[AUTH] Using GitHub token for authenticated requests")
+
+    return headers
 
 def load_version_config():
     """Load version configuration from xz-version.json"""
@@ -48,7 +67,7 @@ def load_version_config():
 def get_latest_version():
     """Get the latest XZ version from GitHub API"""
     api_url = "https://api.github.com/repos/tukaani-project/xz/releases/latest"
-    headers = {'User-Agent': 'node-liblzma'}
+    headers = get_github_headers()
     req = urllib.request.Request(api_url, headers=headers)
     
     try:
@@ -82,10 +101,10 @@ def validate_version(version):
     """Validate that the version exists on GitHub"""
     if not version.startswith('v'):
         version = 'v' + version
-    
+
     # Check if version exists
     api_url = f"https://api.github.com/repos/tukaani-project/xz/releases/tags/{version}"
-    headers = {'User-Agent': 'node-liblzma'}
+    headers = get_github_headers()
     req = urllib.request.Request(api_url, headers=headers)
     
     try:
@@ -104,7 +123,7 @@ def get_tarball_url(version):
 def download_tarball(url, tarball_path):
     """Download tarball from GitHub with proper user agent"""
     print(f"[DOWNLOAD] Downloading from: {url}")
-    headers = {'User-Agent': 'node-liblzma'}
+    headers = get_github_headers()
     req = urllib.request.Request(url, headers=headers)
     
     with urllib.request.urlopen(req) as response:
@@ -157,6 +176,34 @@ def is_safe_path(member_path, extract_dir):
         return False
     
     return True
+
+def is_xz_already_extracted(extract_dir, version):
+    """Check if XZ is already extracted with the correct version"""
+    xz_dir = os.path.join(extract_dir, 'xz')
+    cmake_file = os.path.join(xz_dir, 'CMakeLists.txt')
+    version_file = os.path.join(xz_dir, '.xz-version')
+
+    # Check if XZ directory exists with CMakeLists.txt
+    if not os.path.exists(cmake_file):
+        return False
+
+    # Check if version file exists and matches
+    if os.path.exists(version_file):
+        try:
+            with open(version_file, 'r') as f:
+                cached_version = f.read().strip()
+                if cached_version == version:
+                    print(f"[CACHE HIT] XZ {version} already extracted")
+                    return True
+                else:
+                    print(f"[CACHE MISS] Version mismatch: cached {cached_version} != requested {version}")
+                    return False
+        except IOError:
+            pass
+
+    # Version file doesn't exist, assume cache miss
+    print(f"[CACHE MISS] No version file found")
+    return False
 
 def extract_tarball(tarball_path, extract_dir):
     """Extract tarball and rename root directory to 'xz' with security validation."""
@@ -220,8 +267,20 @@ def extract_tarball(tarball_path, extract_dir):
             except Exception as e:
                 print(f"[ERROR] Failed to extract {member.name}: {e}")
                 continue
-        
+
         print(f"[SUCCESS] Successfully extracted XZ to {extract_dir}/xz")
+
+def write_version_marker(extract_dir, version):
+    """Write version marker file for cache validation"""
+    xz_dir = os.path.join(extract_dir, 'xz')
+    version_file = os.path.join(xz_dir, '.xz-version')
+
+    try:
+        with open(version_file, 'w') as f:
+            f.write(version)
+        print(f"[VERSION] Wrote version marker: {version}")
+    except IOError as e:
+        print(f"[WARNING] Could not write version marker: {e}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -283,17 +342,25 @@ Examples:
     # Create directories if needed
     os.makedirs(os.path.dirname(tarball), exist_ok=True)
     os.makedirs(dirname, exist_ok=True)
-    
+
+    # Check if already extracted with correct version (smart cache)
+    if is_xz_already_extracted(dirname, validated_version):
+        print(f"[SKIP] XZ {validated_version} already available, skipping download")
+        return 0
+
     # Download if not cached
     if os.path.exists(tarball):
         print(f"[CACHED] Using cached tarball: {tarball}")
     else:
         url = get_tarball_url(validated_version)
         download_tarball(url, tarball)
-    
+
     # Extract
     extract_tarball(tarball, dirname)
-    
+
+    # Write version marker for future cache validation
+    write_version_marker(dirname, validated_version)
+
     print(f"[DONE] Successfully prepared XZ {validated_version}")
     return 0
 
