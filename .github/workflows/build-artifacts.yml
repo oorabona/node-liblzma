@@ -52,6 +52,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.normalize-tag.outputs.tag }}
           submodules: recursive
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
