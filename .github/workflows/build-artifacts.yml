@@ -163,16 +163,16 @@ jobs:
           path: prebuilds-temp/
           merge-multiple: true
 
-      - name: Merge prebuilds
+      - name: Preserve prebuild structure
         run: |
           mkdir -p prebuilds
-          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
-          echo "✅ Prebuilds merged:"
-          ls -lh prebuilds/
+          cp -r prebuilds-temp/* prebuilds/
+          echo "✅ Prebuilds structure preserved:"
+          find prebuilds -name '*.node' -type f
 
       - name: Upload prebuilds to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: prebuilds/*.node
+          files: prebuilds/**/*.node
           tag_name: ${{ needs.normalize-tag.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
