@@ -66,6 +66,7 @@ function getWritableState(stream: Transform) {
     /* v8 ignore next 2 - Node.js version compatibility fallback */
     /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for stream state management */
     ending: (stream as any)._writableState?.ending ?? false,
+    /* c8 ignore next 2 - Node.js version compatibility fallback */
     /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for stream state management */
     ended: (stream as any)._writableState?.ended ?? false,
     length: stream.writableLength,
