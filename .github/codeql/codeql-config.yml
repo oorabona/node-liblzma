@@ -1,0 +1,50 @@
+name: "CodeQL Configuration for node-liblzma"
+
+# Disable default queries that are too noisy for this project
+disable-default-queries: false
+
+# Use security-extended and quality queries
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+# Paths to exclude from analysis
+paths-ignore:
+  # Exclude test files - they intentionally test edge cases and error conditions
+  - test/**
+  - '**/test/**'
+  - '**/*.test.ts'
+  - '**/*.test.js'
+
+  # Exclude dependencies
+  - node_modules/**
+  - '**/node_modules/**'
+
+  # Exclude build artifacts
+  - lib/**
+  - build/**
+  - coverage/**
+  - dist/**
+  - prebuilds/**
+
+# Paths to include (optional, be explicit)
+paths:
+  - src/**
+  - scripts/**
+
+# Query filters to suppress specific false positives
+query-filters:
+  # Suppress "unused variable" for documentation constants in errors.ts
+  - exclude:
+      id: js/unused-local-variable
+      # These are LZMA error codes kept for documentation purposes
+      paths:
+        - src/errors.ts
+
+  # Suppress "missing header guard" false positive
+  # The header guard exists but CodeQL is confused by
+  # the BUILDING_NODE_EXTENSION guard
+  - exclude:
+      id: cpp/missing-header-guard
+      paths:
+        - src/bindings/node-liblzma.hpp
