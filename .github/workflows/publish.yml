@@ -105,7 +105,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update GitHub release and publish to npm
-        run: pnpm release-it-preset retry-publish --ci
+        run: pnpm release-it-preset retry-publish --ci --no-config
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_PUBLISH: ${{ (github.event_name == 'push') || (inputs.skip_npm == false) }}
