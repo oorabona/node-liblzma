@@ -311,42 +311,43 @@ Examples:
     
     # Determine version to use
     version = determine_version()
-    
-    # Validate version exists
-    validated_version = validate_version(version)
-    if not validated_version:
-        print(f"[ERROR] Version {version} not found, falling back to v5.4.0")
-        validated_version = 'v5.4.0'
-    
+
     # Prepare and validate paths
     tarball = os.path.abspath(args.tarball)
     dirname = os.path.abspath(args.dirname)
-    
+
     # Additional security validation for output paths
     if not tarball or not dirname:
         print("[ERROR] Invalid paths provided")
         return 1
-    
+
     # Ensure paths don't contain suspicious patterns
     suspicious_patterns = ['..', '~', '$']
     for pattern in suspicious_patterns:
         if pattern in args.tarball or pattern in args.dirname:
             print(f"[ERROR] Suspicious pattern '{pattern}' detected in paths")
             return 1
-    
+
     # Ensure we're using .tar.gz extension (GitHub uses gzip, not xz)
     if tarball.endswith('.tar.xz'):
         tarball = tarball.replace('.tar.xz', '.tar.gz')
         print(f"[NOTE] Adjusted tarball name to: {tarball}")
-    
+
     # Create directories if needed
     os.makedirs(os.path.dirname(tarball), exist_ok=True)
     os.makedirs(dirname, exist_ok=True)
 
     # Check if already extracted with correct version (smart cache)
-    if is_xz_already_extracted(dirname, validated_version):
-        print(f"[SKIP] XZ {validated_version} already available, skipping download")
+    # Do this BEFORE any GitHub API calls to avoid rate limiting
+    if is_xz_already_extracted(dirname, version):
+        print(f"[SKIP] XZ {version} already available, skipping download")
         return 0
+
+    # Only validate version if we need to download (avoids GitHub API call when cached)
+    validated_version = validate_version(version)
+    if not validated_version:
+        print(f"[ERROR] Version {version} not found, falling back to v5.4.0")
+        validated_version = 'v5.4.0'
 
     # Download if not cached
     if os.path.exists(tarball):

@@ -122,8 +122,13 @@
           "hard_dependency": 1,
           "actions": [{
             "action_name": "download_and_extract_xz",
-            "inputs": [""],
-            "outputs": ["<(xz_vendor_dir)/CMakeLists.txt"],
+            "inputs": [
+              "<(module_root_dir)/xz-version.json",
+              "<(module_root_dir)/scripts/download_xz_from_github.py"
+            ],
+            "outputs": [
+              "<(xz_vendor_dir)/CMakeLists.txt"
+            ],
             "action": [
               "<(py3)",
               "<(module_root_dir)/scripts/download_xz_from_github.py",
