@@ -49,12 +49,12 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Download prebuilds
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: prebuilds-${{ matrix.target }}
           path: prebuilds/
       - name: Download build cache
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: build-cache-${{ matrix.target }}
           path: .
@@ -109,12 +109,12 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Download prebuilds
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: prebuilds-${{ matrix.target }}
           path: prebuilds/
       - name: Download build cache
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: build-cache-${{ matrix.target }}
           path: .
