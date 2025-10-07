@@ -33,15 +33,33 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  normalize-tag:
+    name: Normalize tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.normalize.outputs.value }}
+    steps:
+      - name: Normalize tag format
+        id: normalize
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          # Add 'v' prefix if missing
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+            echo "ℹ️ Added 'v' prefix: $TAG"
+          fi
+          echo "value=$TAG" >> "$GITHUB_OUTPUT"
+
   build-artifacts:
+    needs: normalize-tag
     uses: ./.github/workflows/build-artifacts.yml
     with:
-      tag: ${{ inputs.tag || github.ref_name }}
+      tag: ${{ needs.normalize-tag.outputs.tag }}
     secrets: inherit
 
   publish:
     runs-on: ubuntu-latest
-    needs: build-artifacts
+    needs: [normalize-tag, build-artifacts]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,14 +79,14 @@ jobs:
       - name: Download prebuilds from GitHub Release
         uses: robinraju/release-downloader@v1
         with:
-          tag: ${{ inputs.tag || github.ref_name }}
+          tag: ${{ needs.normalize-tag.outputs.tag }}
           fileName: '*.node'
           out-file-path: 'prebuilds'
 
       - name: Verify prebuilds
         run: |
           if [ ! "$(ls -A prebuilds/*.node 2>/dev/null)" ]; then
-            echo "❌ No prebuilds found in release ${{ inputs.tag || github.ref_name }}" >&2
+            echo "❌ No prebuilds found in release ${{ needs.normalize-tag.outputs.tag }}" >&2
             echo "build-artifacts job should have uploaded them" >&2
             exit 1
           fi

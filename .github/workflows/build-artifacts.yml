@@ -17,7 +17,25 @@ permissions:
   contents: write
 
 jobs:
+  normalize-tag:
+    name: Normalize tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.normalize.outputs.value }}
+    steps:
+      - name: Normalize tag format
+        id: normalize
+        run: |
+          TAG="${{ inputs.tag }}"
+          # Add 'v' prefix if missing
+          if [[ ! "$TAG" =~ ^v ]]; then
+            TAG="v$TAG"
+            echo "ℹ️ Added 'v' prefix: $TAG"
+          fi
+          echo "value=$TAG" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: normalize-tag
     strategy:
       fail-fast: false
       matrix:
@@ -102,7 +120,7 @@ jobs:
 
   upload-to-release:
     name: Upload to GitHub Release
-    needs: build
+    needs: [normalize-tag, build]
     runs-on: ubuntu-latest
     steps:
       - name: Download all prebuild artifacts
@@ -123,5 +141,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: prebuilds/*.node
-          tag_name: ${{ inputs.tag }}
+          tag_name: ${{ needs.normalize-tag.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
