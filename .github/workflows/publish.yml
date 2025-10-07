@@ -4,6 +4,26 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Git tag to publish'
+        required: true
+        type: string
+      skip_npm:
+        description: 'Skip npm publish'
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to publish (e.g. v2.0.1)'
+        required: true
+        type: string
+      skip_npm:
+        description: 'Skip npm publish (for testing)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -16,7 +36,7 @@ jobs:
   build-artifacts:
     uses: ./.github/workflows/build-artifacts.yml
     with:
-      upload-artifacts: true
+      tag: ${{ inputs.tag || github.ref_name }}
     secrets: inherit
 
   publish:
@@ -38,28 +58,21 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Cache XZ sources
-        uses: actions/cache@v4
+      - name: Download prebuilds from GitHub Release
+        uses: robinraju/release-downloader@v1
         with:
-          path: |
-            deps/xz
-            deps/xz.tar.gz
-          key: publish-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
-          restore-keys: |
-            publish-xz-
+          tag: ${{ inputs.tag || github.ref_name }}
+          fileName: '*.node'
+          out-file-path: 'prebuilds'
 
-      - name: Download prebuilds artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: prebuilds-*
-          path: prebuilds-temp/
-          merge-multiple: true
-
-      - name: Merge prebuilds
+      - name: Verify prebuilds
         run: |
-          mkdir -p prebuilds
-          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
-          echo "✅ Prebuilds merged:"
+          if [ ! "$(ls -A prebuilds/*.node 2>/dev/null)" ]; then
+            echo "❌ No prebuilds found in release ${{ inputs.tag || github.ref_name }}" >&2
+            echo "build-artifacts job should have uploaded them" >&2
+            exit 1
+          fi
+          echo "✅ Prebuilds found:"
           ls -lh prebuilds/
 
       - name: Install dependencies
@@ -71,16 +84,9 @@ jobs:
         run: pnpm release-it-preset retry-publish --ci
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_PUBLISH: 'true'
+          NPM_PUBLISH: ${{ (github.event_name == 'push') || (inputs.skip_npm == false) }}
           GITHUB_RELEASE: 'true'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload prebuilds to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: prebuilds/*.node
-          tag_name: ${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summarize
         run: |

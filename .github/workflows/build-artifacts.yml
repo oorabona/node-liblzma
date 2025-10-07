@@ -2,18 +2,19 @@ name: Build Artifacts
 on:
   workflow_call:
     inputs:
-      upload-artifacts:
-        description: 'Upload build artifacts'
-        required: false
-        default: false
-        type: boolean
-    outputs:
-      artifacts-available:
-        description: 'Whether build artifacts were generated'
-        value: ${{ jobs.build.outputs.artifacts-available }}
+      tag:
+        description: 'Git tag for GitHub Release upload'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag for GitHub Release upload (e.g. v2.0.1)'
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -29,8 +30,6 @@ jobs:
             target: win32-x64
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.target }}
-    outputs:
-      artifacts-available: 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,18 +94,34 @@ jobs:
           RUNTIME_LINK: static
           ENABLE_THREAD_SUPPORT: yes
       - name: Upload prebuild artifacts
-        if: ${{ inputs.upload-artifacts }}
         uses: actions/upload-artifact@v4
         with:
           name: prebuilds-${{ matrix.target }}
           path: prebuilds/
-          retention-days: 7
-      - name: Upload build cache
-        if: ${{ inputs.upload-artifacts }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-cache-${{ matrix.target }}
-          path: |
-            lib/
-            build/
           retention-days: 1
+
+  upload-to-release:
+    name: Upload to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all prebuild artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: prebuilds-*
+          path: prebuilds-temp/
+          merge-multiple: true
+
+      - name: Merge prebuilds
+        run: |
+          mkdir -p prebuilds
+          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
+          echo "✅ Prebuilds merged:"
+          ls -lh prebuilds/
+
+      - name: Upload prebuilds to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: prebuilds/*.node
+          tag_name: ${{ inputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}

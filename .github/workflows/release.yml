@@ -26,16 +26,9 @@ env:
   NODE_VERSION: '22'
 
 jobs:
-  build-artifacts:
-    uses: ./.github/workflows/build-artifacts.yml
-    with:
-      upload-artifacts: true
-    secrets: inherit
-
   release:
     runs-on: ubuntu-latest
     name: Create Release
-    needs: build-artifacts
     outputs:
       tag: ${{ steps.capture-tag.outputs.value }}
     steps:
@@ -51,31 +44,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Cache XZ sources
-        uses: actions/cache@v4
-        with:
-          path: |
-            deps/xz
-            deps/xz.tar.gz
-          key: release-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
-          restore-keys: |
-            release-xz-
-
-      - name: Download prebuilds artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: prebuilds-*
-          path: prebuilds-temp/
-          merge-multiple: true
-
-      - name: Merge prebuilds
-        run: |
-          mkdir -p prebuilds
-          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
-          echo "✅ Prebuilds merged:"
-          ls -lh prebuilds/
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -112,4 +80,14 @@ jobs:
           echo "**Increment**: ${{ github.event.inputs.increment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Tag created and pushed" >> $GITHUB_STEP_SUMMARY
-          echo "✅ publish.yml will now build and publish automatically" >> $GITHUB_STEP_SUMMARY
+          echo "✅ GitHub Release draft created" >> $GITHUB_STEP_SUMMARY
+          echo "⏳ publish job will build and publish" >> $GITHUB_STEP_SUMMARY
+
+  publish:
+    name: Build and Publish
+    needs: release
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      skip_npm: false
+    secrets: inherit
