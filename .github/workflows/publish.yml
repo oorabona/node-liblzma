@@ -93,6 +93,12 @@ jobs:
           echo "✅ Prebuilds structure:"
           find prebuilds -name '*.node' -type f
 
+      - name: Configure npm authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
         env:
