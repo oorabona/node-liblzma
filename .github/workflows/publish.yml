@@ -75,6 +75,13 @@ jobs:
           GITHUB_RELEASE: 'true'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload prebuilds to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: prebuilds/*.node
+          tag_name: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Summarize
         run: |
           echo "## 🎉 Publish Summary" >> $GITHUB_STEP_SUMMARY

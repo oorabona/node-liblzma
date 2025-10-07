@@ -79,16 +79,9 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "✅ Tag $TAG exists, ready to republish"
 
-  build-artifacts:
-    needs: pre-flight
-    uses: ./.github/workflows/build-artifacts.yml
-    with:
-      upload-artifacts: true
-    secrets: inherit
-
   republish:
     name: Republish to ${{ github.event.inputs.target }}
-    needs: [pre-flight, build-artifacts]
+    needs: pre-flight
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,28 +99,22 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Cache XZ sources
-        uses: actions/cache@v4
+      - name: Download prebuilds from GitHub Release
+        uses: robinraju/release-downloader@v1
         with:
-          path: |
-            deps/xz
-            deps/xz.tar.gz
-          key: republish-xz-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
-          restore-keys: |
-            republish-xz-
+          tag: ${{ needs.pre-flight.outputs.tag }}
+          fileName: '*.node'
+          out-file-path: 'prebuilds'
 
-      - name: Download prebuilds artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: prebuilds-*
-          path: prebuilds-temp/
-          merge-multiple: true
-
-      - name: Merge prebuilds
+      - name: Verify prebuilds
         run: |
-          mkdir -p prebuilds
-          find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
-          echo "✅ Prebuilds merged:"
+          if [ ! "$(ls -A prebuilds/*.node 2>/dev/null)" ]; then
+            echo "❌ No prebuilds found in release ${{ needs.pre-flight.outputs.tag }}" >&2
+            echo "The release exists but does not contain prebuild assets (*.node files)" >&2
+            echo "This can happen for releases created before prebuilds were implemented" >&2
+            exit 1
+          fi
+          echo "✅ Prebuilds found:"
           ls -lh prebuilds/
 
       - name: Install dependencies
