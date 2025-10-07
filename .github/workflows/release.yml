@@ -55,14 +55,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Update CHANGELOG
-        run: pnpm release-it-preset update
-
-      - name: Validate release (dry-run)
-        run: pnpm release-it-preset default --dry-run --increment ${{ github.event.inputs.increment }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run release-it
         run: pnpm release-it-preset default --ci --increment ${{ github.event.inputs.increment }}
         env:
