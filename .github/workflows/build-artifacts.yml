@@ -119,17 +119,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (skip build scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USE_GLOBAL: false
-          RUNTIME_LINK: static
-          ENABLE_THREAD_SUPPORT: yes
-          CC: ${{ runner.os == 'Linux' && 'ccache gcc' || (runner.os == 'macOS' && 'ccache clang' || '') }}
-          CXX: ${{ runner.os == 'Linux' && 'ccache g++' || (runner.os == 'macOS' && 'ccache clang++' || '') }}
-      - name: Build TypeScript
-        run: pnpm run build
+
+      - name: Run prepare (git hooks + TypeScript build)
+        run: pnpm run prepare
 
       - name: Install prebuildify globally
         run: npm install -g prebuildify
