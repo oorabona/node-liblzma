@@ -93,6 +93,7 @@ jobs:
 
       - name: Download XZ from artifact or fallback
         if: steps.xz-cache.outputs.cache-hit != 'true'
+        shell: bash
         run: |
           set -e
           VERSION=$(jq -r '.version' xz-version.json)
