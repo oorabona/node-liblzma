@@ -81,6 +81,7 @@ jobs:
             build-${{ runner.os }}-pnpm-store-
       - name: Setup xz deps cache
         uses: actions/cache@v4
+        id: xz-cache
         with:
           path: |
             deps/xz
@@ -89,6 +90,35 @@ jobs:
           key: build-${{ runner.os }}-xz-default-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
           restore-keys: |
             build-${{ runner.os }}-xz-
+
+      - name: Download XZ from artifact or fallback
+        if: steps.xz-cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          VERSION=$(jq -r '.version' xz-version.json)
+          echo "🔍 XZ version needed: $VERSION"
+
+          # Check if already in cache
+          if [ -f "deps/xz/CMakeLists.txt" ]; then
+            echo "✅ XZ found in cache"
+            exit 0
+          fi
+
+          # Try download from artifact
+          echo "⬇️ Attempting to download artifact xz-source-$VERSION"
+          if gh run download --name "xz-source-$VERSION" --dir deps/xz 2>/dev/null; then
+            echo "✅ XZ downloaded from artifact"
+            exit 0
+          fi
+
+          # Fallback to Python script with GITHUB_TOKEN
+          echo "⚠️ Artifact not found, using Python script with authenticated GitHub API"
+          python3 scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+          echo "✅ XZ downloaded via Python script"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
