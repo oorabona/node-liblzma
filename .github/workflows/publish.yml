@@ -73,18 +73,25 @@ jobs:
         uses: robinraju/release-downloader@v1
         with:
           tag: ${{ needs.normalize-tag.outputs.tag }}
-          fileName: '*.node'
-          out-file-path: 'prebuilds'
+          fileName: '*.tar.gz'
+          out-file-path: 'release-assets'
 
-      - name: Verify prebuilds
+      - name: Extract and verify prebuilds
         run: |
-          if [ ! "$(ls -A prebuilds/*.node 2>/dev/null)" ]; then
-            echo "❌ No prebuilds found in release ${{ needs.normalize-tag.outputs.tag }}" >&2
-            echo "build-artifacts job should have uploaded them" >&2
+          mkdir -p prebuilds
+
+          for archive in release-assets/*.tar.gz; do
+            echo "📦 Extracting $(basename "$archive")"
+            tar xzf "$archive" -C prebuilds/
+          done
+
+          if [ ! "$(find prebuilds -name '*.node' -type f)" ]; then
+            echo "❌ No prebuilds found after extraction" >&2
             exit 1
           fi
-          echo "✅ Prebuilds found:"
-          ls -lh prebuilds/
+
+          echo "✅ Prebuilds structure:"
+          find prebuilds -name '*.node' -type f
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts

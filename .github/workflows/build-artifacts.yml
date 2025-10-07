@@ -163,16 +163,25 @@ jobs:
           path: prebuilds-temp/
           merge-multiple: true
 
-      - name: Preserve prebuild structure
+      - name: Create platform-specific tar archives
         run: |
-          mkdir -p prebuilds
+          mkdir -p prebuilds release-assets
           cp -r prebuilds-temp/* prebuilds/
-          echo "✅ Prebuilds structure preserved:"
-          find prebuilds -name '*.node' -type f
+          cd prebuilds
+
+          for dir in */; do
+            platform=$(basename "$dir")
+            tar czf "../release-assets/${platform}.tar.gz" "$dir"
+            echo "✅ Created ${platform}.tar.gz"
+          done
+
+          cd ..
+          echo "📦 Release assets created:"
+          ls -lh release-assets/
 
       - name: Upload prebuilds to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: prebuilds/**/*.node
+          files: release-assets/*.tar.gz
           tag_name: ${{ needs.normalize-tag.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
