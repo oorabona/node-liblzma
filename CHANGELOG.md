@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2025-10-07
+
+### Added
+- refactor release workflow to use Pull Request strategy (ci) ([b2797fd](https://github.com/oorabona/node-liblzma/commit/b2797fd))
+- optimize XZ management with artifacts and move prebuildify to CI-only (ci) ([de7d825](https://github.com/oorabona/node-liblzma/commit/de7d825))
+- optimize XZ source management with artifacts and fix prebuildify PATH (ci) ([3984e19](https://github.com/oorabona/node-liblzma/commit/3984e19))
+- optimize XZ source management with GitHub Actions artifacts (ci) ([0dec8f8](https://github.com/oorabona/node-liblzma/commit/0dec8f8))
+- simplify republish workflow by removing target options and using boolean for npm publish (workflows) ([d1e188d](https://github.com/oorabona/node-liblzma/commit/d1e188d))
+
+### Fixed
+- remove CHANGELOG update and dry-run validation steps since default handles both directly (release) ([8ff80f8](https://github.com/oorabona/node-liblzma/commit/8ff80f8))
+- skip native module compilation in release workflow (ci) ([53fc871](https://github.com/oorabona/node-liblzma/commit/53fc871))
+- correct gyp staleness detection to prevent unconditional XZ downloads (build) ([6ed20dd](https://github.com/oorabona/node-liblzma/commit/6ed20dd))
+- prevent double compilation and ensure prebuildify executes (ci) ([4dece66](https://github.com/oorabona/node-liblzma/commit/4dece66))
+- add tag normalization and fix checkout refs for reproducible builds (workflows) ([2c7beee](https://github.com/oorabona/node-liblzma/commit/2c7beee))
+- add automatic 'v' prefix normalization to prevent tag mismatch (workflows) ([862dd89](https://github.com/oorabona/node-liblzma/commit/862dd89))
+
 ## [2.0.1] - 2025-10-07
 
 ### Changed
@@ -231,6 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...HEAD
 [v2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
 [2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
+[v2.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.2
+[2.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.2
