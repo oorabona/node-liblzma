@@ -142,6 +142,7 @@ jobs:
           USE_GLOBAL: false
           RUNTIME_LINK: static
           ENABLE_THREAD_SUPPORT: yes
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload prebuild artifacts
         uses: actions/upload-artifact@v4
         with:
