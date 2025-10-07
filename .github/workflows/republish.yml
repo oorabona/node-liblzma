@@ -7,14 +7,10 @@ on:
         description: 'Version to republish (e.g. 2.0.1)'
         required: true
         type: string
-      target:
-        description: 'Publish target'
-        type: choice
-        default: both
-        options:
-          - npm-only
-          - github-only
-          - both
+      publish_npm:
+        description: 'Publish to npm'
+        type: boolean
+        default: true
       confirmation:
         description: 'Type "I understand the risks" to confirm'
         required: true
@@ -80,7 +76,7 @@ jobs:
           echo "✅ Tag $TAG exists, ready to republish"
 
   republish:
-    name: Republish to ${{ github.event.inputs.target }}
+    name: Republish
     needs: pre-flight
     runs-on: ubuntu-latest
     steps:
@@ -132,8 +128,8 @@ jobs:
           TARGET_VERSION: ${{ needs.pre-flight.outputs.version }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_PUBLISH: ${{ github.event.inputs.target == 'npm-only' || github.event.inputs.target == 'both' }}
-          GITHUB_RELEASE: ${{ github.event.inputs.target == 'github-only' || github.event.inputs.target == 'both' }}
+          NPM_PUBLISH: ${{ inputs.publish_npm }}
+          GITHUB_RELEASE: 'true'
         run: pnpm release-it-preset republish --ci
 
       - name: Summarize
@@ -142,11 +138,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: ${{ needs.pre-flight.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tag**: ${{ needs.pre-flight.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Target**: ${{ github.event.inputs.target }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event.inputs.target }}" == "npm-only" ] || [ "${{ github.event.inputs.target }}" == "both" ]; then
+          if [ "${{ inputs.publish_npm }}" == "true" ]; then
             echo "✅ Published to npm" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ Skipped npm publish" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ "${{ github.event.inputs.target }}" == "github-only" ] || [ "${{ github.event.inputs.target }}" == "both" ]; then
-            echo "✅ Updated GitHub Release" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "✅ Updated GitHub Release metadata" >> $GITHUB_STEP_SUMMARY
