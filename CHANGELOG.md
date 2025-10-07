@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2025-10-07
+
+### Fixed
+- create dedicated .release-it.retry.json for publish workflow (ci) ([007ec61](https://github.com/oorabona/node-liblzma/commit/007ec61))
+- ignore local .release-it.json in publish workflow (ci) ([0958cc3](https://github.com/oorabona/node-liblzma/commit/0958cc3))
+- use correct release-it-preset CLI syntax (ci) ([210343e](https://github.com/oorabona/node-liblzma/commit/210343e))
+- use npm config set for authentication (ci) ([8e6abcc](https://github.com/oorabona/node-liblzma/commit/8e6abcc))
+- configure npm authentication in publish workflow (ci) ([5b085e4](https://github.com/oorabona/node-liblzma/commit/5b085e4))
+- use tar.gz archives for cross-platform prebuild distribution (ci) ([bc6c213](https://github.com/oorabona/node-liblzma/commit/bc6c213))
+- preserve prebuild directory structure to prevent file overwriting (ci) ([ac8f364](https://github.com/oorabona/node-liblzma/commit/ac8f364))
+- remove build duplication and fix release-it command in publish workflow (ci) ([b0588ca](https://github.com/oorabona/node-liblzma/commit/b0588ca))
+- skip build scripts in publish workflow (ci) ([eb7ab76](https://github.com/oorabona/node-liblzma/commit/eb7ab76))
+- force bash shell for XZ download step on Windows (ci) ([73b6839](https://github.com/oorabona/node-liblzma/commit/73b6839))
+
 ## [2.0.2] - 2025-10-07
 
 ### Added
@@ -248,8 +262,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.3...HEAD
 [v2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
 [2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
 [v2.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.2
 [2.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.2
+[v2.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.3
+[2.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.3
