@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "NodeJS wrapper for liblzma",
   "type": "module",
   "main": "./lib/lzma.js",
