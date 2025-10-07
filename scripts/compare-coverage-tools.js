@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const V8_COVERAGE = './coverage/coverage-final.json';
 const MONOCART_DATA = './coverage-reports/coverage-data.js';

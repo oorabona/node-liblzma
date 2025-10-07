@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const COVERAGE_FILE = './coverage/coverage-final.json';
 const SOURCE_FILE = './src/lzma.ts';
@@ -28,7 +28,7 @@ console.log('🔍 ANALYSE DE PRÉCISION DU COVERAGE\n');
 // Fonctions non couvertes
 const uncoveredFunctions = Object.entries(data.f).filter(([, count]) => count === 0);
 console.log(`📊 FONCTIONS NON COUVERTES (${uncoveredFunctions.length}):`);
-uncoveredFunctions.forEach(([key, count]) => {
+uncoveredFunctions.forEach(([key, _count]) => {
   const fn = data.fnMap[key];
   const startLine = fn.loc.start.line;
   const endLine = fn.loc.end.line;
@@ -53,7 +53,7 @@ uncoveredFunctions.forEach(([key, count]) => {
 // Statements non couverts
 const uncoveredStatements = Object.entries(data.s).filter(([, count]) => count === 0);
 console.log(`📊 STATEMENTS NON COUVERTS (${uncoveredStatements.length}):`);
-uncoveredStatements.slice(0, 10).forEach(([key, count]) => {
+uncoveredStatements.slice(0, 10).forEach(([key, _count]) => {
   const stmt = data.statementMap[key];
   const line = stmt.start.line;
 

@@ -6,6 +6,7 @@ describe('Error Recovery and State Transitions', () => {
     // Force the try-catch path in filter validation
     expect(() => {
       // Create instance with malformed filters to trigger catch block
+      /* biome-ignore lint/suspicious/noExplicitAny: Creating malformed filters to test exception handling in try-catch block */
       const malformedFilters: any = {
         // This will cause the array check to fail and throw
         push: undefined, // Not an array
@@ -65,25 +66,33 @@ describe('Error Recovery and State Transitions', () => {
       });
 
       // Process data in async mode first
-      xz._processChunk(Buffer.from('test'), lzma.LZMA_RUN, (errno, availInAfter, availOutAfter) => {
-        // This callback simulates the internal LZMA callback
-        // Now emit an error that will be handled by lines 457-458
-        if (!errorHandled) {
-          // Directly call the internal callback with an error condition
-          // This should trigger the errno check on lines 456-458
-          const internalCallback = (errno: number, availIn: number, availOut: number): boolean => {
-            if (errno !== lzma.LZMA_OK && errno !== lzma.LZMA_STREAM_END) {
-              xz.emit('onerror', errno); // Line 457
-              return false; // Line 458
-            }
-            return true;
-          };
+      xz._processChunk(
+        Buffer.from('test'),
+        lzma.LZMA_RUN,
+        (_errno, _availInAfter, _availOutAfter) => {
+          // This callback simulates the internal LZMA callback
+          // Now emit an error that will be handled by lines 457-458
+          if (!errorHandled) {
+            // Directly call the internal callback with an error condition
+            // This should trigger the errno check on lines 456-458
+            const internalCallback = (
+              errno: number,
+              _availIn: number,
+              _availOut: number
+            ): boolean => {
+              if (errno !== lzma.LZMA_OK && errno !== lzma.LZMA_STREAM_END) {
+                xz.emit('onerror', errno); // Line 457
+                return false; // Line 458
+              }
+              return true;
+            };
 
-          // Simulate error condition
-          const result = internalCallback(lzma.LZMA_DATA_ERROR, 0, 1024);
-          expect(result).toBe(false);
+            // Simulate error condition
+            const result = internalCallback(lzma.LZMA_DATA_ERROR, 0, 1024);
+            expect(result).toBe(false);
+          }
         }
-      });
+      );
     });
   });
 

@@ -131,6 +131,7 @@ describe('Constants and Buffer Operations', () => {
   it('should handle TypeError in xzBufferSync', () => {
     // Line 681 is the v8 ignore path for type validation
     // We test the logic path even though the actual line is ignored
+    /* biome-ignore lint/suspicious/noExplicitAny: Testing type validation with intentionally invalid input types */
     const validateInput = (input: any) => {
       if (typeof input === 'string') {
         return Buffer.from(input);
@@ -190,6 +191,7 @@ describe('Constants and Buffer Operations', () => {
       lzma.xz(testData, { preset: lzma.preset.DEFAULT }, (error, compressed) => {
         expect(error).toBeNull();
 
+        /* biome-ignore lint/style/noNonNullAssertion: compressed is guaranteed to be defined after successful xz() */
         lzma.unxz(compressed!, (error, decompressed) => {
           expect(error).toBeNull();
           expect(decompressed).toEqual(testData);

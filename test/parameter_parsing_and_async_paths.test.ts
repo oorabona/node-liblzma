@@ -87,8 +87,10 @@ describe('Parameter Parsing and Async Paths', () => {
 
       // Pass invalid type to trigger TypeError for non-Buffer input
       expect(() => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Calling private method for testing with mocked context */
         (xz as any)._processChunk.call(
           { _buffer: Buffer.alloc(10), _offset: 0, _chunkSize: 10, lzma: null },
+          /* biome-ignore lint/suspicious/noExplicitAny: Testing invalid input type to verify error handling */
           123 as any, // Invalid type - not Buffer or string
           lzma.LZMA_FINISH
         );
@@ -99,19 +101,20 @@ describe('Parameter Parsing and Async Paths', () => {
 
     it('should test xzBufferSync with invalid input directly', () => {
       // Create a mock engine to test the exact code path
-      const mockEngine = {
+      const _mockEngine = {
         _processChunk: () => Buffer.alloc(0),
       };
 
       // Test the exact xzBufferSync function logic for invalid input handling
       expect(() => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Testing type validation with null input */
         const buffer: any = null; // Invalid input
-        let buf: Buffer;
+        let _buf: Buffer;
 
         if (typeof buffer === 'string') {
-          buf = Buffer.from(buffer);
+          _buf = Buffer.from(buffer);
         } else if (buffer instanceof Buffer) {
-          buf = buffer;
+          _buf = buffer;
         } else {
           throw new TypeError('Not a string or buffer'); // Line 681
         }
@@ -237,8 +240,9 @@ describe('Parameter Parsing and Async Paths', () => {
       const xz = new lzma.Xz();
       xz.close();
 
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<void>((resolve, _reject) => {
         // Try to transform after closing stream
+        /* biome-ignore lint/suspicious/noExplicitAny: Calling private _transform method for testing error handling */
         (xz as any)._transform(Buffer.from('test'), 'utf8', (error: Error) => {
           expect(error).toBeInstanceOf(Error);
           expect(error.message).toBe('lzma binding closed');
@@ -312,6 +316,7 @@ describe('Parameter Parsing and Async Paths', () => {
     it('should throw TypeError for invalid buffer type', () => {
       // This simulates the exact path that would cause TypeError for invalid buffer
       expect(() => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Testing type validation with invalid input type */
         const invalidInput: any = 123; // Neither string nor Buffer
         if (typeof invalidInput === 'string') {
           Buffer.from(invalidInput);
@@ -340,6 +345,7 @@ describe('Parameter Parsing and Async Paths', () => {
           expect(error).toBeNull();
           expect(compressed).toBeInstanceOf(Buffer);
 
+          /* biome-ignore lint/style/noNonNullAssertion: compressed is guaranteed to be defined after successful xz() */
           lzma.unxz(compressed!, (error, decompressed) => {
             expect(error).toBeNull();
             expect(decompressed).toEqual(testData);

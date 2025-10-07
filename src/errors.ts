@@ -106,19 +106,28 @@ export class LZMAProgrammingError extends LZMAError {
  * Factory function to create appropriate error instance based on errno
  */
 export function createLZMAError(errno: number, message?: string): LZMAError {
-  // LZMA error codes mapping
-  const LZMA_OK = 0;
-  const LZMA_STREAM_END = 1;
-  const LZMA_NO_CHECK = 2;
-  const LZMA_UNSUPPORTED_CHECK = 3;
-  const LZMA_GET_CHECK = 4;
-  const LZMA_MEM_ERROR = 5;
-  const LZMA_MEMLIMIT_ERROR = 6;
-  const LZMA_FORMAT_ERROR = 7;
-  const LZMA_OPTIONS_ERROR = 8;
-  const LZMA_DATA_ERROR = 9;
-  const LZMA_BUF_ERROR = 10;
-  const LZMA_PROG_ERROR = 11;
+  // LZMA return codes mapping from liblzma/base.h:
+  // Codes 0-4 are success/informational status codes, not errors.
+  // They are handled by the default case below.
+  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation - shows full lzma_ret enum range (0-11) */
+  const LZMA_OK = 0; // Operation completed successfully
+  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
+  const LZMA_STREAM_END = 1; // End of stream reached
+  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
+  const LZMA_NO_CHECK = 2; // Input stream has no integrity check
+  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
+  const LZMA_UNSUPPORTED_CHECK = 3; // Cannot calculate integrity check
+  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
+  const LZMA_GET_CHECK = 4; // Integrity check type now available
+
+  // Actual error codes (5-11) - these get specialized error classes:
+  const LZMA_MEM_ERROR = 5; // Cannot allocate memory
+  const LZMA_MEMLIMIT_ERROR = 6; // Memory usage limit reached
+  const LZMA_FORMAT_ERROR = 7; // File format not recognized
+  const LZMA_OPTIONS_ERROR = 8; // Invalid or unsupported options
+  const LZMA_DATA_ERROR = 9; // Data is corrupt
+  const LZMA_BUF_ERROR = 10; // No progress possible
+  const LZMA_PROG_ERROR = 11; // Programming error
 
   switch (errno) {
     case LZMA_MEM_ERROR:

@@ -21,6 +21,7 @@ describe('Constructor and Sync Processing', () => {
   it('should catch and handle filter validation exceptions', () => {
     // Test that creates malformed filter array to trigger exception handling
     expect(() => {
+      /* biome-ignore lint/suspicious/noExplicitAny: Creating malformed object to test filter validation error handling */
       const malformedFilters: any = {};
       // Make it look like an array but fail the Array.isArray check
       Object.setPrototypeOf(malformedFilters, Array.prototype);

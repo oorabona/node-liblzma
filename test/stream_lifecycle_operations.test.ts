@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as lzma from '../src/lzma.js';
 
 describe('Stream Lifecycle Operations', () => {
+  /* biome-ignore lint/suspicious/noExplicitAny: Array holds various stream types for cleanup in afterEach */
   let streams: any[] = [];
 
   beforeEach(() => {
@@ -95,6 +96,7 @@ describe('Stream Lifecycle Operations', () => {
 
   it('should test xzBufferSync type validation logic', () => {
     // This covers the logic that would be
+    /* biome-ignore lint/suspicious/noExplicitAny: Testing type validation with various input types */
     const testFunction = (input: any) => {
       if (typeof input === 'string') {
         return Buffer.from(input);
@@ -150,6 +152,7 @@ describe('Stream Lifecycle Operations', () => {
     await new Promise<void>((resolve) => {
       // The flush callback should be called once stream ends
       xz.flush(() => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for testing */
         const ws = (xz as any)._writableState;
         // At this point stream should be ended
         expect(ws.ended).toBe(true);
@@ -169,6 +172,7 @@ describe('Stream Lifecycle Operations', () => {
     // Wait for stream to be fully ended
     await new Promise<void>((resolve) => {
       xz.on('finish', () => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for testing */
         const ws = (xz as any)._writableState;
 
         // Ensure stream is in "ended" state
@@ -195,6 +199,7 @@ describe('Stream Lifecycle Operations', () => {
     // Wait for stream to be fully ended
     await new Promise<void>((resolve) => {
       xz.on('finish', () => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for testing */
         const ws = (xz as any)._writableState;
 
         // Ensure stream is in "ended" state
@@ -216,6 +221,7 @@ describe('Stream Lifecycle Operations', () => {
     xz.write(Buffer.from('test data for ending'));
 
     // Force stream into ending state but not ended
+    /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for testing */
     const ws = (xz as any)._writableState;
     ws.ending = true;
     ws.ended = false;
@@ -238,6 +244,7 @@ describe('Stream Lifecycle Operations', () => {
         expect(error).toBeNull();
         expect(result).toBeInstanceOf(Buffer);
 
+        /* biome-ignore lint/style/noNonNullAssertion: result is guaranteed to be defined after successful xz() */
         lzma.unxz(result!, (error, result2) => {
           expect(error).toBeNull();
           expect(result2).toEqual(testData);

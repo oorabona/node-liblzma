@@ -13,6 +13,7 @@ describe('Edge Cases and Filter Processing', () => {
     // Create a scenario that will trigger filter validation error
     expect(() => {
       // Create an object that will pass initial checks but fail during processing
+      /* biome-ignore lint/suspicious/noExplicitAny: Creating malformed object to test filter validation edge cases */
       const badFilters: any = {
         // Make it pass basic type checks
         length: 1,
@@ -133,6 +134,7 @@ describe('Edge Cases and Filter Processing', () => {
 
     coreProperties.forEach((prop) => {
       expect(def[prop]).toBeDefined();
+      /* biome-ignore lint/suspicious/noExplicitAny: Accessing dynamic property from import to verify export parity */
       expect(def[prop]).toBe((lzma as any)[prop]);
     });
 
@@ -208,7 +210,7 @@ describe('Edge Cases and Filter Processing', () => {
     };
 
     // Verify all constants are accessible and valid
-    Object.entries(constants).forEach(([name, value]) => {
+    Object.entries(constants).forEach(([_name, value]) => {
       expect(value).toBeDefined();
       expect(typeof value === 'object' || typeof value === 'number').toBe(true);
     });

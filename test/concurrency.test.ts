@@ -3,7 +3,7 @@
  */
 
 import { Buffer } from 'node:buffer';
-import { Readable, Writable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { createUnxz, createXz, unxz, unxzAsync, xz, xzAsync } from '../src/lzma.js';
 

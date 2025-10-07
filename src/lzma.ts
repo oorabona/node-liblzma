@@ -64,7 +64,9 @@ export { LZMAPool, type PoolMetrics } from './pool.js';
 function getWritableState(stream: Transform) {
   return {
     /* v8 ignore next 2 - Node.js version compatibility fallback */
+    /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for stream state management */
     ending: (stream as any)._writableState?.ending ?? false,
+    /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for stream state management */
     ended: (stream as any)._writableState?.ended ?? false,
     length: stream.writableLength,
     needDrain: stream.writableNeedDrain,
@@ -500,6 +502,7 @@ export abstract class XzStream extends Transform {
     }
 
     // Async path
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex but necessary async LZMA callback logic with proper error handling
     const callback = (errno: number, availInAfter: number, availOutAfter: number): boolean => {
       /* v8 ignore next 3 - error state handling is difficult to test */
       if (this._hadError) {
@@ -548,7 +551,7 @@ export abstract class XzStream extends Transform {
       if (cb && !this._closed) {
         try {
           cb();
-        } catch (error) {
+        } catch (_error) {
           // If callback throws, emit error instead of crashing
           this.emit('onerror', liblzma.LZMA_PROG_ERROR);
         }

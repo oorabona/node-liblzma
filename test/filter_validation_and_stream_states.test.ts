@@ -5,12 +5,14 @@ describe('Filter Validation and Stream States', () => {
   describe('Filter Validation', () => {
     it('should throw error for non-array filters', () => {
       expect(() => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Testing invalid filter type to verify error handling */
         new Xz({ filters: 'invalid' as any });
       }).toThrow('Filters need to be in an array!');
     });
 
     it('should throw error for non-array filters in Unxz', () => {
       expect(() => {
+        /* biome-ignore lint/suspicious/noExplicitAny: Testing invalid filter type to verify error handling */
         new Unxz({ filters: { invalid: true } as any });
       }).toThrow('Filters need to be in an array!');
     });
@@ -23,7 +25,9 @@ describe('Filter Validation and Stream States', () => {
       return new Promise<void>((resolve) => {
         xz.on('error', (error) => {
           expect(error).toBeInstanceOf(Error);
+          /* biome-ignore lint/suspicious/noExplicitAny: Accessing errno/code properties from error object */
           expect((error as any).errno).toBeDefined();
+          /* biome-ignore lint/suspicious/noExplicitAny: Accessing errno/code properties from error object */
           expect((error as any).code).toBeDefined();
           resolve();
         });
@@ -124,6 +128,7 @@ describe('Filter Validation and Stream States', () => {
 
       return new Promise<void>((resolve) => {
         // Pass non-Buffer/non-null chunk
+        /* biome-ignore lint/suspicious/noExplicitAny: Testing invalid chunk type to verify input validation */
         xz._transform('invalid' as any, 'utf8', (error) => {
           expect(error).toBeInstanceOf(Error);
           expect(error?.message).toBe('invalid input');
@@ -202,6 +207,7 @@ describe('Filter Validation and Stream States', () => {
       const xz = new Xz({ chunkSize: 8 });
 
       // Test flush behavior by directly checking the condition
+      /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for testing */
       const ws = (xz as any)._writableState;
       if (ws) {
         // Simulate needDrain condition by testing flush method
