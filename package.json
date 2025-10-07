@@ -54,6 +54,17 @@
     "vitest": "^3.2.4"
   },
   "types": "index.d.ts",
+  "files": [
+    "lib/",
+    "src/bindings/",
+    "scripts/build_xz_with_cmake.py",
+    "scripts/download_xz_from_github.py",
+    "scripts/copy_dll.py",
+    "scripts/walk_sources.py",
+    "binding.gyp",
+    "index.d.ts",
+    "xz-version.json"
+  ],
   "engines": {
     "node": ">=16.0.0"
   },
