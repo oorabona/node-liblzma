@@ -130,6 +130,10 @@ jobs:
           CXX: ${{ runner.os == 'Linux' && 'ccache g++' || (runner.os == 'macOS' && 'ccache clang++' || '') }}
       - name: Build TypeScript
         run: pnpm run build
+
+      - name: Install prebuildify globally
+        run: npm install -g prebuildify
+
       - name: Prebuild native modules
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -142,7 +146,6 @@ jobs:
           USE_GLOBAL: false
           RUNTIME_LINK: static
           ENABLE_THREAD_SUPPORT: yes
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload prebuild artifacts
         uses: actions/upload-artifact@v4
         with:
