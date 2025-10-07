@@ -50,16 +50,9 @@ jobs:
           fi
           echo "value=$TAG" >> "$GITHUB_OUTPUT"
 
-  build-artifacts:
-    needs: normalize-tag
-    uses: ./.github/workflows/build-artifacts.yml
-    with:
-      tag: ${{ needs.normalize-tag.outputs.tag }}
-    secrets: inherit
-
   publish:
     runs-on: ubuntu-latest
-    needs: [normalize-tag, build-artifacts]
+    needs: normalize-tag
     steps:
       - uses: actions/checkout@v4
         with:
@@ -99,7 +92,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update GitHub release and publish to npm
-        run: pnpm release-it-preset retry-publish --ci
+        run: pnpm release-it --config @oorabona/release-it-preset/config/retry-publish --ci
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_PUBLISH: ${{ (github.event_name == 'push') || (inputs.skip_npm == false) }}
