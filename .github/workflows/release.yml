@@ -32,7 +32,7 @@ jobs:
       pr-number: ${{ steps.create-pr.outputs.pull-request-number }}
       new-version: ${{ steps.bump-version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
