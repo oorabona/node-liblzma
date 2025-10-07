@@ -63,11 +63,6 @@ jobs:
           restore-keys: |
             release-xz-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Download prebuilds artifacts
         uses: actions/download-artifact@v4
         with:
@@ -81,6 +76,11 @@ jobs:
           find prebuilds-temp -type f -name '*.node' -exec cp {} prebuilds/ \;
           echo "✅ Prebuilds merged:"
           ls -lh prebuilds/
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
