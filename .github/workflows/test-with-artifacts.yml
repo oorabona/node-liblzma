@@ -42,7 +42,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
       - name: Use node ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
@@ -102,7 +102,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
       - name: Use node ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           architecture: x64
