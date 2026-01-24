@@ -171,9 +171,9 @@ export class LZMAPool extends EventEmitter {
     this.metrics.queued = this.queue.length;
     this.emit('start', { ...this.metrics });
 
-    // Execute task
-    item
-      .fn()
+    // F-010: Execute task with exception guard for sync throws
+    Promise.resolve()
+      .then(() => item.fn())
       .then((result) => {
         this.metrics.completed++;
         item.resolve(result);
@@ -221,6 +221,11 @@ export class LZMAPool extends EventEmitter {
    */
   clearQueue(): number {
     const cleared = this.queue.length;
+    // F-008: Reject all pending promises before clearing
+    const error = new Error('Task cancelled: queue cleared');
+    for (const task of this.queue) {
+      task.reject(error);
+    }
     this.queue = [];
     this.metrics.queued = 0;
     this.emit('metrics', { ...this.metrics });

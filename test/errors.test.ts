@@ -228,21 +228,24 @@ describe('LZMA Error Classes', () => {
     it('should handle unknown errno codes gracefully', () => {
       const error = createLZMAError(999);
       expect(error).toBeInstanceOf(LZMAError);
-      expect(error.message).toBe('Programming error'); // Max index clamping
+      // F-011: Explicit error message for unknown codes instead of clamping
+      expect(error.message).toBe('Unknown LZMA error code: 999');
       expect(error.errno).toBe(999);
     });
 
     it('should handle negative errno codes', () => {
       const error = createLZMAError(-1);
       expect(error).toBeInstanceOf(LZMAError);
-      expect(error.message).toBe('Operation completed successfully'); // Min index clamping
+      // F-011: Explicit error message for out-of-bounds codes
+      expect(error.message).toBe('Unknown LZMA error code: -1');
       expect(error.errno).toBe(-1);
     });
 
     it('should handle very large errno codes', () => {
       const error = createLZMAError(10000);
       expect(error).toBeInstanceOf(LZMAError);
-      expect(error.message).toBe('Programming error'); // Max index clamping
+      // F-011: Explicit error message for unknown codes instead of clamping
+      expect(error.message).toBe('Unknown LZMA error code: 10000');
       expect(error.errno).toBe(10000);
     });
   });
@@ -309,13 +312,14 @@ describe('LZMA Error Classes', () => {
     });
 
     it('should handle errno just outside boundaries', () => {
+      // F-011: Out-of-bounds codes now return explicit unknown message
       // Just below 0
       const below = createLZMAError(-1);
-      expect(below.message).toBe('Operation completed successfully');
+      expect(below.message).toBe('Unknown LZMA error code: -1');
 
       // Just above 11
       const above = createLZMAError(12);
-      expect(above.message).toBe('Programming error');
+      expect(above.message).toBe('Unknown LZMA error code: 12');
     });
 
     it('should preserve all error properties across factory creation', () => {

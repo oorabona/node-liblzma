@@ -221,15 +221,24 @@ describe('LZMAPool', () => {
   });
 
   describe('Clear queue', () => {
-    it('should clear all pending tasks', () => {
+    it('should clear all pending tasks and reject their promises', async () => {
       // Add many tasks to create a queue
+      const tasks: Promise<Buffer>[] = [];
       for (let i = 0; i < 20; i++) {
-        pool.compress(Buffer.from('test'));
+        tasks.push(pool.compress(Buffer.from('test')));
       }
 
       const cleared = pool.clearQueue();
       expect(cleared).toBeGreaterThan(0);
       expect(pool.queueLength).toBe(0);
+
+      // F-008: Cleared tasks should be rejected
+      const results = await Promise.allSettled(tasks);
+      const rejected = results.filter((r) => r.status === 'rejected');
+      expect(rejected.length).toBe(cleared);
+      for (const r of rejected) {
+        expect((r as PromiseRejectedResult).reason.message).toBe('Task cancelled: queue cleared');
+      }
     });
 
     it('should return 0 when queue is empty', () => {

@@ -171,6 +171,9 @@ function getErrorMessage(errno: number): string {
     'Programming error',
   ];
 
-  const messageIndex = Math.max(0, Math.min(errno, messages.length - 1));
-  return messages[messageIndex];
+  // F-011: Handle out-of-bounds errno explicitly instead of silent clamping
+  if (errno < 0 || errno >= messages.length) {
+    return `Unknown LZMA error code: ${errno}`;
+  }
+  return messages[errno];
 }

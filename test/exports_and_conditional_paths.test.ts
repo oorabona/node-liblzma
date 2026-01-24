@@ -103,20 +103,23 @@ describe('Exports and Conditional Paths', () => {
     });
   });
 
-  it('should test flush on ended stream to cover branches', () => {
+  it('should test flush on ended stream to cover branches', async () => {
     const stream = new lzma.Xz({ preset: 0 });
 
-    // End the stream
-    stream.end();
+    // Wait for stream to fully end first
+    await new Promise<void>((resolve) => {
+      stream.on('finish', resolve);
+      stream.end();
+    });
 
-    // Test flush on ended stream should trigger branch coverage
+    // Now test flush on a fully ended stream
     let callbackCalled = false;
     stream.flush(() => {
       callbackCalled = true;
     });
 
     // Callback should be called on next tick for ended stream
-    return new Promise<void>((resolve) => {
+    await new Promise<void>((resolve) => {
       process.nextTick(() => {
         expect(callbackCalled).toBe(true);
         resolve();

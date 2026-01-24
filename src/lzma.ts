@@ -60,18 +60,13 @@ export {
 // Re-export pool for concurrency control
 export { LZMAPool, type PoolMetrics } from './pool.js';
 
-// Helper to safely access Node.js internal _writableState using official properties
-function getWritableState(stream: Transform) {
-  return {
-    /* v8 ignore next 2 - Node.js version compatibility fallback */
-    /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for stream state management */
-    ending: (stream as any)._writableState?.ending ?? false,
-    /* c8 ignore next 2 - Node.js version compatibility fallback */
-    /* biome-ignore lint/suspicious/noExplicitAny: Accessing Node.js internal _writableState for stream state management */
-    ended: (stream as any)._writableState?.ended ?? false,
-    length: stream.writableLength,
-    needDrain: stream.writableNeedDrain,
-  };
+// F-009: Type for internal Node.js stream state (no public API equivalent for _writableState.ended)
+// Using internal API is intentional - writableFinished has different semantics than _writableState.ended
+interface WritableState {
+  ending: boolean;
+  ended: boolean;
+  length: number;
+  needDrain: boolean;
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -276,17 +271,10 @@ export abstract class XzStream extends Transform {
     this._buffer = Buffer.alloc(this._chunkSize);
     /* v8 ignore next */
 
+    // F-007: Let errors propagate naturally (removed defensive listener anti-pattern)
     this.on('onerror', (errno: number) => {
       this._hadError = true;
       const error = this._createLZMAError(errno);
-      // Safely emit error - ensure there's at least one listener to prevent uncaught exception
-      /* v8 ignore next 6 - Defensive error handling for streams without listeners */
-      if (this.listenerCount('error') === 0) {
-        // If no error listeners, add a temporary one to prevent crash
-        this.once('error', () => {
-          // Error has been handled by emitting it
-        });
-      }
       this.emit('error', error);
     });
     /* v8 ignore next */
@@ -306,7 +294,8 @@ export abstract class XzStream extends Transform {
   flush(callback?: () => void): void;
   flush(kind: number, callback?: () => void): void;
   flush(kindOrCallback?: number | (() => void), callback?: () => void): void {
-    const ws = getWritableState(this);
+    // F-009: Access internal _writableState with type safety (no public API equivalent for .ended)
+    const ws = (this as unknown as { _writableState: WritableState })._writableState;
 
     let kind: number;
     let cb: (() => void) | undefined;
@@ -365,7 +354,8 @@ export abstract class XzStream extends Transform {
   /* v8 ignore next */
 
   override _transform(chunk: Buffer | null, _encoding: string, callback: TransformCallback): void {
-    const ws = getWritableState(this);
+    // F-009: Access internal _writableState with type safety (no public API equivalent for .ended)
+    const ws = (this as unknown as { _writableState: WritableState })._writableState;
     const ending = ws.ending || ws.ended;
     const last = ending && (!chunk || ws.length === chunk.length);
 
@@ -490,16 +480,20 @@ export abstract class XzStream extends Transform {
         /* v8 ignore stop */
       }
 
-      /* v8 ignore start */
-      if (this._hadError) {
-        throw error ?? new Error('Unknown LZMA error');
-      }
-      /* v8 ignore stop */
-      /* v8 ignore next - normal cleanup path */
-      this.close();
+      // F-012: Use try-finally to ensure close() runs even on error
+      try {
+        /* v8 ignore start */
+        if (this._hadError) {
+          throw error ?? new Error('Unknown LZMA error');
+        }
+        /* v8 ignore stop */
 
-      const buf = Buffer.concat(buffers, nread);
-      return buf;
+        const buf = Buffer.concat(buffers, nread);
+        return buf;
+      } finally {
+        /* v8 ignore next - cleanup path */
+        this.close();
+      }
     }
 
     // Async path
@@ -509,8 +503,8 @@ export abstract class XzStream extends Transform {
       if (this._hadError) {
         return false;
       }
-      /* v8 ignore next 3 - async error path handling */
-      // if LZMA engine returned something else, we are running into trouble!
+      /* v8 ignore next 5 - async error path handling */
+      // F-003: If LZMA engine returned an error, emit onerror event (matches sync path at line 438)
       if (errno !== liblzma.LZMA_OK && errno !== liblzma.LZMA_STREAM_END) {
         this.emit('onerror', errno);
         return false;
@@ -797,7 +791,9 @@ export async function unxzFile(
   await pipeline(input, decompressor, output);
 }
 
-// Export default object for CommonJS compatibility - use individual exports to avoid duplication
+// F-014: Default export for CommonJS compatibility
+// @deprecated Use named exports instead for better tree-shaking. Will be removed in v3.0.
+// eslint-disable-next-line import/no-default-export
 export default {
   Xz,
   Unxz,

@@ -29,6 +29,12 @@ Napi::Value LZMA::Close(const Napi::CallbackInfo &info)
 
 Napi::Value LZMA::Close(const Napi::Env &env)
 {
+	// F-006: Idempotency guard - prevent double-subtract of external memory
+	if (_closed)
+	{
+		return env.Undefined();
+	}
+	_closed = true;
 	Napi::MemoryManagement::AdjustExternalMemory(env, -int64_t(sizeof(LZMA)));
 
 	if (_wip)
@@ -63,7 +69,7 @@ void LZMA::Init(Napi::Env env, Napi::Object exports)
 }
 
 LZMA::LZMA(const Napi::CallbackInfo &info) : Napi::ObjectWrap<LZMA>(info), _stream(LZMA_STREAM_INIT),
-											 _wip(false), _pending_close(false), _worker(nullptr)
+											 _wip(false), _pending_close(false), _closed(false), _worker(nullptr)
 {
 	Napi::Env env = info.Env();
 
@@ -103,7 +109,7 @@ LZMA::LZMA(const Napi::CallbackInfo &info) : Napi::ObjectWrap<LZMA>(info), _stre
 	switch (mode)
 	{
 	case STREAM_DECODE:
-		success = InitializeDecoder();
+		success = InitializeDecoder(env);
 		break;
 	case STREAM_ENCODE:
 		success = InitializeEncoder(opts, preset, check);
@@ -163,6 +169,13 @@ LZMA::~LZMA()
 template <bool async>
 Napi::Value LZMA::Code(const Napi::CallbackInfo &info)
 {
+	// F-001: Guard against concurrent calls - liblzma is not thread-safe per stream
+	if (this->_wip)
+	{
+		Napi::Error::New(info.Env(), "Stream is busy - concurrent operations not allowed").ThrowAsJavaScriptException();
+		return info.Env().Undefined();
+	}
+
 	// Setup with manual guard (safer than RAII for JS exceptions)
 	this->_wip = true;
 	this->Ref();
@@ -285,6 +298,14 @@ bool LZMA::ValidateAndPrepareBuffers(const Napi::CallbackInfo &info, BufferConte
 	}
 
 	ctx.out_off = info[5].ToNumber().Uint32Value();
+
+	// F-002: Validate output offset bounds to prevent underflow in out_len calculation
+	if (ctx.out_off > out_max)
+	{
+		Napi::RangeError::New(env, "Output offset exceeds buffer length").ThrowAsJavaScriptException();
+		return false;
+	}
+
 	ctx.out_len = out_max - ctx.out_off;
 	ctx.out = out_buf + ctx.out_off;
 
@@ -461,10 +482,18 @@ bool LZMA::InitializeEncoder(const Napi::Object &opts, uint32_t preset, lzma_che
 	return true;
 }
 
-bool LZMA::InitializeDecoder()
+bool LZMA::InitializeDecoder(const Napi::Env &env)
 {
 	lzma_ret ret = lzma_stream_decoder(&this->_stream, UINT64_MAX, LZMA_CONCATENATED);
-	return ret == LZMA_OK;
+
+	// F-005: Throw exception on decoder init failure (consistent with InitializeEncoder)
+	if (ret != LZMA_OK)
+	{
+		Napi::Error::New(env, "LZMA decoder failure, returned " + std::to_string(ret)).ThrowAsJavaScriptException();
+		return false;
+	}
+
+	return true;
 }
 
 void LZMA::AfterCommon(const Napi::Env &env)
@@ -515,8 +544,15 @@ void LZMA::After(const Napi::Env &env, const Napi::Function &cb)
 	Napi::Number avail_in = Napi::Number::New(env, this->_stream.avail_in);
 	Napi::Number avail_out = Napi::Number::New(env, this->_stream.avail_out);
 
+	// F-001: Clear _wip BEFORE callback so callback can call code() again for iterative processing
+	// Note: Buffer refs are released after callback in case callback needs to access them
+	this->_wip = false;
+
 	// Call the provided JS callback with the three numeric results
+	// The callback may call code() again for iterative processing (this is the normal pattern)
 	cb.Call({ret, avail_in, avail_out});
 
+	// F-004: Ensure cleanup runs even if callback threw an exception
+	// With NAPI_DISABLE_CPP_EXCEPTIONS, exceptions are pending rather than thrown
 	AfterCommon(env);
 }

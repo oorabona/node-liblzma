@@ -25,6 +25,8 @@ export type CompressionCallback = (error: Error | null, result?: Buffer) => void
 export type LZMAActionType = 0 | 1 | 2 | 3; // RUN | SYNC_FLUSH | FULL_FLUSH | FINISH
 export type LZMAStatusType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11; // All LZMA status codes
 export type CheckType = 0 | 1 | 4 | 10; // NONE | CRC32 | CRC64 | SHA256
-export type PresetType = 6 | 9; // DEFAULT | EXTREME
+// F-013: Preset is a number 0-9 optionally OR'ed with EXTREME flag (0x80000000)
+// Examples: 6 (default), 9 (max), 6 | EXTREME (default + extreme)
+export type PresetType = number;
 export type FilterType = 0x21 | 0x03 | 0x04 | 0x06 | 0x07 | 0x08 | 0x09; // LZMA2 | X86 | POWERPC | IA64 | ARM | ARMTHUMB | SPARC
 export type ModeType = 1 | 2; // FAST | NORMAL
