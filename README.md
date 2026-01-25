@@ -930,9 +930,9 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 **Examples**:
 ```bash
-git commit -m "feat(pool): add LZMAPool for concurrency control"
-git commit -m "fix(bindings): resolve memory leak in FunctionReference"
-git commit -m "docs(readme): add migration guide for v2.0"
+git commit -m "feat: add LZMAPool for concurrency control"
+git commit -m "fix: resolve memory leak in FunctionReference"
+git commit -m "docs: add migration guide for v2.0"
 ```
 
 ## Pull Request Process
