@@ -3,8 +3,12 @@ Node-liblzma
 
 [![NPM Version](https://img.shields.io/npm/v/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
 [![NPM Downloads](https://img.shields.io/npm/dm/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
-[![CI Status](https://github.com/oorabona/node-liblzma/actions/workflows/ci-unified.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-unified.yml)
+[![CI Status](https://github.com/oorabona/node-liblzma/actions/workflows/ci.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-TypeDoc-blue.svg)](https://oorabona.github.io/node-liblzma/)
+[![License](https://img.shields.io/npm/l/node-liblzma.svg)](https://github.com/oorabona/node-liblzma/blob/master/LICENSE)
+[![Node Version](https://img.shields.io/node/v/node-liblzma.svg)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
+[![npm provenance](https://img.shields.io/badge/npm-provenance-green.svg)](https://docs.npmjs.com/generating-provenance-statements)
 
 # What is liblzma/XZ ?
 
