@@ -8,10 +8,13 @@ on:
 
 permissions:
   contents: write
+  actions: write
+  packages: write
+  id-token: write
 
 jobs:
-  trigger-publish:
-    name: Create Tag and Trigger Publish
+  create-tag:
+    name: Create Tag
     # Only run if:
     # 1. PR was merged (not just closed)
     # 2. PR has the "release" label
@@ -21,6 +24,8 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'release') &&
       github.event.pull_request.user.login == 'github-actions[bot]'
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -70,4 +75,12 @@ jobs:
           echo "**PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Tag pushed to repository" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 This will trigger the publish workflow automatically" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Publish workflow will be triggered next" >> $GITHUB_STEP_SUMMARY
+
+  publish:
+    name: Publish to npm
+    needs: create-tag
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ needs.create-tag.outputs.tag }}
+    secrets: inherit
