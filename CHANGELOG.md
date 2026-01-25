@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-01-25
+
+### Added
+- add nxz command-line tool (cli) ([8506701](https://github.com/oorabona/node-liblzma/commit/8506701))
+- add utility functions for improved DX ([02dadd7](https://github.com/oorabona/node-liblzma/commit/02dadd7))
+
+### Changed
+- update README badges ([face962](https://github.com/oorabona/node-liblzma/commit/face962))
+- simplify commit message examples in contributing guide ([698508a](https://github.com/oorabona/node-liblzma/commit/698508a))
+- create-tag → build-artifacts → publish ([6f98bb2](https://github.com/oorabona/node-liblzma/commit/6f98bb2))
+
 ## [2.1.0] - 2026-01-25
 
 ### Added
@@ -290,7 +301,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.2.0...HEAD
 [2.0.3]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/oorabona/node-liblzma/compare/v2.0.0...v2.0.1
@@ -298,3 +309,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.1.9]: https://github.com/oorabona/node-liblzma/releases/tag/v1.1.9
 [v2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
 [2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
+[v2.2.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.2.0
+[2.2.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.2.0
