@@ -741,6 +741,109 @@ export function createUnxz(lzmaOptions?: LZMAOptions, options?: TransformOptions
 export function hasThreads(): boolean {
   return liblzma.HAS_THREADS_SUPPORT;
 }
+
+/**
+ * Check if a buffer contains XZ compressed data by examining magic bytes.
+ * @param buffer - Buffer to check (needs at least 6 bytes)
+ * @returns true if the buffer starts with XZ magic bytes
+ * @example
+ * ```ts
+ * const compressed = await xzAsync(Buffer.from('Hello'));
+ * console.log(isXZ(compressed)); // true
+ * console.log(isXZ(Buffer.from('Hello'))); // false
+ * ```
+ */
+export function isXZ(buffer: Buffer): boolean {
+  return liblzma.isXZ(buffer);
+}
+
+/**
+ * Get the runtime version of liblzma as a string.
+ * @returns Version string like "5.4.1"
+ * @example
+ * ```ts
+ * console.log(versionString()); // "5.4.1"
+ * ```
+ */
+export function versionString(): string {
+  return liblzma.versionString();
+}
+
+/**
+ * Get the runtime version of liblzma as a number.
+ * Format: MAJOR * 10000000 + MINOR * 10000 + PATCH * 10
+ * @returns Version number (e.g., 50040010 for 5.4.1)
+ * @example
+ * ```ts
+ * console.log(versionNumber()); // 50040010
+ * ```
+ */
+export function versionNumber(): number {
+  return liblzma.versionNumber();
+}
+
+/**
+ * Get the memory usage estimate for encoding with a given preset.
+ * @param presetLevel - Compression preset (0-9, optionally OR'd with preset.EXTREME)
+ * @returns Memory usage in bytes, or 0 if preset is invalid
+ * @example
+ * ```ts
+ * console.log(easyEncoderMemusage(6)); // ~104857600 (100 MB)
+ * console.log(easyEncoderMemusage(9 | preset.EXTREME)); // ~712507392 (680 MB)
+ * ```
+ */
+export function easyEncoderMemusage(presetLevel: number): number {
+  return liblzma.easyEncoderMemusage(presetLevel);
+}
+
+/**
+ * Get the memory usage estimate for decoding.
+ * @returns Memory usage in bytes for decoder initialization
+ * @example
+ * ```ts
+ * console.log(easyDecoderMemusage()); // ~18874368 (18 MB)
+ * ```
+ */
+export function easyDecoderMemusage(): number {
+  return liblzma.easyDecoderMemusage();
+}
+
+/**
+ * Metadata extracted from an XZ file index.
+ */
+export interface XZFileIndex {
+  /** Uncompressed size in bytes */
+  uncompressedSize: number;
+  /** Compressed size in bytes (excluding headers) */
+  compressedSize: number;
+  /** Number of streams in the file */
+  streamCount: number;
+  /** Number of blocks in the file */
+  blockCount: number;
+  /** Integrity check type (see check.CRC32, check.CRC64, etc.) */
+  check: number;
+  /** Memory usage of the index structure */
+  memoryUsage: number;
+}
+
+/**
+ * Parse the index from a complete XZ file buffer to get metadata.
+ * This allows you to know the uncompressed size before decompressing.
+ * @param buffer - Complete XZ file buffer
+ * @returns Object with file metadata
+ * @throws Error if buffer is not a valid XZ stream
+ * @example
+ * ```ts
+ * const compressed = await xzAsync(largeBuffer);
+ * const info = parseFileIndex(compressed);
+ * console.log(`Uncompressed: ${info.uncompressedSize}, Compressed: ${info.compressedSize}`);
+ * console.log(`Ratio: ${(info.compressedSize / info.uncompressedSize * 100).toFixed(1)}%`);
+ * ```
+ */
+export function parseFileIndex(buffer: Buffer): XZFileIndex {
+  return liblzma.parseFileIndex(buffer);
+}
+
 /* v8 ignore next */
 
 /**

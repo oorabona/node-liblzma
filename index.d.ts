@@ -116,6 +116,40 @@ export declare class Unxz extends XzStream {
 /** Check if threading support is available */
 export declare function hasThreads(): boolean;
 
+/** Check if a buffer starts with XZ magic bytes */
+export declare function isXZ(buffer: Buffer): boolean;
+
+/** Get the runtime liblzma version string (e.g., "5.4.1") */
+export declare function versionString(): string;
+
+/** Get the runtime liblzma version number (e.g., 50040010 for 5.4.1) */
+export declare function versionNumber(): number;
+
+/** Get memory usage estimate for encoding with given preset */
+export declare function easyEncoderMemusage(presetLevel: number): number;
+
+/** Get memory usage estimate for decoding */
+export declare function easyDecoderMemusage(): number;
+
+/** Metadata extracted from an XZ file index */
+export interface XZFileIndex {
+  /** Uncompressed size in bytes */
+  uncompressedSize: number;
+  /** Compressed size in bytes (excluding headers) */
+  compressedSize: number;
+  /** Number of streams in the file */
+  streamCount: number;
+  /** Number of blocks in the file */
+  blockCount: number;
+  /** Integrity check type */
+  check: number;
+  /** Memory usage of the index structure */
+  memoryUsage: number;
+}
+
+/** Parse the index from a complete XZ file to get metadata */
+export declare function parseFileIndex(buffer: Buffer): XZFileIndex;
+
 /** Create a compression stream */
 export declare function createXz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Xz;
 

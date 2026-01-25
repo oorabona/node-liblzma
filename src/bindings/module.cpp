@@ -17,6 +17,193 @@
 **/
 
 #include "node-liblzma.hpp"
+#include <cstring>
+
+// XZ magic bytes: 0xFD + "7zXZ" + 0x00
+static const uint8_t XZ_MAGIC[6] = {0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00};
+
+/**
+ * Check if a buffer starts with the XZ magic bytes.
+ * @param info[0] Buffer to check
+ * @returns true if the buffer is an XZ stream, false otherwise
+ */
+Napi::Value IsXZ(const Napi::CallbackInfo &info)
+{
+	Napi::Env env = info.Env();
+
+	if (info.Length() < 1 || !info[0].IsBuffer())
+	{
+		Napi::TypeError::New(env, "Expected a Buffer argument").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	Napi::Buffer<uint8_t> buf = info[0].As<Napi::Buffer<uint8_t>>();
+
+	// Need at least 6 bytes for XZ magic
+	if (buf.Length() < 6)
+	{
+		return Napi::Boolean::New(env, false);
+	}
+
+	bool isXz = std::memcmp(buf.Data(), XZ_MAGIC, 6) == 0;
+	return Napi::Boolean::New(env, isXz);
+}
+
+/**
+ * Get liblzma version string (runtime).
+ * @returns Version string like "5.4.1"
+ */
+Napi::Value VersionString(const Napi::CallbackInfo &info)
+{
+	Napi::Env env = info.Env();
+	return Napi::String::New(env, lzma_version_string());
+}
+
+/**
+ * Get liblzma version number (runtime).
+ * @returns Version as integer (e.g., 50040010 for 5.4.1)
+ */
+Napi::Value VersionNumber(const Napi::CallbackInfo &info)
+{
+	Napi::Env env = info.Env();
+	return Napi::Number::New(env, static_cast<double>(lzma_version_number()));
+}
+
+/**
+ * Get memory usage for easy encoder with given preset.
+ * @param info[0] Preset level (0-9, optionally OR'd with LZMA_PRESET_EXTREME)
+ * @returns Memory usage in bytes, or 0 if preset is invalid
+ */
+Napi::Value EasyEncoderMemusage(const Napi::CallbackInfo &info)
+{
+	Napi::Env env = info.Env();
+
+	if (info.Length() < 1 || !info[0].IsNumber())
+	{
+		Napi::TypeError::New(env, "Expected a preset number argument").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	uint32_t preset = info[0].As<Napi::Number>().Uint32Value();
+	uint64_t memusage = lzma_easy_encoder_memusage(preset);
+
+	return Napi::Number::New(env, static_cast<double>(memusage));
+}
+
+/**
+ * Get memory usage for easy decoder.
+ * @returns Memory usage in bytes
+ */
+Napi::Value EasyDecoderMemusage(const Napi::CallbackInfo &info)
+{
+	Napi::Env env = info.Env();
+
+	// lzma_easy_decoder_memusage takes a preset for memlimit estimation
+	// but the actual decoder doesn't need a preset. Use default preset.
+	uint64_t memusage = lzma_easy_decoder_memusage(LZMA_PRESET_DEFAULT);
+
+	return Napi::Number::New(env, static_cast<double>(memusage));
+}
+
+/**
+ * Parse the Stream Footer and Index from an XZ file to get metadata.
+ * @param info[0] Buffer containing the XZ file (must be complete)
+ * @returns Object with uncompressed_size, compressed_size, stream_count, block_count, check
+ */
+Napi::Value ParseFileIndex(const Napi::CallbackInfo &info)
+{
+	Napi::Env env = info.Env();
+
+	if (info.Length() < 1 || !info[0].IsBuffer())
+	{
+		Napi::TypeError::New(env, "Expected a Buffer argument").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	Napi::Buffer<uint8_t> buf = info[0].As<Napi::Buffer<uint8_t>>();
+	const uint8_t *data = buf.Data();
+	size_t size = buf.Length();
+
+	// Minimum XZ file: header (12) + block (varies) + index (varies) + footer (12)
+	// Stream header is 12 bytes, footer is 12 bytes
+	if (size < LZMA_STREAM_HEADER_SIZE * 2)
+	{
+		Napi::Error::New(env, "Buffer too small for XZ stream").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	// Verify XZ magic
+	if (std::memcmp(data, XZ_MAGIC, 6) != 0)
+	{
+		Napi::Error::New(env, "Not an XZ stream (invalid magic)").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	// Parse stream header
+	lzma_stream_flags header_flags;
+	lzma_ret ret = lzma_stream_header_decode(&header_flags, data);
+	if (ret != LZMA_OK)
+	{
+		Napi::Error::New(env, "Failed to decode stream header").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	// Parse stream footer (last 12 bytes)
+	lzma_stream_flags footer_flags;
+	ret = lzma_stream_footer_decode(&footer_flags, data + size - LZMA_STREAM_HEADER_SIZE);
+	if (ret != LZMA_OK)
+	{
+		Napi::Error::New(env, "Failed to decode stream footer").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	// Verify header and footer match
+	ret = lzma_stream_flags_compare(&header_flags, &footer_flags);
+	if (ret != LZMA_OK)
+	{
+		Napi::Error::New(env, "Stream header and footer do not match").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	// Calculate index position: footer starts at (size - 12), index is backward_size bytes before that
+	size_t footer_pos = size - LZMA_STREAM_HEADER_SIZE;
+	size_t index_size = footer_flags.backward_size;
+
+	if (index_size > footer_pos - LZMA_STREAM_HEADER_SIZE)
+	{
+		Napi::Error::New(env, "Invalid index size in footer").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	size_t index_pos = footer_pos - index_size;
+
+	// Decode the index
+	lzma_index *index = nullptr;
+	uint64_t memlimit = UINT64_MAX;
+	size_t in_pos = 0;
+
+	ret = lzma_index_buffer_decode(&index, &memlimit, nullptr,
+								   data + index_pos, &in_pos, index_size);
+	if (ret != LZMA_OK || index == nullptr)
+	{
+		Napi::Error::New(env, "Failed to decode index").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	// Extract metadata from index
+	Napi::Object result = Napi::Object::New(env);
+	result.Set("uncompressedSize", Napi::Number::New(env, static_cast<double>(lzma_index_uncompressed_size(index))));
+	result.Set("compressedSize", Napi::Number::New(env, static_cast<double>(lzma_index_total_size(index))));
+	result.Set("streamCount", Napi::Number::New(env, static_cast<double>(lzma_index_stream_count(index))));
+	result.Set("blockCount", Napi::Number::New(env, static_cast<double>(lzma_index_block_count(index))));
+	result.Set("check", Napi::Number::New(env, static_cast<double>(footer_flags.check)));
+	result.Set("memoryUsage", Napi::Number::New(env, static_cast<double>(lzma_index_memused(index))));
+
+	// Clean up
+	lzma_index_end(index, nullptr);
+
+	return result;
+}
 
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
@@ -101,6 +288,15 @@ Napi::Object Init(Napi::Env env, Napi::Object exports)
 
 	// Tell companion script if we are thread-able or not
 	exports.Set(Napi::String::New(env, "HAS_THREADS_SUPPORT"), Napi::Boolean::New(env, HAS_THREADS_SUPPORT));
+
+	// Utility functions
+	exports.Set(Napi::String::New(env, "isXZ"), Napi::Function::New(env, IsXZ));
+	exports.Set(Napi::String::New(env, "versionString"), Napi::Function::New(env, VersionString));
+	exports.Set(Napi::String::New(env, "versionNumber"), Napi::Function::New(env, VersionNumber));
+	exports.Set(Napi::String::New(env, "easyEncoderMemusage"), Napi::Function::New(env, EasyEncoderMemusage));
+	exports.Set(Napi::String::New(env, "easyDecoderMemusage"), Napi::Function::New(env, EasyDecoderMemusage));
+	exports.Set(Napi::String::New(env, "parseFileIndex"), Napi::Function::New(env, ParseFileIndex));
+
 	return exports;
 }
 
