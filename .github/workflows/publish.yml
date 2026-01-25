@@ -104,8 +104,6 @@ jobs:
       - name: Publish to npm with provenance
         if: ${{ (github.event_name == 'push') || (inputs.skip_npm == false) }}
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Summarize
         run: |

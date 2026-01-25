@@ -164,8 +164,6 @@ jobs:
 
       - name: Publish to npm with tag
         run: pnpm publish --access public --tag ${{ github.event.inputs.prerelease-type }} --provenance --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   github-prerelease:
     name: Create GitHub Pre-release
