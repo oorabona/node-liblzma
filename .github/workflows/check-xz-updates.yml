@@ -72,20 +72,22 @@ jobs:
         if: steps.check.outputs.new_version == 'true'
         id: test
         run: |
-          echo "Testing with XZ ${{ steps.check.outputs.latest }}"
+          echo "Testing with XZ $XZ_VERSION"
 
-          # Test installation with new version
-          XZ_VERSION="${{ steps.check.outputs.latest }}" pnpm install --frozen-lockfile
+          # Test installation with new version (USE_GLOBAL=false forces build from source)
+          pnpm install --frozen-lockfile
 
           # Run build and tests
           pnpm run build
           pnpm run type-check
           pnpm test
 
-          echo "✅ Tests passed with XZ ${{ steps.check.outputs.latest }}"
+          echo "✅ Tests passed with XZ $XZ_VERSION"
           echo "test_passed=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          XZ_VERSION: ${{ steps.check.outputs.latest }}
+          USE_GLOBAL: 'false'
         continue-on-error: true
 
       - name: Download XZ sources for artifact
