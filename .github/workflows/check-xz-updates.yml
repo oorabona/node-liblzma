@@ -89,6 +89,7 @@ jobs:
           XZ_VERSION: ${{ steps.check.outputs.latest }}
           USE_GLOBAL: 'false'
           RUNTIME_LINK: 'static'
+          ENABLE_THREAD_SUPPORT: 'yes'
         continue-on-error: true
 
       - name: Download XZ sources for artifact
