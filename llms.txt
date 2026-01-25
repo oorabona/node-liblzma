@@ -1,0 +1,61 @@
+# node-liblzma
+
+> Node.js bindings for liblzma (XZ/LZMA2 compression). Provides streaming
+> and buffer APIs compatible with zlib, plus a portable CLI tool (nxz).
+> Supports prebuilt binaries for Linux, macOS, and Windows.
+
+## Installation
+
+```bash
+npm install node-liblzma
+```
+
+## Key APIs
+
+- [Streaming API](https://github.com/oorabona/node-liblzma#streaming-api): `createXz()`, `createUnxz()` - zlib-compatible transform streams
+- [Buffer API](https://github.com/oorabona/node-liblzma#buffer-api): `xz()`, `unxz()`, `xzSync()`, `unxzSync()` - callback and sync variants
+- [Promise API](https://github.com/oorabona/node-liblzma#promise-api): `xzAsync()`, `unxzAsync()` - modern async/await support
+- [File API](https://github.com/oorabona/node-liblzma#file-api): `xzFile()`, `unxzFile()` - compress/decompress files directly
+- [Utility API](https://github.com/oorabona/node-liblzma#utility-functions): `isXZ()`, `parseFileIndex()`, `versionString()` - format detection and metadata
+
+## CLI Tool (nxz)
+
+Portable xz-like command line tool included in the package:
+
+```bash
+npx node-liblzma file.txt        # compress
+npx node-liblzma -d file.xz      # decompress
+npx node-liblzma -l file.xz      # list info
+npx node-liblzma -9e large.bin   # max compression
+```
+
+Options: `-z` compress, `-d` decompress, `-l` list, `-k` keep, `-f` force, `-c` stdout, `-o FILE` output, `-0`.`-9` preset, `-e` extreme, `-v` verbose, `-q` quiet
+
+## Documentation
+
+- [README](https://github.com/oorabona/node-liblzma#readme): Quick start and examples
+- [TypeDoc API Reference](https://oorabona.github.io/node-liblzma/): Full API documentation
+- [Migration from zlib](https://github.com/oorabona/node-liblzma#compatibility-with-zlib): Drop-in replacement guide
+
+## Quick Examples
+
+```typescript
+import { xzAsync, unxzAsync, createXz } from 'node-liblzma';
+
+// Buffer API
+const compressed = await xzAsync(Buffer.from('Hello World'));
+const original = await unxzAsync(compressed);
+
+// Streaming API
+import { createReadStream, createWriteStream } from 'fs';
+createReadStream('input.txt')
+  .pipe(createXz())
+  .pipe(createWriteStream('output.xz'));
+```
+
+## Optional
+
+- [Contributing Guide](https://github.com/oorabona/node-liblzma/blob/master/CONTRIBUTING.md): How to contribute
+- [Changelog](https://github.com/oorabona/node-liblzma/blob/master/CHANGELOG.md): Version history
+- [Benchmark](https://github.com/oorabona/node-liblzma#benchmark): Performance comparison with native xz
+- [License](https://github.com/oorabona/node-liblzma/blob/master/LICENSE): LGPL-3.0
