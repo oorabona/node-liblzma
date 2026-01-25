@@ -16,7 +16,10 @@ _None - All MEDIUM issues resolved_
 
 ## Pending - LOW (Nice to Have)
 
-_None - All LOW issues resolved_
+- [ ] **CLI-REFACTOR** Reduce cognitive complexity in nxz CLI functions
+  - `compressFile` and `decompressFile` have complexity 22 (max: 15)
+  - Extract progress setup, cleanup, and stream handling into helpers
+  - Priority: LOW - functional code, just linter warnings
 
 ## Completed
 
@@ -61,6 +64,17 @@ _None - All LOW issues resolved_
   - `parseFileIndex(buffer)` - Read .xz metadata at `module.cpp:113-206`
   - TypeScript wrappers at `lzma.ts:756-845`
   - 22 tests added in `test/utils.test.ts`
+- [x] ✅ **CLI-NXZ** Build `nxz` CLI tool - full xz-like command line interface (2026-01-25)
+  - Compress/decompress files with xz-like options (`-z`, `-d`, `-l`, `-k`, `-f`, `-c`, `-o`, `-v`, `-q`)
+  - Custom output file with `-o` / `--output=FILE` option
+  - Preset levels `-0` to `-9` and `-e` extreme mode
+  - Auto-detect mode from file extension
+  - Progress display for large files (>1MB)
+  - Stdin/stdout piping support
+  - Quiet mode (`-q`) suppresses warnings to stderr
+  - SIGINT handling with partial file cleanup (exit code 130)
+  - Exit codes matching xz conventions (0=success, 1=error, 130=SIGINT)
+  - Spec: `docs/plans/cli-nxz.md`, Tests: `test/cli.test.ts` (25 tests)
 
 ## Blocked / Deferred
 
@@ -83,7 +97,7 @@ _As scopes grow, create dedicated TODO_<SCOPE>.md files:_
 |----------|-------|--------|
 | BLOCKING | 0 | ✅ All resolved |
 | MEDIUM | 0 | ✅ All resolved |
-| LOW | 0 | ✅ All resolved |
-| **Total** | **0** | ✅ Clean backlog |
+| LOW | 1 | CLI refactor (optional) |
+| **Total** | **1** | Nice-to-have only |
 
-**Next action:** All audit findings resolved. Ready for release.
+**Next action:** nxz CLI complete. Optional: CLI refactor for reduced complexity.

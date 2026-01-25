@@ -4,6 +4,9 @@
   "description": "NodeJS wrapper for liblzma",
   "type": "module",
   "main": "./lib/lzma.js",
+  "bin": {
+    "nxz": "./lib/cli/nxz.js"
+  },
   "exports": {
     ".": {
       "import": "./lib/lzma.js",

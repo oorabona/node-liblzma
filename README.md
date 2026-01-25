@@ -95,10 +95,109 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 
 📖 **Full API documentation**: [oorabona.github.io/node-liblzma](https://oorabona.github.io/node-liblzma/)
 
+# Command Line Interface (nxz)
+
+This package includes `nxz`, a portable xz-like CLI tool that works on any platform with Node.js.
+
+## Installation
+
+```bash
+# Global installation (recommended for CLI usage)
+npm install -g node-liblzma
+# or
+pnpm add -g node-liblzma
+
+# Then use directly
+nxz --help
+```
+
+## Quick Examples
+
+```bash
+# Compress a file (creates file.txt.xz, deletes original)
+nxz file.txt
+
+# Decompress (auto-detected from .xz extension)
+nxz file.txt.xz
+
+# Keep original file (-k)
+nxz -k file.txt
+
+# Decompress explicitly (-d)
+nxz -d archive.xz
+
+# Maximum compression (-9) with extreme mode (-e)
+nxz -9e large-file.bin
+
+# Compress to stdout (-c) for piping
+nxz -c file.txt > file.txt.xz
+
+# Decompress to stdout
+nxz -dc file.txt.xz | grep "pattern"
+
+# Custom output file (-o)
+nxz -d archive.xz -o /tmp/output.bin
+
+# List archive info (-l)
+nxz -l file.txt.xz
+
+# Verbose info (-lv)
+nxz -lv file.txt.xz
+
+# Compress from stdin
+cat file.txt | nxz -c > file.txt.xz
+
+# Quiet mode - suppress warnings (-q)
+nxz -q file.txt
+```
+
+## All Options
+
+| Option | Long | Description |
+|--------|------|-------------|
+| `-z` | `--compress` | Force compression mode |
+| `-d` | `--decompress` | Force decompression mode |
+| `-l` | `--list` | List archive information |
+| `-k` | `--keep` | Keep original file (don't delete) |
+| `-f` | `--force` | Overwrite existing output file |
+| `-c` | `--stdout` | Write to stdout, keep original file |
+| `-o` | `--output=FILE` | Write output to specified file |
+| `-v` | `--verbose` | Show progress for large files |
+| `-q` | `--quiet` | Suppress warning messages |
+| `-0`..`-9` | | Compression level (default: 6) |
+| `-e` | `--extreme` | Extreme compression (slower) |
+| `-h` | `--help` | Show help |
+| `-V` | `--version` | Show version |
+
+## One-shot Usage (without global install)
+
+```bash
+# npm/npx
+npx --package node-liblzma nxz --help
+npx -p node-liblzma nxz file.txt
+
+# pnpm
+pnpm dlx --package node-liblzma nxz --help
+```
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Error (file not found, format error, etc.) |
+| 130 | Interrupted (SIGINT/Ctrl+C) |
+
 # What's new ?
 
 ## Latest Updates (2026)
 
+* **CLI Tool (nxz)**: Portable xz-like command line tool included in the package
+  - Full xz compatibility: `-z`, `-d`, `-l`, `-k`, `-f`, `-c`, `-o`, `-v`, `-q`
+  - Compression presets 0-9 with extreme mode (`-e`)
+  - Progress display for large files, stdin/stdout piping
+  - Works on any platform with Node.js
+  - See [Command Line Interface](#command-line-interface-nxz) section
 * **Progress Events**: Monitor compression/decompression progress with real-time events
   ```typescript
   const compressor = createXz();
