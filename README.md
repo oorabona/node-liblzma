@@ -4,7 +4,7 @@ Node-liblzma
 [![NPM Version](https://img.shields.io/npm/v/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
 [![NPM Downloads](https://img.shields.io/npm/dm/node-liblzma.svg)](https://npmjs.org/package/node-liblzma)
 [![CI Status](https://github.com/oorabona/node-liblzma/actions/workflows/ci-unified.yml/badge.svg)](https://github.com/oorabona/node-liblzma/actions/workflows/ci-unified.yml)
-[![Code Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing)
+[![Documentation](https://img.shields.io/badge/docs-TypeDoc-blue.svg)](https://oorabona.github.io/node-liblzma/)
 
 # What is liblzma/XZ ?
 
@@ -30,7 +30,80 @@ See [installation](#installation) below.
 > Only LZMA2 is supported for compression output.
 But the library can open and read any LZMA1 or LZMA2 compressed file.
 
+# Quick Start
+
+```bash
+npm install node-liblzma
+```
+
+```typescript
+import { xzAsync, unxzAsync, createXz, createUnxz } from 'node-liblzma';
+
+// Simple: Compress a buffer
+const compressed = await xzAsync(Buffer.from('Hello, World!'));
+const decompressed = await unxzAsync(compressed);
+
+// Streaming: Compress a file
+import { createReadStream, createWriteStream } from 'fs';
+
+createReadStream('input.txt')
+  .pipe(createXz())
+  .pipe(createWriteStream('output.xz'));
+
+// With progress monitoring
+const compressor = createXz();
+compressor.on('progress', ({ bytesRead, bytesWritten }) => {
+  console.log(`${bytesRead} bytes in → ${bytesWritten} bytes out`);
+});
+```
+
+**Promise style (with `.then()`):**
+
+```typescript
+import { xzAsync, unxzAsync } from 'node-liblzma';
+
+xzAsync(Buffer.from('Hello, World!'))
+  .then(compressed => {
+    console.log('Compressed size:', compressed.length);
+    return unxzAsync(compressed);
+  })
+  .then(decompressed => {
+    console.log('Decompressed:', decompressed.toString());
+  })
+  .catch(err => {
+    console.error('Compression failed:', err);
+  });
+```
+
+**Callback style (Node.js traditional):**
+
+```typescript
+import { xz, unxz } from 'node-liblzma';
+
+xz(Buffer.from('Hello, World!'), (err, compressed) => {
+  if (err) throw err;
+  unxz(compressed, (err, decompressed) => {
+    if (err) throw err;
+    console.log('Decompressed:', decompressed.toString());
+  });
+});
+```
+
+📖 **Full API documentation**: [oorabona.github.io/node-liblzma](https://oorabona.github.io/node-liblzma/)
+
 # What's new ?
+
+## Latest Updates (2026)
+
+* **Progress Events**: Monitor compression/decompression progress with real-time events
+  ```typescript
+  const compressor = createXz();
+  compressor.on('progress', ({ bytesRead, bytesWritten }) => {
+    console.log(`Read: ${bytesRead}, Written: ${bytesWritten}`);
+  });
+  ```
+* **API Documentation**: Full TypeDoc documentation with Material theme at [oorabona.github.io/node-liblzma](https://oorabona.github.io/node-liblzma/)
+* **XZ Utils 5.8.2**: Updated to latest stable version
 
 ## Version 2.0 (2025) - Complete Modernization
 
@@ -39,7 +112,7 @@ This major release brings the library into 2025 with modern tooling and TypeScri
 * **Full TypeScript migration**: Complete rewrite from CoffeeScript to TypeScript for better type safety and developer experience
 * **Promise-based APIs**: New async functions `xzAsync()` and `unxzAsync()` with Promise support
 * **Modern testing**: Migrated from Mocha to Vitest with improved performance and better TypeScript integration
-* **Enhanced tooling**: 
+* **Enhanced tooling**:
   - [Biome](https://biomejs.dev/) for fast linting and formatting
   - Pre-commit hooks with nano-staged and simple-git-hooks
   - pnpm as package manager for better dependency management
@@ -75,11 +148,11 @@ Several prebuilt versions are bundled within the package.
 
 If your OS/architecture matches, you will use this version which has been compiled using the following default flags:
 
-Flag | Description | Default value | Possible values
------|-------------|---------------|----------------
-USE_GLOBAL | Should the library use the system provided DLL/.so library ? | `yes` (`no` if OS is Windows) | `yes` or `no`
-RUNTIME_LINK | Should the library be linked statically or use the shared LZMA library ? | `shared` | `static` or `shared`
-ENABLE_THREAD_SUPPORT | Does the LZMA library support threads ? | `yes` | `yes` or `no`
+| Flag | Description | Default | Values |
+|------|-------------|---------|--------|
+| `USE_GLOBAL` | Use system liblzma library | `yes` (`no` on Windows) | `yes`, `no` |
+| `RUNTIME_LINK` | Static or shared linking | `shared` | `static`, `shared` |
+| `ENABLE_THREAD_SUPPORT` | Enable thread support | `yes` | `yes`, `no` |
 
 If not `node-gyp` will automagically start compiling stuff according to the environment variables set, or the default values above.
 
@@ -107,44 +180,33 @@ var lzma = require('node-liblzma');
 import * as lzma from 'node-liblzma';
 ```
 
-Zlib            | XZlib                   | Arguments
-----------------|-------------------------|---------------
-createGzip      | createXz                | ([lzma_options, [options]])
-createGunzip    | createUnxz              | ([lzma_options, [options]])
-gzip            | xz                      | (buf, [options], callback)
-gunzip          | unxz                    | (buf, [options], callback)
-gzipSync        | xzSync                  | (buf, [options])
-gunzipSync      | unxzSync                | (buf, [options])
--               | xzAsync                 | (buf, [options]) ⇒ Promise\<Buffer>
--               | unxzAsync               | (buf, [options]) ⇒ Promise\<Buffer>
+| Zlib | node-liblzma | Arguments |
+|------|--------------|-----------|
+| `createGzip` | `createXz` | `([options])` |
+| `createGunzip` | `createUnxz` | `([options])` |
+| `gzip` | `xz` | `(buf, [options], callback)` |
+| `gunzip` | `unxz` | `(buf, [options], callback)` |
+| `gzipSync` | `xzSync` | `(buf, [options])` |
+| `gunzipSync` | `unxzSync` | `(buf, [options])` |
+| - | `xzAsync` | `(buf, [options])` → `Promise<Buffer>` |
+| - | `unxzAsync` | `(buf, [options])` → `Promise<Buffer>` |
+| - | `xzFile` | `(input, output, [options])` → `Promise<void>` |
+| - | `unxzFile` | `(input, output, [options])` → `Promise<void>` |
 
-## Constants
+## Options
 
-`options` is an `Object` with the following possible attributes:
+The `options` object accepts the following attributes:
 
-Attribute            | Type     | Available options
----------------------|----------|------------
-check                | Uint32   | NONE
- | |CRC32
- | |CRC64
- | |SHA256
-preset | Uint32 | DEFAULT
- | |EXTREME
-flag | Uint32 | TELL_NO_CHECK
- | |TELL_UNSUPPORTED_CHECK
- | |TELL_ANY_CHECK
- | |CONCATENATED
-mode | Uint32 | FAST
- | |NORMAL
-filters | Array | LZMA2 (added by default)
- | |X86
- | |POWERPC
- | |IA64
- | |ARM
- | |ARMTHUMB
- | |SPARC
+| Attribute | Type | Description | Values |
+|-----------|------|-------------|--------|
+| `check` | number | Integrity check | `check.NONE`, `check.CRC32`, `check.CRC64`, `check.SHA256` |
+| `preset` | number | Compression level (0-9) | `preset.DEFAULT` (6), `preset.EXTREME` |
+| `mode` | number | Compression mode | `mode.FAST`, `mode.NORMAL` |
+| `threads` | number | Thread count | `0` = auto (all cores), `1` = single-threaded, `N` = N threads |
+| `filters` | array | Filter chain | `filter.LZMA2`, `filter.X86`, `filter.ARM`, etc. |
+| `chunkSize` | number | Processing chunk size | Default: 64KB |
 
-For further information about each of these flags, you will find reference at [XZ SDK](http://7-zip.org/sdk.html).
+For further information about each of these flags, see the [XZ SDK documentation](http://7-zip.org/sdk.html).
 
 ## Advanced Configuration
 
@@ -152,32 +214,63 @@ For further information about each of these flags, you will find reference at [X
 
 The library supports multi-threaded compression when built with `ENABLE_THREAD_SUPPORT=yes` (default). Thread support allows parallel compression on multi-core systems, significantly improving performance for large files.
 
-**Using threads in compression:**
+**Thread values:**
+
+| Value | Behavior |
+|-------|----------|
+| `0` | **Auto-detect**: use all available CPU cores |
+| `1` | Single-threaded (default) |
+| `N` | Use exactly N threads |
+
+**Example:**
 
 ```typescript
-import { xz, createXz } from 'node-liblzma';
+import { createXz, hasThreads } from 'node-liblzma';
 
-// Specify number of threads (1-N, where N is CPU core count)
-const options = {
-  preset: lzma.preset.DEFAULT,
-  threads: 4  // Use 4 threads for compression
-};
+// Check if threading is available
+if (hasThreads()) {
+  // Auto-detect: use all CPU cores
+  const compressor = createXz({ threads: 0 });
 
-// With buffer compression
-xz(buffer, options, (err, compressed) => {
-  // ...
-});
-
-// With streams
-const compressor = createXz(options);
-inputStream.pipe(compressor).pipe(outputStream);
+  // Or specify exact thread count
+  const compressor4 = createXz({ threads: 4 });
+}
 ```
 
 **Important notes:**
 - Thread support only applies to **compression**, not decompression
-- Requires LZMA library built with pthread support
-- `threads: 1` disables multi-threading (falls back to single-threaded encoder)
-- Check if threads are available: `import { hasThreads } from 'node-liblzma';`
+- Requires LZMA library built with pthread support (`ENABLE_THREAD_SUPPORT=yes`)
+- Default is `threads: 1` (single-threaded) for predictable behavior
+- Check availability: `hasThreads()` returns `true` if multi-threading is supported
+
+### Progress Monitoring
+
+Track compression and decompression progress in real-time:
+
+```typescript
+import { createXz, createUnxz } from 'node-liblzma';
+
+const compressor = createXz({ preset: 6 });
+
+compressor.on('progress', ({ bytesRead, bytesWritten }) => {
+  const ratio = bytesWritten / bytesRead;
+  console.log(`Progress: ${bytesRead} bytes in, ${bytesWritten} bytes out (ratio: ${ratio.toFixed(2)})`);
+});
+
+// Works with both compression and decompression
+const decompressor = createUnxz();
+decompressor.on('progress', ({ bytesRead, bytesWritten }) => {
+  console.log(`Decompressing: ${bytesRead} → ${bytesWritten} bytes`);
+});
+
+inputStream.pipe(compressor).pipe(outputStream);
+```
+
+**Notes:**
+- Progress events fire after each chunk is processed
+- `bytesRead`: Total input bytes processed so far
+- `bytesWritten`: Total output bytes produced so far
+- Works with streams, not buffer APIs (`xz`/`unxz`)
 
 ### Buffer Size Optimization
 
@@ -434,7 +527,7 @@ npm test
 pnpm test
 ```
 
-It will build and launch the test suite (51 tests) with [Vitest](https://vitest.dev/) with TypeScript support and coverage reporting.
+It will build and launch the test suite (325+ tests) with [Vitest](https://vitest.dev/) with TypeScript support and coverage reporting.
 
 Additional testing commands:
 

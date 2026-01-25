@@ -80,7 +80,14 @@ const liblzma = require('node-gyp-build')(bindingPath);
 // Should not change over time... :)
 const maxThreads = os.cpus().length;
 
-// Export constants grouped by category for better organization
+/**
+ * Integrity check types for XZ streams.
+ * Use CRC64 for best balance of speed and error detection.
+ * @example
+ * ```ts
+ * const compressor = createXz({ check: check.CRC64 });
+ * ```
+ */
 export const check = {
   NONE: liblzma.LZMA_CHECK_NONE,
   CRC32: liblzma.LZMA_CHECK_CRC32,
@@ -88,45 +95,98 @@ export const check = {
   SHA256: liblzma.LZMA_CHECK_SHA256,
 } as const;
 
+/**
+ * Compression preset flags.
+ * Can be combined with preset level using bitwise OR.
+ * @example
+ * ```ts
+ * const compressor = createXz({ preset: 6 | preset.EXTREME });
+ * ```
+ */
 export const preset = {
+  /** Default compression level (6) */
   DEFAULT: liblzma.LZMA_PRESET_DEFAULT,
+  /** Extreme mode flag - slower but better compression */
   EXTREME: liblzma.LZMA_PRESET_EXTREME,
 } as const;
 
+/**
+ * Decoder flags for controlling decompression behavior.
+ * @example
+ * ```ts
+ * const decompressor = createUnxz({ flushFlag: flag.CONCATENATED });
+ * ```
+ */
 export const flag = {
+  /** Tell decoder if input has no integrity check */
   TELL_NO_CHECK: liblzma.LZMA_TELL_NO_CHECK,
+  /** Tell decoder if integrity check is unsupported */
   TELL_UNSUPPORTED_CHECK: liblzma.LZMA_TELL_UNSUPPORTED_CHECK,
+  /** Tell decoder about any integrity check type */
   TELL_ANY_CHECK: liblzma.LZMA_TELL_ANY_CHECK,
+  /** Allow concatenated XZ streams */
   CONCATENATED: liblzma.LZMA_CONCATENATED,
 } as const;
 
+/**
+ * Compression filters for preprocessing data before LZMA2.
+ * BCJ filters improve compression for executable code.
+ * @example
+ * ```ts
+ * // Compress x86 executable with BCJ filter
+ * const compressor = createXz({ filters: [filter.X86, filter.LZMA2] });
+ * ```
+ */
 export const filter = {
+  /** LZMA2 compression filter (required, must be last) */
   LZMA2: liblzma.LZMA_FILTER_LZMA2,
+  /** BCJ filter for x86 executables */
   X86: liblzma.LZMA_FILTER_X86,
+  /** BCJ filter for PowerPC executables */
   POWERPC: liblzma.LZMA_FILTER_POWERPC,
+  /** BCJ filter for IA-64 executables */
   IA64: liblzma.LZMA_FILTER_IA64,
+  /** BCJ filter for ARM executables */
   ARM: liblzma.LZMA_FILTER_ARM,
+  /** BCJ filter for ARM-Thumb executables */
   ARMTHUMB: liblzma.LZMA_FILTER_ARMTHUMB,
+  /** BCJ filter for SPARC executables */
   SPARC: liblzma.LZMA_FILTER_SPARC,
 } as const;
 /* v8 ignore next */
 
+/**
+ * Compression mode selection.
+ * FAST uses less memory, NORMAL provides better compression.
+ */
 export const mode = {
+  /** Fast compression mode - less memory, faster */
   FAST: liblzma.LZMA_MODE_FAST,
+  /** Normal compression mode - better ratio */
   NORMAL: liblzma.LZMA_MODE_NORMAL,
 } as const;
 /* v8 ignore next 2 */
 
-// LZMA action constants - grouped for better organization
+/**
+ * LZMA stream action constants.
+ * Control how the encoder/decoder processes input.
+ */
 export const LZMAAction = {
+  /** Normal processing - continue encoding/decoding */
   RUN: liblzma.LZMA_RUN,
+  /** Flush pending output synchronously */
   SYNC_FLUSH: liblzma.LZMA_SYNC_FLUSH,
+  /** Flush and reset encoder state */
   FULL_FLUSH: liblzma.LZMA_FULL_FLUSH,
+  /** Finish the stream - no more input */
   FINISH: liblzma.LZMA_FINISH,
 } as const;
 /* v8 ignore next 2 */
 
-// LZMA status/return constants
+/**
+ * LZMA operation status/return codes.
+ * Used to indicate the result of encoding/decoding operations.
+ */
 export const LZMAStatus = {
   OK: liblzma.LZMA_OK,
   STREAM_END: liblzma.LZMA_STREAM_END,
@@ -191,6 +251,19 @@ export type {
   ProgressInfo,
 };
 
+/**
+ * Abstract base class for XZ compression/decompression streams.
+ * Extends Node.js Transform stream with LZMA2 encoding/decoding.
+ *
+ * @example
+ * ```ts
+ * // Use Xz or Unxz classes instead of XzStream directly
+ * const compressor = new Xz({ preset: 6 });
+ * readStream.pipe(compressor).pipe(writeStream);
+ * ```
+ *
+ * Emits `progress` event after each chunk with `{bytesRead, bytesWritten}` info.
+ */
 export abstract class XzStream extends Transform {
   protected _opts: Required<LZMAOptions>;
   protected _chunkSize: number;
@@ -596,12 +669,32 @@ export abstract class XzStream extends Transform {
   }
 }
 
+/**
+ * XZ compression stream.
+ * Compresses data using LZMA2 algorithm.
+ *
+ * @example
+ * ```ts
+ * const compressor = new Xz({ preset: 6 });
+ * input.pipe(compressor).pipe(output);
+ * ```
+ */
 export class Xz extends XzStream {
   constructor(lzmaOptions?: LZMAOptions, options?: TransformOptions) {
     super(liblzma.STREAM_ENCODE, lzmaOptions, options);
   }
 }
 
+/**
+ * XZ decompression stream.
+ * Decompresses data compressed with XZ/LZMA2.
+ *
+ * @example
+ * ```ts
+ * const decompressor = new Unxz();
+ * compressedInput.pipe(decompressor).pipe(output);
+ * ```
+ */
 export class Unxz extends XzStream {
   constructor(lzmaOptions?: LZMAOptions, options?: TransformOptions) {
     super(liblzma.STREAM_DECODE, lzmaOptions, options);
@@ -609,23 +702,50 @@ export class Unxz extends XzStream {
 }
 /* v8 ignore next */
 
-// Factory functions - placed immediately after class definitions to avoid circular dependencies
+/**
+ * Create a new XZ compression stream.
+ * @param lzmaOptions - LZMA compression options
+ * @param options - Node.js Transform stream options
+ * @returns New Xz compression stream
+ *
+ * @example
+ * ```ts
+ * const compressor = createXz({ preset: 9 });
+ * ```
+ */
 export function createXz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Xz {
   return new Xz(lzmaOptions, options);
 }
 /* v8 ignore next */
 
+/**
+ * Create a new XZ decompression stream.
+ * @param lzmaOptions - LZMA decompression options
+ * @param options - Node.js Transform stream options
+ * @returns New Unxz decompression stream
+ *
+ * @example
+ * ```ts
+ * const decompressor = createUnxz();
+ * ```
+ */
 export function createUnxz(lzmaOptions?: LZMAOptions, options?: TransformOptions): Unxz {
   return new Unxz(lzmaOptions, options);
 }
 /* v8 ignore next */
 
+/**
+ * Check if liblzma was built with threading support.
+ * @returns true if multi-threaded compression is available
+ */
 export function hasThreads(): boolean {
   return liblzma.HAS_THREADS_SUPPORT;
 }
 /* v8 ignore next */
 
-// Error messages enum for better type safety
+/**
+ * Human-readable error messages for LZMA status codes.
+ */
 export enum LZMAErrorMessage {
   SUCCESS = 'Operation completed successfully',
   STREAM_END = 'End of stream was reached',
@@ -641,7 +761,10 @@ export enum LZMAErrorMessage {
   PROG_ERROR = 'Programming error',
 }
 
-// Legacy array export for backward compatibility
+/**
+ * Array of error messages indexed by LZMA status code.
+ * @deprecated Use LZMAErrorMessage enum instead
+ */
 export const messages: readonly string[] = [
   LZMAErrorMessage.SUCCESS,
   LZMAErrorMessage.STREAM_END,
@@ -657,6 +780,19 @@ export const messages: readonly string[] = [
   LZMAErrorMessage.PROG_ERROR,
 ];
 
+/**
+ * Decompress a buffer asynchronously using callback.
+ * @param buffer - Compressed data to decompress
+ * @param callback - Callback with error or decompressed data
+ *
+ * @example
+ * ```ts
+ * unxz(compressedBuffer, (err, result) => {
+ *   if (err) throw err;
+ *   console.log(result.toString());
+ * });
+ * ```
+ */
 export function unxz(buffer: Buffer | string, callback: CompressionCallback): void;
 export function unxz(
   buffer: Buffer | string,
@@ -682,10 +818,34 @@ export function unxz(
   xzBuffer(new Unxz(opts), buffer, cb);
 }
 
+/**
+ * Decompress a buffer synchronously.
+ * @param buffer - Compressed data to decompress
+ * @param opts - LZMA decompression options
+ * @returns Decompressed data buffer
+ *
+ * @example
+ * ```ts
+ * const decompressed = unxzSync(compressedBuffer);
+ * ```
+ */
 export function unxzSync(buffer: Buffer | string, opts?: LZMAOptions): Buffer {
   return xzBufferSync(new Unxz(opts), buffer);
 }
 
+/**
+ * Compress a buffer asynchronously using callback.
+ * @param buffer - Data to compress
+ * @param callback - Callback with error or compressed data
+ *
+ * @example
+ * ```ts
+ * xz(data, { preset: 6 }, (err, result) => {
+ *   if (err) throw err;
+ *   fs.writeFileSync('data.xz', result);
+ * });
+ * ```
+ */
 export function xz(buffer: Buffer | string, callback: CompressionCallback): void;
 export function xz(buffer: Buffer | string, opts: LZMAOptions, callback: CompressionCallback): void;
 export function xz(
@@ -707,11 +867,32 @@ export function xz(
   xzBuffer(new Xz(opts), buffer, cb);
 }
 
+/**
+ * Compress a buffer synchronously.
+ * @param buffer - Data to compress
+ * @param opts - LZMA compression options
+ * @returns Compressed data buffer
+ *
+ * @example
+ * ```ts
+ * const compressed = xzSync(data, { preset: 9 });
+ * ```
+ */
 export function xzSync(buffer: Buffer | string, opts?: LZMAOptions): Buffer {
   return xzBufferSync(new Xz(opts), buffer);
 }
 
-// Promise-based APIs for modern async/await usage
+/**
+ * Compress a buffer asynchronously using Promise.
+ * @param buffer - Data to compress
+ * @param opts - LZMA compression options
+ * @returns Promise resolving to compressed data buffer
+ *
+ * @example
+ * ```ts
+ * const compressed = await xzAsync(data, { preset: 6 });
+ * ```
+ */
 export function xzAsync(buffer: Buffer | string, opts?: LZMAOptions): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     xz(buffer, opts || {}, (error, result) => {
@@ -725,6 +906,18 @@ export function xzAsync(buffer: Buffer | string, opts?: LZMAOptions): Promise<Bu
   });
 }
 
+/**
+ * Decompress a buffer asynchronously using Promise.
+ * @param buffer - Compressed data to decompress
+ * @param opts - LZMA decompression options
+ * @returns Promise resolving to decompressed data buffer
+ *
+ * @example
+ * ```ts
+ * const decompressed = await unxzAsync(compressedBuffer);
+ * console.log(decompressed.toString());
+ * ```
+ */
 export function unxzAsync(buffer: Buffer | string, opts?: LZMAOptions): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     unxz(buffer, opts || {}, (error, result) => {

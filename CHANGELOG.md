@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Progress Events**: Real-time progress monitoring for compression/decompression streams via `progress` event
+  - Emits `{ bytesRead, bytesWritten }` after each chunk processed
+  - Works with both `Xz` and `Unxz` streams
+- **API Documentation**: TypeDoc-generated documentation with Material theme
+  - Auto-deployed to GitHub Pages on release
+  - Available at https://oorabona.github.io/node-liblzma/
+
+### Changed
+- **XZ Utils**: Updated from 5.8.1 to 5.8.2
+
 ## [2.0.3] - 2025-10-07
 
 ### Fixed
@@ -263,9 +274,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Async support
 
 [Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.3...HEAD
-[v2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
-[2.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.1
-[v2.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.2
-[2.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.2
-[v2.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.3
-[2.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v2.0.3
+[2.0.3]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...v2.0.3
+[2.0.2]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/oorabona/node-liblzma/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/oorabona/node-liblzma/compare/v1.1.9...v2.0.0
+[1.1.9]: https://github.com/oorabona/node-liblzma/releases/tag/v1.1.9

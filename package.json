@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --config vitest.config.monocart.ts --coverage",
     "test:coverage-v8": "vitest run --coverage",
+    "test:ui": "vitest --ui",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf lib",
     "lint": "biome lint",
@@ -33,7 +34,9 @@
     "release": "release-it-preset default",
     "release:manual": "release-it-preset --config .release-it.manual.json",
     "release:hotfix": "release-it-preset hotfix",
-    "changelog:update": "release-it-preset changelog-only"
+    "changelog:update": "release-it-preset changelog-only",
+    "typedoc": "typedoc",
+    "typedoc:watch": "typedoc --watch"
   },
   "dependencies": {
     "node-addon-api": "^8.5.0",
@@ -51,6 +54,8 @@
     "release-it": "^19.2.4",
     "simple-git-hooks": "^2.13.1",
     "tsd": "^0.33.0",
+    "typedoc": "^0.28.16",
+    "typedoc-material-theme": "^1.4.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },

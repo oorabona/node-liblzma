@@ -104,3 +104,6 @@ test_*.cjs
 test-*.sh
 test-*.md
 *_OPTIMIZATION.md
+
+# TypeDoc output
+docs-site/

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/lzma.ts", "src/errors.ts", "src/pool.ts", "src/types.ts"],
+  "out": "docs-site",
+  "name": "node-liblzma",
+  "readme": "README.md",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/oorabona/node-liblzma",
+    "npm": "https://www.npmjs.com/package/node-liblzma"
+  },
+  "plugin": ["typedoc-material-theme"],
+  "hideGenerator": true,
+  "gitRevision": "master",
+  "searchInComments": true,
+  "searchInDocuments": true,
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "tsx",
+    "typescript",
+    "diff",
+    "powershell"
+  ]
+}
