@@ -30,7 +30,7 @@ permissions:
   id-token: write
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '24'  # Required for npm OIDC trusted publishing (npm >= 11.5.1)
 
 jobs:
   normalize-tag:
@@ -93,24 +93,19 @@ jobs:
           echo "✅ Prebuilds structure:"
           find prebuilds -name '*.node' -type f
 
-      - name: Configure npm authentication
-        run: |
-          npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update GitHub release and publish to npm
-        run: pnpm release-it-preset --config .release-it.retry.json --ci
+      - name: Build TypeScript
+        run: pnpm build
+
+      - name: Publish to npm with provenance
+        if: ${{ (github.event_name == 'push') || (inputs.skip_npm == false) }}
+        run: npm publish --provenance --access public
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_PUBLISH: ${{ (github.event_name == 'push') || (inputs.skip_npm == false) }}
-          GITHUB_RELEASE: 'true'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Summarize
         run: |
