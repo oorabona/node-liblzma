@@ -206,16 +206,31 @@ Compare `nxz` performance against native `xz`:
 ./scripts/benchmark.sh -o json > benchmark-results.json
 ```
 
-**Typical Results:**
+**Typical Results (Intel i9-13980HX, Node.js v24):**
 
-| Aspect | nxz vs xz |
-|--------|-----------|
-| Compression ratio | Identical (same liblzma) |
-| Compression speed | ~20-50% slower (Node.js overhead) |
-| Decompression speed | ~50-100% slower on small files |
-| Large files (100MB+) | Overhead becomes negligible |
+| File Size | Preset | Compression Δ | Decompression Δ |
+|-----------|--------|---------------|-----------------|
+| 1 MB | -6 | +43% | +550% |
+| 10 MB | -6 | +10% | +173% |
+| 100 MB | -6 | +118% | +323% |
+| 100 MB | -9 | **+4%** | +60% |
 
-The overhead is primarily Node.js startup time. For batch processing of small files, native `xz` is faster. For large files or when you need cross-platform portability, `nxz` is a good choice.
+**Key findings:**
+- **Compression ratio**: Identical (same liblzma library)
+- **Large files + high preset (-9)**: Only ~4% slower - very competitive!
+- **Small files**: Node.js startup (~35ms) dominates
+- **Decompression**: Native xz is extremely fast, so relative overhead is higher
+
+**When to use nxz:**
+- Cross-platform scripts (Windows/macOS/Linux)
+- When xz binary is not available
+- Large file compression where portability matters
+- CI/CD pipelines with Node.js already installed
+
+**When to use native xz:**
+- Batch processing many small files
+- Maximum decompression speed needed
+- Shell scripts on Unix systems
 
 # What's new ?
 
