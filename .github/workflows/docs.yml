@@ -3,6 +3,12 @@ name: Deploy Documentation
 on:
   release:
     types: [published]
+  push:
+    branches: [master]
+    paths:
+      - '*.md'
+      - 'docs/**/*.md'
+      - 'typedoc.json'
   workflow_dispatch:
 
 permissions:
