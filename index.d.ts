@@ -67,19 +67,42 @@ export type FlagType = 'TELL_NO_CHECK' | 'TELL_UNSUPPORTED_CHECK' | 'TELL_ANY_CH
 
 export type CompressionCallback = (error: Error | null, result?: Buffer) => void;
 
+/**
+ * Progress event data emitted during compression/decompression
+ */
+export interface ProgressInfo {
+  /** Total bytes read from input so far */
+  bytesRead: number;
+  /** Total bytes written to output so far */
+  bytesWritten: number;
+}
+
 export declare abstract class XzStream extends Transform {
   constructor(streamMode: number, opts?: LZMAOptions, options?: TransformOptions);
-  
+
+  /** Total bytes read from input so far */
+  readonly bytesRead: number;
+
+  /** Total bytes written to output so far */
+  readonly bytesWritten: number;
+
   /** Flush the stream with specified flush type */
   flush(callback?: () => void): void;
   flush(kind: number, callback?: () => void): void;
-  
+
   /** Close the stream */
   close(callback?: () => void): void;
-  
+
   _transform(chunk: Buffer | null, encoding: string, callback: (error?: Error) => void): void;
   _flush(callback: () => void): void;
   protected _processChunk(chunk: Buffer | null, flushFlag: number, callback?: (error?: Error) => void): Buffer | undefined;
+
+  /**
+   * Listen for progress events
+   * @event progress Emitted when data is written to output
+   */
+  on(event: 'progress', listener: (info: ProgressInfo) => void): this;
+  on(event: string | symbol, listener: (...args: unknown[]) => void): this;
 }
 
 export declare class Xz extends XzStream {

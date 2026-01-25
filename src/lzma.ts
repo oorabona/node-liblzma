@@ -43,6 +43,7 @@ import type {
   LZMAStatusType,
   ModeType,
   PresetType,
+  ProgressInfo,
 } from './types.js';
 
 // Re-export error classes for public API
@@ -187,6 +188,7 @@ export type {
   PresetType,
   FilterType,
   ModeType,
+  ProgressInfo,
 };
 
 export abstract class XzStream extends Transform {
@@ -198,6 +200,11 @@ export abstract class XzStream extends Transform {
   protected _hadError: boolean;
   protected _offset: number;
   protected _buffer: Buffer;
+
+  /** Total bytes read from input */
+  protected _bytesRead: number;
+  /** Total bytes written to output */
+  protected _bytesWritten: number;
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Constructor needs complex validation for LZMA options
   constructor(streamMode: number, opts: LZMAOptions = {}, options?: TransformOptions) {
@@ -269,6 +276,8 @@ export abstract class XzStream extends Transform {
     this._hadError = false;
     this._offset = 0;
     this._buffer = Buffer.alloc(this._chunkSize);
+    this._bytesRead = 0;
+    this._bytesWritten = 0;
     /* v8 ignore next */
 
     // F-007: Let errors propagate naturally (removed defensive listener anti-pattern)
@@ -284,6 +293,27 @@ export abstract class XzStream extends Transform {
 
   private _createLZMAError(errno: number): Error & { errno: number; code: number } {
     return createLZMAError(errno) as Error & { errno: number; code: number };
+  }
+
+  /** Get total bytes read from input so far */
+  get bytesRead(): number {
+    return this._bytesRead;
+  }
+
+  /** Get total bytes written to output so far */
+  get bytesWritten(): number {
+    return this._bytesWritten;
+  }
+
+  /**
+   * Emit a progress event with current bytesRead and bytesWritten
+   */
+  protected _emitProgress(): void {
+    const info: ProgressInfo = {
+      bytesRead: this._bytesRead,
+      bytesWritten: this._bytesWritten,
+    };
+    this.emit('progress', info);
   }
 
   private _reallocateBuffer(): void {
@@ -366,6 +396,11 @@ export abstract class XzStream extends Transform {
     if (this._closed) {
       callback(new Error('lzma binding closed'));
       return;
+    }
+
+    // Track bytes read from input
+    if (chunk) {
+      this._bytesRead += chunk.length;
     }
     /* v8 ignore next */
 
@@ -517,7 +552,9 @@ export abstract class XzStream extends Transform {
       if (used > 0) {
         const out = this._buffer.subarray(this._offset, this._offset + used);
         this._offset += used;
+        this._bytesWritten += used;
         this.push(out);
+        this._emitProgress();
       }
 
       // exhausted the output buffer, or used all the input create a new one.

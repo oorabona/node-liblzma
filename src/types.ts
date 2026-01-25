@@ -30,3 +30,13 @@ export type CheckType = 0 | 1 | 4 | 10; // NONE | CRC32 | CRC64 | SHA256
 export type PresetType = number;
 export type FilterType = 0x21 | 0x03 | 0x04 | 0x06 | 0x07 | 0x08 | 0x09; // LZMA2 | X86 | POWERPC | IA64 | ARM | ARMTHUMB | SPARC
 export type ModeType = 1 | 2; // FAST | NORMAL
+
+/**
+ * Progress event data emitted during compression/decompression
+ */
+export interface ProgressInfo {
+  /** Total bytes read from input so far */
+  bytesRead: number;
+  /** Total bytes written to output so far */
+  bytesWritten: number;
+}
