@@ -109,6 +109,17 @@ jobs:
           retention-days: 90
           compression-level: 9
 
+      - name: Import GPG key
+        if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_config_global: true
+          git_committer_name: github-actions[bot]
+          git_committer_email: 41898282+github-actions[bot]@users.noreply.github.com
+
       - name: Update xz-version.json
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
         run: |
@@ -126,6 +137,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "feat: update XZ to ${{ steps.check.outputs.latest }}"
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           title: "🆙 Update XZ Utils to ${{ steps.check.outputs.latest }}"
           body: |
             ## XZ Utils Update Available

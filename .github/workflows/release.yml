@@ -50,10 +50,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_config_global: true
+          git_committer_name: github-actions[bot]
+          git_committer_email: 41898282+github-actions[bot]@users.noreply.github.com
 
       - name: Bump version and update CHANGELOG
         id: bump-version
@@ -78,6 +83,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: release/${{ steps.bump-version.outputs.new_version }}
           commit-message: "chore(release): ${{ steps.bump-version.outputs.new_version }}"
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           title: "🚀 Release ${{ steps.bump-version.outputs.new_version }}"
           body: |
             ## Release ${{ steps.bump-version.outputs.new_version }}

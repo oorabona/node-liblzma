@@ -36,10 +36,16 @@ jobs:
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
           echo "📦 Version from package.json: v${VERSION}"
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+          git_config_global: true
+          git_committer_name: github-actions[bot]
+          git_committer_email: 41898282+github-actions[bot]@users.noreply.github.com
 
       - name: Create and push tag
         run: |
@@ -52,7 +58,7 @@ jobs:
             exit 0
           fi
 
-          git tag -a "$TAG" -m "Release $TAG"
+          git tag -s "$TAG" -m "Release $TAG"
           git push origin "$TAG"
           echo "✅ Tag $TAG created and pushed"
 
