@@ -282,16 +282,20 @@ def main():
     parser = argparse.ArgumentParser(
         description='Build XZ Utils using CMake',
         epilog='''
-Required environment variables (strict validation):
-  RUNTIME_LINK: 'static' or 'shared' (REQUIRED)
-  ENABLE_THREAD_SUPPORT: 'yes' or 'no' (REQUIRED)
-  USE_GLOBAL: 'true' or 'false' (REQUIRED)
+Optional environment variables (with sensible defaults matching binding.gyp):
+  RUNTIME_LINK: 'static' or 'shared'
+    Default: 'static' on Windows, 'shared' on Linux/macOS
+  ENABLE_THREAD_SUPPORT: 'yes' or 'no'
+    Default: 'yes'
+  USE_GLOBAL: 'true' or 'false'
+    Default: 'false' on Windows, 'true' on Linux/macOS
 
 Examples:
-  RUNTIME_LINK=static ENABLE_THREAD_SUPPORT=yes USE_GLOBAL=false \\
-    python3 build_xz_with_cmake.py deps/xz build/liblzma
-  
-  RUNTIME_LINK=shared ENABLE_THREAD_SUPPORT=no USE_GLOBAL=true \\
+  # Use defaults (recommended)
+  python3 build_xz_with_cmake.py deps/xz build/liblzma
+
+  # Override specific values
+  RUNTIME_LINK=static USE_GLOBAL=false \\
     python3 build_xz_with_cmake.py deps/xz build/liblzma
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -304,24 +308,17 @@ Examples:
     
     args = parser.parse_args()
     
-    # Get configuration from environment variables with strict validation
-    runtime_link = os.environ.get('RUNTIME_LINK')
-    enable_threads = os.environ.get('ENABLE_THREAD_SUPPORT')
-    use_global = os.environ.get('USE_GLOBAL')
-    
-    # Strict validation - fail if critical variables are not explicitly set
-    if runtime_link is None:
-        print("[ERROR] RUNTIME_LINK environment variable must be explicitly set ('static' or 'shared')")
-        return 1
-    
-    if enable_threads is None:
-        print("[ERROR] ENABLE_THREAD_SUPPORT environment variable must be explicitly set ('yes' or 'no')")
-        return 1
-        
-    if use_global is None:
-        print("[ERROR] USE_GLOBAL environment variable must be explicitly set ('true' or 'false')")
-        return 1
-    
+    # Get configuration from environment variables with sensible defaults
+    # Defaults match binding.gyp for consistency
+    is_windows = sys.platform == 'win32'
+
+    # Default: 'shared' on Linux/macOS, 'static' on Windows
+    runtime_link = os.environ.get('RUNTIME_LINK') or ('static' if is_windows else 'shared')
+    # Default: 'yes' (threading enabled)
+    enable_threads = os.environ.get('ENABLE_THREAD_SUPPORT') or 'yes'
+    # Default: 'false' on Windows, 'true' on Linux/macOS (use system library)
+    use_global = os.environ.get('USE_GLOBAL') or ('false' if is_windows else 'true')
+
     # Validate values
     if runtime_link not in ['static', 'shared']:
         print(f"[ERROR] Invalid RUNTIME_LINK: {runtime_link}. Must be 'static' or 'shared'")

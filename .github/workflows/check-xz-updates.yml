@@ -87,9 +87,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           XZ_VERSION: ${{ steps.check.outputs.latest }}
-          USE_GLOBAL: 'false'
-          RUNTIME_LINK: 'static'
-          ENABLE_THREAD_SUPPORT: 'yes'
+          USE_GLOBAL: 'false'  # Force build from source to test new XZ version
         continue-on-error: true
 
       - name: Download XZ sources for artifact
