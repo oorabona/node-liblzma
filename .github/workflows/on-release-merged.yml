@@ -75,11 +75,19 @@ jobs:
           echo "**PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Tag pushed to repository" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 Publish workflow will be triggered next" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Build and publish workflows will be triggered next" >> $GITHUB_STEP_SUMMARY
+
+  build:
+    name: Build Prebuilds
+    needs: create-tag
+    uses: ./.github/workflows/build-artifacts.yml
+    with:
+      tag: ${{ needs.create-tag.outputs.tag }}
+    secrets: inherit
 
   publish:
     name: Publish to npm
-    needs: create-tag
+    needs: [create-tag, build]
     uses: ./.github/workflows/publish.yml
     with:
       tag: ${{ needs.create-tag.outputs.tag }}
