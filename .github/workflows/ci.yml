@@ -27,7 +27,7 @@ on:
       - "!.editorconfig"
     branches:
       - master
-      - "releases/**"
+      - "release/**"
   pull_request:
     paths:
       - "src/**"
@@ -44,7 +44,7 @@ on:
       - "!docs/**"
     branches:
       - master
-      - "releases/**"
+      - "release/**"
   workflow_dispatch:
     inputs:
       xz_version:
