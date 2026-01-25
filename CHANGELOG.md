@@ -7,16 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-01-25
+
 ### Added
-- **Progress Events**: Real-time progress monitoring for compression/decompression streams via `progress` event
-  - Emits `{ bytesRead, bytesWritten }` after each chunk processed
-  - Works with both `Xz` and `Unxz` streams
-- **API Documentation**: TypeDoc-generated documentation with Material theme
-  - Auto-deployed to GitHub Pages on release
-  - Available at https://oorabona.github.io/node-liblzma/
+- add progress events to compression/decompression streams ([a9129a0](https://github.com/oorabona/node-liblzma/commit/a9129a0))
+- update XZ to v5.8.2 ([fb4b407](https://github.com/oorabona/node-liblzma/commit/fb4b407))
+
+### Fixed
+- use RUNTIME_LINK=static for XZ update checks (ci) ([49dd1bd](https://github.com/oorabona/node-liblzma/commit/49dd1bd))
+- add ENABLE_THREAD_SUPPORT for XZ from-source builds (ci) ([410f7f4](https://github.com/oorabona/node-liblzma/commit/410f7f4))
+- add RUNTIME_LINK=static for XZ from-source builds (ci) ([fb21f19](https://github.com/oorabona/node-liblzma/commit/fb21f19))
+- use USE_GLOBAL=false when testing new XZ versions (ci) ([795edf0](https://github.com/oorabona/node-liblzma/commit/795edf0))
+- resolve security vulnerabilities in transitive dependencies (deps) ([ceb2ea3](https://github.com/oorabona/node-liblzma/commit/ceb2ea3))
+- resolve all audit findings from multi-LLM review (core) ([8679c6e](https://github.com/oorabona/node-liblzma/commit/8679c6e))
+- ERR_PACKAGE_PATH_NOT_EXPORTED (#40) ([3e414cc](https://github.com/oorabona/node-liblzma/commit/3e414cc))
 
 ### Changed
-- **XZ Utils**: Updated from 5.8.1 to 5.8.2
+- add TypeDoc documentation with gh-pages deployment ([41376ff](https://github.com/oorabona/node-liblzma/commit/41376ff))
+- Merge pull request #48 from oorabona/update-xz-v5.8.2 ([360bd71](https://github.com/oorabona/node-liblzma/commit/360bd71))
+- use sensible defaults for build env vars (build) ([6c954b0](https://github.com/oorabona/node-liblzma/commit/6c954b0))
+- update all dev dependencies to latest versions (deps) ([ad99118](https://github.com/oorabona/node-liblzma/commit/ad99118))
+- bump the dev-dependencies group across 1 directory with 3 updates (#39) (deps-dev) ([1e0f637](https://github.com/oorabona/node-liblzma/commit/1e0f637))
+- bump vite in the npm_and_yarn group across 1 directory (#34) (deps) ([e438407](https://github.com/oorabona/node-liblzma/commit/e438407))
+- add CodeQL configuration file and update workflow to use it ([f00a1b0](https://github.com/oorabona/node-liblzma/commit/f00a1b0))
+- add c8 ignores for the exceptional branches that we cannot test because "it shall not happen, ever" ([3758449](https://github.com/oorabona/node-liblzma/commit/3758449))
+- optimize package size by 83% ! ([b1e8df1](https://github.com/oorabona/node-liblzma/commit/b1e8df1))
+- linting ([22c8072](https://github.com/oorabona/node-liblzma/commit/22c8072))
+- bump the dev-dependencies group with 3 updates (#26) (deps-dev) ([eec74b5](https://github.com/oorabona/node-liblzma/commit/eec74b5))
 
 ## [2.0.3] - 2025-10-07
 
@@ -273,9 +290,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.1.0...HEAD
 [2.0.3]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/oorabona/node-liblzma/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/oorabona/node-liblzma/compare/v1.1.9...v2.0.0
 [1.1.9]: https://github.com/oorabona/node-liblzma/releases/tag/v1.1.9
+[v2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
+[2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
