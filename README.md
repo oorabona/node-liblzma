@@ -188,6 +188,35 @@ pnpm dlx --package node-liblzma nxz --help
 | 1 | Error (file not found, format error, etc.) |
 | 130 | Interrupted (SIGINT/Ctrl+C) |
 
+## Benchmark
+
+Compare `nxz` performance against native `xz`:
+
+```bash
+# Run default benchmark (1MB, 10MB, 100MB at presets 0, 6, 9)
+./scripts/benchmark.sh
+
+# Custom sizes and presets
+./scripts/benchmark.sh -s 1,50,200 -p 6,9
+
+# Export as CSV
+./scripts/benchmark.sh -o csv > benchmark-results.csv
+
+# Export as JSON
+./scripts/benchmark.sh -o json > benchmark-results.json
+```
+
+**Typical Results:**
+
+| Aspect | nxz vs xz |
+|--------|-----------|
+| Compression ratio | Identical (same liblzma) |
+| Compression speed | ~20-50% slower (Node.js overhead) |
+| Decompression speed | ~50-100% slower on small files |
+| Large files (100MB+) | Overhead becomes negligible |
+
+The overhead is primarily Node.js startup time. For batch processing of small files, native `xz` is faster. For large files or when you need cross-platform portability, `nxz` is a good choice.
+
 # What's new ?
 
 ## Latest Updates (2026)
