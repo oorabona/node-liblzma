@@ -70,7 +70,7 @@ jobs:
           key: build-${{ runner.os }}-ccache
           max-size: 500M
       - name: Setup pnpm store cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.local/share/pnpm/store
@@ -80,7 +80,7 @@ jobs:
           restore-keys: |
             build-${{ runner.os }}-pnpm-store-
       - name: Setup xz deps cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: xz-cache
         with:
           path: |
