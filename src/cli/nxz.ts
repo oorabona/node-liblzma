@@ -5,9 +5,12 @@
  */
 
 import {
+  closeSync,
   createReadStream,
   createWriteStream,
   existsSync,
+  fstatSync,
+  openSync,
   readFileSync,
   statSync,
   unlinkSync,
@@ -307,22 +310,30 @@ async function compressFile(inputFile: string, options: CliOptions): Promise<num
   // Track output file for SIGINT cleanup
   currentOutputFile = outputFile;
 
+  // Use fd-based operations to avoid TOCTOU race between stat and read
+  let fd: number | null = openSync(inputFile, 'r');
   try {
-    const stat = statSync(inputFile);
+    const stat = fstatSync(fd);
     const presetValue = options.extreme ? options.preset | preset.EXTREME : options.preset;
 
     if (options.stdout) {
       // Write to stdout
-      const input = readFileSync(inputFile);
+      const input = readFileSync(fd);
+      closeSync(fd);
+      fd = null;
       const compressed = xzSync(input, { preset: presetValue });
       process.stdout.write(compressed);
     } else if (stat.size <= STREAM_THRESHOLD_BYTES) {
       // Small file: use sync
-      const input = readFileSync(inputFile);
+      const input = readFileSync(fd);
+      closeSync(fd);
+      fd = null;
       const compressed = xzSync(input, { preset: presetValue });
       writeFileSync(outputFile!, compressed);
     } else {
       // Large file: use streams
+      closeSync(fd);
+      fd = null;
       const compressor = createXz({ preset: presetValue });
 
       if (options.verbose) {
@@ -366,6 +377,14 @@ async function compressFile(inputFile: string, options: CliOptions): Promise<num
     }
     currentOutputFile = null;
     return EXIT_ERROR;
+  } finally {
+    if (fd !== null) {
+      try {
+        closeSync(fd);
+      } catch {
+        /* ignore close errors in cleanup */
+      }
+    }
   }
 }
 
@@ -387,23 +406,23 @@ async function decompressFile(inputFile: string, options: CliOptions): Promise<n
   currentOutputFile = outputFile;
 
   try {
-    // Validate XZ format
-    const fd = readFileSync(inputFile);
-    if (!isXZ(fd)) {
+    // Validate XZ format — read file once, use buffer length for size checks
+    const fileData = readFileSync(inputFile);
+    if (!isXZ(fileData)) {
       warn(`nxz: ${inputFile}: File format not recognized`);
       currentOutputFile = null;
       return EXIT_ERROR;
     }
 
-    const stat = statSync(inputFile);
+    const fileSize = fileData.length;
 
     if (options.stdout) {
       // Write to stdout
-      const decompressed = unxzSync(fd);
+      const decompressed = unxzSync(fileData);
       process.stdout.write(decompressed);
-    } else if (stat.size <= STREAM_THRESHOLD_BYTES) {
+    } else if (fileSize <= STREAM_THRESHOLD_BYTES) {
       // Small file: use sync
-      const decompressed = unxzSync(fd);
+      const decompressed = unxzSync(fileData);
       writeFileSync(outputFile!, decompressed);
     } else {
       // Large file: use streams with progress
@@ -412,7 +431,7 @@ async function decompressFile(inputFile: string, options: CliOptions): Promise<n
       if (options.verbose) {
         let lastPercent = -1;
         decompressor.on('progress', ({ bytesRead, bytesWritten }) => {
-          const percent = Math.floor((bytesRead / stat.size) * 100);
+          const percent = Math.floor((bytesRead / fileSize) * 100);
           if (percent !== lastPercent) {
             lastPercent = percent;
             process.stderr.write(

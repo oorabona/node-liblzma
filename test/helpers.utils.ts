@@ -4,12 +4,11 @@ import * as fs from 'node:fs';
 
 export function random(howMany: number, chars?: string): string {
   const characters = chars || 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789';
-  const rnd = crypto.randomBytes(howMany);
   const value = new Array(howMany);
   const len = characters.length;
 
   for (let i = 0; i < howMany; i++) {
-    value[i] = characters[rnd[i] % len];
+    value[i] = characters[crypto.randomInt(len)];
   }
 
   return value.join('');
