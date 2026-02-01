@@ -258,7 +258,7 @@ function yieldToUI(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function createProgressStream(
+function _createProgressStream(
   totalBytes: number,
   label: string
 ): TransformStream<Uint8Array, Uint8Array> {
@@ -285,19 +285,23 @@ function createProgressStream(
 async function runProgressTest() {
   logInfo(`--- Stream with Progress Bar ---`);
 
-  // Generate 500KB of semi-compressible data
-  const parts: string[] = [];
+  // Generate 500KB of semi-compressible data (avoid Blob.size in loop — it's slow)
   const phrases = [
     'The quick brown fox jumps over the lazy dog. ',
     'Pack my box with five dozen liquor jugs. ',
     'How vexingly quick daft zebras jump. ',
     'Sphinx of black quartz, judge my vow. ',
   ];
-  while (new Blob(parts).size < 512000) {
-    parts.push(phrases[Math.floor(Math.random() * phrases.length)]);
-    // Mix in some random-ish data to slow down compression
+  const parts: string[] = [];
+  let approxBytes = 0;
+  while (approxBytes < 512000) {
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    parts.push(phrase);
+    approxBytes += phrase.length;
     if (Math.random() < 0.1) {
-      parts.push(String(Math.random()).repeat(5));
+      const noise = String(Math.random()).repeat(5);
+      parts.push(noise);
+      approxBytes += noise.length;
     }
   }
   const largeText = parts.join('');
@@ -307,37 +311,48 @@ async function runProgressTest() {
 
   try {
     // --- Phase 1: Compress with progress ---
+    // Manually feed chunks to the XZ stream with explicit yields to the
+    // browser event loop between each chunk. pipeThrough() uses microtasks
+    // internally and never yields to the rendering pipeline, so the progress
+    // bar can't update. Instead we write chunks one by one with a setTimeout
+    // yield every ~5% to let the browser repaint.
     updateProgress('Compressing...', 0);
+    await yieldToUI();
     const t0 = performance.now();
-
-    // Feed data in small chunks via a ReadableStream (async pull-based)
     const chunkSize = 8192;
-    const inputStream = new ReadableStream<Uint8Array>({
-      pull(controller) {
-        const offset = (this as { _offset?: number })._offset ?? 0;
-        if (offset >= inputData.byteLength) {
-          controller.close();
-          return;
-        }
-        controller.enqueue(inputData.slice(offset, offset + chunkSize));
-        (this as { _offset?: number })._offset = offset + chunkSize;
-      },
-    });
 
-    // Pipe: input → progress → compress
-    const progressIn = createProgressStream(inputBytes, 'Compressing...');
-    const compressedStream = inputStream
-      .pipeThrough(progressIn)
-      .pipeThrough(createXz({ preset: 3 }));
+    const xzStream = createXz({ preset: 3 });
 
-    // Collect compressed output
+    // Read compressed output concurrently to avoid backpressure deadlock:
+    // TransformStream buffers are finite — if we write without reading,
+    // backpressure blocks writer.write() forever.
     const compressedChunks: Uint8Array[] = [];
-    const compReader = compressedStream.getReader();
-    while (true) {
-      const { done, value } = await compReader.read();
-      if (done) break;
-      compressedChunks.push(value);
+    const collectCompressed = (async () => {
+      const compReader = xzStream.readable.getReader();
+      while (true) {
+        const { done, value } = await compReader.read();
+        if (done) break;
+        compressedChunks.push(value);
+      }
+    })();
+
+    const writer = xzStream.writable.getWriter();
+    let bytesFed = 0;
+
+    for (let i = 0; i < inputData.byteLength; i += chunkSize) {
+      const chunk = inputData.slice(i, Math.min(i + chunkSize, inputData.byteLength));
+      await writer.write(chunk);
+      bytesFed += chunk.byteLength;
+      const pct = (bytesFed / inputBytes) * 100;
+      // Yield to browser on every chunk so the UI can repaint.
+      // WASM lzma_code() is synchronous, so without explicit yields
+      // the browser never gets a chance to paint progress updates.
+      updateProgress('Compressing...', pct);
+      await yieldToUI();
     }
+    await writer.close();
+    await collectCompressed;
+    updateProgress('Compressing...', 100);
     const compressMs = performance.now() - t0;
 
     const compressedSize = compressedChunks.reduce((sum, c) => sum + c.byteLength, 0);
@@ -354,30 +369,35 @@ async function runProgressTest() {
 
     // --- Phase 2: Decompress with progress ---
     updateProgress('Decompressing...', 0);
+    await yieldToUI();
     const t1 = performance.now();
 
-    const compStream = new ReadableStream<Uint8Array>({
-      pull(controller) {
-        const offset = (this as { _offset?: number })._offset ?? 0;
-        if (offset >= compressed.byteLength) {
-          controller.close();
-          return;
-        }
-        controller.enqueue(compressed.slice(offset, offset + chunkSize));
-        (this as { _offset?: number })._offset = offset + chunkSize;
-      },
-    });
+    const unxzStream = createUnxz();
 
-    const progressOut = createProgressStream(compressedSize, 'Decompressing...');
-    const decompressedStream = compStream.pipeThrough(progressOut).pipeThrough(createUnxz());
-
+    // Read decompressed output concurrently (same backpressure pattern)
     const decompChunks: Uint8Array[] = [];
-    const decReader = decompressedStream.getReader();
-    while (true) {
-      const { done, value } = await decReader.read();
-      if (done) break;
-      decompChunks.push(value);
+    const collectDecompressed = (async () => {
+      const decReader = unxzStream.readable.getReader();
+      while (true) {
+        const { done, value } = await decReader.read();
+        if (done) break;
+        decompChunks.push(value);
+      }
+    })();
+
+    const decWriter = unxzStream.writable.getWriter();
+    let compBytesFed = 0;
+
+    for (let i = 0; i < compressed.byteLength; i += chunkSize) {
+      const chunk = compressed.slice(i, Math.min(i + chunkSize, compressed.byteLength));
+      await decWriter.write(chunk);
+      compBytesFed += chunk.byteLength;
+      const pct = (compBytesFed / compressedSize) * 100;
+      updateProgress('Decompressing...', pct);
+      await yieldToUI();
     }
+    await decWriter.close();
+    await collectDecompressed;
     const decompressMs = performance.now() - t1;
 
     const decompSize = decompChunks.reduce((sum, c) => sum + c.byteLength, 0);
@@ -486,6 +506,11 @@ Object.assign(window, {
   runCorruptDataTest,
 });
 
+// Disable all buttons until WASM is ready (warmup included)
+for (const btn of document.querySelectorAll('button')) {
+  (btn as HTMLButtonElement).disabled = true;
+}
+
 // Initialize WASM module, then run version check
 logInfo('node-liblzma browser demo — initializing WASM module...');
 
@@ -494,7 +519,14 @@ initModule()
     logSuccess('WASM module initialized');
     // Warmup: compress a tiny payload to trigger JIT compilation of WASM code.
     // Without this, the first real compression takes ~20s due to cold JIT.
+    logInfo('Warming up WASM JIT (first-time compilation)...');
+    const t = performance.now();
     await xzAsync('warmup');
+    logInfo(`WASM JIT ready (${((performance.now() - t) / 1000).toFixed(1)}s)`);
+    // Re-enable buttons
+    for (const btn of document.querySelectorAll('button')) {
+      (btn as HTMLButtonElement).disabled = false;
+    }
     runUtilsTest();
   })
   .catch((err) => {
