@@ -48,9 +48,6 @@ jobs:
       - name: Copy llms.txt to docs site
         run: cp llms.txt docs-site/
 
-      - name: Build TypeScript
-        run: pnpm build
-
       - name: Setup Python (for XZ download)
         uses: actions/setup-python@v6
         with:
@@ -69,6 +66,9 @@ jobs:
 
       - name: Build WASM artifacts
         run: bash src/wasm/build.sh
+
+      - name: Build TypeScript
+        run: pnpm build
 
       - name: Build browser demo
         working-directory: examples/browser
