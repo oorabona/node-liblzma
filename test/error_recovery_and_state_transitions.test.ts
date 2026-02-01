@@ -60,12 +60,15 @@ describe('Error Recovery and State Transitions', () => {
         // Accept any LZMA error code (native + manual emit may both fire)
         expect(error.errno).toBeGreaterThan(0);
 
-        // Close and resolve after first error; absorb any subsequent errors
         if (errorCount === 1) {
           xz.close();
-          // Small delay to let any pending native callbacks drain
-          setTimeout(resolve, 10);
         }
+      });
+
+      // Absorb any errors after stream is destroyed (e.g. LZMA_PROG_ERROR
+      // from native callback firing after close)
+      xz.on('close', () => {
+        setTimeout(resolve, 50);
       });
 
       // Emit onerror directly — this triggers the onerror→error conversion (line 357-360)
