@@ -259,6 +259,58 @@ jobs:
       - name: Lint and format check
         run: pnpm run check
 
+  # Code coverage (single run on Ubuntu, uploads to Codecov)
+  coverage:
+    name: Code Coverage
+    needs: [setup, download-xz, build-wasm, quality]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Download XZ sources
+        uses: actions/download-artifact@v7
+        with:
+          name: xz-sources
+          path: .
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: wasm-build
+          path: src/wasm
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-env
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache-prefix: 'coverage'
+          ccache-max-size: '200M'
+
+      - name: Install and build
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build TypeScript
+        run: pnpm run build
+
+      - name: Run tests with coverage
+        run: pnpm vitest run --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/lcov.info
+          flags: unittests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   # Smoke tests (fast, essential combinations only)
   smoke-test:
     name: Smoke Test
@@ -520,7 +572,7 @@ jobs:
   # Final summary
   summary:
     name: CI Summary
-    needs: [setup, quality, build-wasm, smoke-test, full-test, threading-test]
+    needs: [setup, quality, build-wasm, coverage, smoke-test, full-test, threading-test]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -540,6 +592,7 @@ jobs:
           # Results
           echo "### Results" >> $GITHUB_STEP_SUMMARY
           echo "- **Quality**: ${{ needs.quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Coverage**: ${{ needs.coverage.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Smoke Tests**: ${{ needs.smoke-test.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Full Tests**: ${{ needs.full-test.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Threading Tests**: ${{ needs.threading-test.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
@@ -547,6 +600,7 @@ jobs:
 
           # Overall status
           QUALITY_OK="${{ needs.quality.result == 'success' }}"
+          COVERAGE_OK="${{ needs.coverage.result == 'success' || needs.coverage.result == 'skipped' }}"
           SMOKE_OK="${{ needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped' }}"
           FULL_OK="${{ needs.full-test.result == 'success' || needs.full-test.result == 'skipped' }}"
           THREADING_OK="${{ needs.threading-test.result == 'success' || needs.threading-test.result == 'skipped' }}"
@@ -560,7 +614,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$QUALITY_OK" == "true" && "$SMOKE_OK" == "true" && "$FULL_OK" == "true" && "$THREADING_OK" == "true" ]]; then
+          if [[ "$QUALITY_OK" == "true" && "$COVERAGE_OK" == "true" && "$SMOKE_OK" == "true" && "$FULL_OK" == "true" && "$THREADING_OK" == "true" ]]; then
             echo "### ✅ All checks passed!" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Some checks failed" >> $GITHUB_STEP_SUMMARY

@@ -9,6 +9,8 @@ Node-liblzma
 [![Node Version](https://img.shields.io/node/v/node-liblzma.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![npm provenance](https://img.shields.io/badge/npm-provenance-green.svg)](https://docs.npmjs.com/generating-provenance-statements)
+[![codecov](https://codecov.io/gh/oorabona/node-liblzma/graph/badge.svg)](https://codecov.io/gh/oorabona/node-liblzma)
+[![code style: biome](https://img.shields.io/badge/code_style-biome-60a5fa.svg)](https://biomejs.dev)
 
 Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser support via WebAssembly**.
 
