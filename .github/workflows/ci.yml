@@ -273,7 +273,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          submodules: recursive
+          fetch-depth: 1
 
       - name: Download XZ sources
         uses: actions/download-artifact@v7
@@ -364,7 +364,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          submodules: recursive
+          fetch-depth: 1
 
       - name: Download XZ sources
         uses: actions/download-artifact@v7
@@ -450,7 +450,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          submodules: recursive
+          fetch-depth: 1
 
       - name: Download XZ sources
         uses: actions/download-artifact@v7
