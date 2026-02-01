@@ -107,8 +107,7 @@ versionNumber(); // 50080020
 
 // Parse XZ file metadata
 const info = parseFileIndex(xzData);
-// { compressedSize, streamCount, blockCount, check, memoryUsage }
-// Note: uncompressedSize is always 0 (footer-only parsing; full index parsing not yet implemented)
+// { uncompressedSize, compressedSize, streamCount, blockCount, check, memoryUsage }
 ```
 
 ### Custom WASM Loading

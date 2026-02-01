@@ -78,7 +78,7 @@ export function easyDecoderMemusage(): number {
 
 /** XZ file index information */
 export interface XZFileIndex {
-  /** Uncompressed size in bytes. Always 0 in WASM (footer-only parsing; full index parsing not yet implemented). */
+  /** Uncompressed size in bytes */
   uncompressedSize: number;
   /** Compressed size in bytes (total file size including headers) */
   compressedSize: number;
@@ -93,7 +93,32 @@ export interface XZFileIndex {
 }
 
 /**
+ * Read a Variable-Length Integer (VLI) from XZ data.
+ * XZ VLI: 7 bits per byte, MSB = continuation bit, max 9 bytes (63 bits).
+ *
+ * @returns [value, bytesConsumed]
+ */
+function readVLI(data: Uint8Array, offset: number): [number, number] {
+  let value = 0;
+  let shift = 0;
+  for (let i = 0; i < 9; i++) {
+    if (offset + i >= data.byteLength) {
+      throw new Error('Truncated VLI in XZ index');
+    }
+    const byte = data[offset + i];
+    value |= (byte & 0x7f) * 2 ** shift;
+    shift += 7;
+    if ((byte & 0x80) === 0) {
+      return [value, i + 1];
+    }
+  }
+  throw new Error('Invalid VLI in XZ index (too many bytes)');
+}
+
+/**
  * Parse the index of an XZ file to extract metadata.
+ * Parses the XZ footer and the index section to extract real
+ * uncompressed size, block count, and integrity check type.
  *
  * @param buffer - Complete XZ file data
  * @returns File index information
@@ -105,7 +130,6 @@ export function parseFileIndex(buffer: Uint8Array | ArrayBuffer): XZFileIndex {
     throw new Error('Not a valid XZ file');
   }
 
-  // Parse XZ stream footer to get basic info
   // XZ footer is last 12 bytes: CRC32(4) + Backward Size(4) + Flags(2) + 'YZ'(2)
   if (data.byteLength < 24) {
     throw new Error('XZ file too small to contain valid index');
@@ -124,11 +148,39 @@ export function parseFileIndex(buffer: Uint8Array | ArrayBuffer): XZFileIndex {
   const backwardSize =
     ((footer[4] | (footer[5] << 8) | (footer[6] << 16) | (footer[7] << 24)) + 1) * 4;
 
+  // Parse the index section
+  // Index starts at: footer_position - backwardSize
+  const indexStart = data.byteLength - 12 - backwardSize;
+  if (indexStart < 12 || indexStart >= data.byteLength - 12) {
+    throw new Error('Invalid backward size in XZ footer');
+  }
+
+  // Index indicator byte must be 0x00
+  if (data[indexStart] !== 0x00) {
+    throw new Error('Invalid XZ index indicator');
+  }
+
+  // Read number of records (VLI)
+  let pos = indexStart + 1;
+  const [recordCount, recordCountBytes] = readVLI(data, pos);
+  pos += recordCountBytes;
+
+  // Read each record: Unpadded Size (VLI) + Uncompressed Size (VLI)
+  let totalUncompressed = 0;
+  for (let i = 0; i < recordCount; i++) {
+    const [, unpaddedBytes] = readVLI(data, pos);
+    pos += unpaddedBytes;
+
+    const [uncompressedSize, uncompressedBytes] = readVLI(data, pos);
+    pos += uncompressedBytes;
+    totalUncompressed += uncompressedSize;
+  }
+
   return {
-    uncompressedSize: 0, // Not available from footer alone; requires full index parsing
+    uncompressedSize: totalUncompressed,
     compressedSize: data.byteLength,
     streamCount: 1,
-    blockCount: 1,
+    blockCount: recordCount,
     check: checkType,
     memoryUsage: backwardSize,
   };

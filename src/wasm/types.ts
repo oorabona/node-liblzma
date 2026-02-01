@@ -26,8 +26,8 @@ export interface LZMAModule {
   // Exported liblzma functions
   // Note: uint64_t args/returns map to BigInt in WASM without WASM_BIGINT=0
   _lzma_easy_encoder(strm: number, preset: number, check: number): number;
-  _lzma_stream_decoder(strm: number, memlimit: bigint): number;
-  _lzma_auto_decoder(strm: number, memlimit: bigint): number;
+  _lzma_stream_decoder(strm: number, memlimit: bigint, flags: number): number;
+  _lzma_auto_decoder(strm: number, memlimit: bigint, flags: number): number;
   _lzma_code(strm: number, action: number): number;
   _lzma_end(strm: number): void;
   _lzma_memusage(strm: number): bigint;

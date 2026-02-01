@@ -103,6 +103,30 @@ describe('WASM Utils (Block 5)', () => {
       expect(index.check).toBeGreaterThanOrEqual(0);
     });
 
+    it('should return correct uncompressedSize', async () => {
+      const input = 'Hello, parseFileIndex!';
+      const inputBytes = new TextEncoder().encode(input);
+      const compressed = await xzAsync(input);
+      const index = parseFileIndex(compressed);
+      expect(index.uncompressedSize).toBe(inputBytes.byteLength);
+    });
+
+    it('should return correct blockCount', async () => {
+      const compressed = await xzAsync('test block count');
+      const index = parseFileIndex(compressed);
+      expect(index.blockCount).toBe(1);
+    });
+
+    it('should handle larger data correctly', async () => {
+      const largeInput = 'A'.repeat(100_000);
+      const inputBytes = new TextEncoder().encode(largeInput);
+      const compressed = await xzAsync(largeInput);
+      const index = parseFileIndex(compressed);
+      expect(index.uncompressedSize).toBe(inputBytes.byteLength);
+      expect(index.blockCount).toBeGreaterThanOrEqual(1);
+      expect(index.compressedSize).toBeLessThan(inputBytes.byteLength);
+    });
+
     it('should throw on non-XZ data', () => {
       expect(() => parseFileIndex(new Uint8Array([1, 2, 3, 4]))).toThrow(/Not a valid XZ file/);
     });

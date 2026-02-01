@@ -119,7 +119,7 @@ export function decoderInit(
 ): void {
   const module = getModule();
   const limit = typeof memlimit === 'number' ? BigInt(memlimit) : memlimit;
-  const ret = module._lzma_stream_decoder(stream.ptr, limit);
+  const ret = module._lzma_stream_decoder(stream.ptr, limit, 0);
   if (ret !== LZMA_OK) {
     throw createLZMAError(ret);
   }
@@ -138,7 +138,7 @@ export function autoDecoderInit(
 ): void {
   const module = getModule();
   const limit = typeof memlimit === 'number' ? BigInt(memlimit) : memlimit;
-  const ret = module._lzma_auto_decoder(stream.ptr, limit);
+  const ret = module._lzma_auto_decoder(stream.ptr, limit, 0);
   if (ret !== LZMA_OK) {
     throw createLZMAError(ret);
   }
