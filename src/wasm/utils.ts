@@ -78,7 +78,7 @@ export function easyDecoderMemusage(): number {
 
 /** XZ file index information */
 export interface XZFileIndex {
-  /** Uncompressed size in bytes */
+  /** Uncompressed size in bytes. Always 0 in WASM (footer-only parsing; full index parsing not yet implemented). */
   uncompressedSize: number;
   /** Compressed size in bytes (total file size including headers) */
   compressedSize: number;
