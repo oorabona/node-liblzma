@@ -253,17 +253,28 @@ function updateProgress(label: string, pct: number) {
 /**
  * Create a TransformStream that reports progress based on bytes flowing through.
  */
+/** Yield to the browser event loop so DOM updates (progress bar) can paint. */
+function yieldToUI(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 function createProgressStream(
   totalBytes: number,
   label: string
 ): TransformStream<Uint8Array, Uint8Array> {
   let bytesProcessed = 0;
+  let lastPaintPct = -1;
   return new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
+    async transform(chunk, controller) {
       bytesProcessed += chunk.byteLength;
       const pct = Math.min(100, (bytesProcessed / totalBytes) * 100);
-      updateProgress(label, pct);
       controller.enqueue(chunk);
+      // Yield to UI every ~5% to allow progress bar repaint
+      if (Math.floor(pct / 5) > lastPaintPct) {
+        lastPaintPct = Math.floor(pct / 5);
+        updateProgress(label, pct);
+        await yieldToUI();
+      }
     },
     flush() {
       updateProgress(label, 100);
@@ -299,14 +310,17 @@ async function runProgressTest() {
     updateProgress('Compressing...', 0);
     const t0 = performance.now();
 
-    // Feed data in small chunks via a ReadableStream
+    // Feed data in small chunks via a ReadableStream (async pull-based)
     const chunkSize = 8192;
     const inputStream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        for (let i = 0; i < inputData.byteLength; i += chunkSize) {
-          controller.enqueue(inputData.slice(i, i + chunkSize));
+      pull(controller) {
+        const offset = (this as { _offset?: number })._offset ?? 0;
+        if (offset >= inputData.byteLength) {
+          controller.close();
+          return;
         }
-        controller.close();
+        controller.enqueue(inputData.slice(offset, offset + chunkSize));
+        (this as { _offset?: number })._offset = offset + chunkSize;
       },
     });
 
@@ -343,11 +357,14 @@ async function runProgressTest() {
     const t1 = performance.now();
 
     const compStream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        for (let i = 0; i < compressed.byteLength; i += chunkSize) {
-          controller.enqueue(compressed.slice(i, i + chunkSize));
+      pull(controller) {
+        const offset = (this as { _offset?: number })._offset ?? 0;
+        if (offset >= compressed.byteLength) {
+          controller.close();
+          return;
         }
-        controller.close();
+        controller.enqueue(compressed.slice(offset, offset + chunkSize));
+        (this as { _offset?: number })._offset = offset + chunkSize;
       },
     });
 
@@ -473,8 +490,11 @@ Object.assign(window, {
 logInfo('node-liblzma browser demo — initializing WASM module...');
 
 initModule()
-  .then(() => {
+  .then(async () => {
     logSuccess('WASM module initialized');
+    // Warmup: compress a tiny payload to trigger JIT compilation of WASM code.
+    // Without this, the first real compression takes ~20s due to cold JIT.
+    await xzAsync('warmup');
     runUtilsTest();
   })
   .catch((err) => {
