@@ -30,7 +30,18 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.{ts,js}'],
-      exclude: ['test/**/*', 'node_modules/**/*', '**/*.d.ts', 'lib/**/*.js'],
+      exclude: [
+        'test/**/*',
+        'node_modules/**/*',
+        '**/*.d.ts',
+        'lib/**/*.js',
+        // CLI is tested via execFileSync (integration), not unit-testable for coverage
+        'src/cli/**',
+        // Emscripten auto-generated glue code — not meaningful to cover
+        'src/wasm/liblzma.js',
+        // Inline mode is a thin re-export with base64 WASM init — minimal logic
+        'src/lzma.inline.ts',
+      ],
       // Configurations V8 pour précision maximale
       cleanOnRerun: true,
       all: false, // N'inclut que les fichiers qui sont réellement chargés
