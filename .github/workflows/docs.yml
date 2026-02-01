@@ -73,7 +73,7 @@ jobs:
       - name: Build browser demo
         working-directory: examples/browser
         run: |
-          pnpm install
+          pnpm install --ignore-scripts
           pnpm exec vite build
 
       - name: Setup Pages
