@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-02-01
+
+### Added
+- **WebAssembly Browser Support**: Full WASM build of liblzma via Emscripten with API parity
+  - `xzAsync()` / `unxzAsync()` — one-shot async compression/decompression
+  - `xzSync()` / `unxzSync()` — synchronous variants (throw `LZMAError` in browser)
+  - `createXz()` / `createUnxz()` — Web `TransformStream` for streaming in browsers
+  - `parseFileIndex()` — pure TypeScript XZ index parser with real `uncompressedSize`
+  - Two loading modes: fetch-based (`node-liblzma`) and inline base64 (`node-liblzma/inline`)
+- **XZ Index Parsing**: Pure TypeScript parser for XZ file index, extracting uncompressed size, block count, and check type without requiring WASM initialization
+- **Browser Demo**: Interactive example at `/examples/browser/` with progress bar, streaming, and WASM JIT warmup
+- **WASM Build Pipeline**: Emscripten-based build script (`src/wasm/build.sh`) with CI integration
+- **CLI Benchmarks**: `nxz --benchmark` script to compare performance against native `xz`
+- **LLM Discoverability**: `llms.txt` for AI-assisted documentation discovery
+
+### Changed
+- **Breaking**: Package now exports conditional paths — `node-liblzma` resolves to native (Node.js) or WASM (browser) automatically
+- **Breaking**: `createXz()` / `createUnxz()` return Web `TransformStream` in browser environments instead of Node.js Transform streams
+- **README**: Complete restructure with Table of Contents, versioned changelog, and collapsible sections
+- **Test Suite**: Expanded from 320+ to 458+ tests covering both native and WASM code paths
+- **Coverage**: Configured meaningful exclusions (CLI, Emscripten glue, inline mode) — 91% statements
+
+### Fixed
+- **Progress Bar**: Resolved backpressure deadlock and UI thread blocking in browser streaming demo
+- **WASM Memory**: Presets 7-9 correctly rejected when exceeding 256MB WASM memory limit
+- **Error Recovery**: Fixed unhandled `LZMAProgrammingError` after stream close in error recovery tests
+- **Security**: Resolved CodeQL alerts for TOCTOU race condition and biased random
+- **CI**: Fixed WASM artifact flow, docs workflow build order, OIDC npm publish
+
 ## [2.2.0] - 2026-01-25
 
 ### Added
@@ -301,7 +330,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/oorabona/node-liblzma/compare/v2.2.0...v3.0.0
 [2.0.3]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/oorabona/node-liblzma/compare/v2.0.0...v2.0.1
