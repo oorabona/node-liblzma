@@ -250,36 +250,9 @@ function updateProgress(label: string, pct: number) {
   if (labelEl) labelEl.textContent = label;
 }
 
-/**
- * Create a TransformStream that reports progress based on bytes flowing through.
- */
 /** Yield to the browser event loop so DOM updates (progress bar) can paint. */
 function yieldToUI(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function _createProgressStream(
-  totalBytes: number,
-  label: string
-): TransformStream<Uint8Array, Uint8Array> {
-  let bytesProcessed = 0;
-  let lastPaintPct = -1;
-  return new TransformStream<Uint8Array, Uint8Array>({
-    async transform(chunk, controller) {
-      bytesProcessed += chunk.byteLength;
-      const pct = Math.min(100, (bytesProcessed / totalBytes) * 100);
-      controller.enqueue(chunk);
-      // Yield to UI every ~5% to allow progress bar repaint
-      if (Math.floor(pct / 5) > lastPaintPct) {
-        lastPaintPct = Math.floor(pct / 5);
-        updateProgress(label, pct);
-        await yieldToUI();
-      }
-    },
-    flush() {
-      updateProgress(label, 100);
-    },
-  });
 }
 
 async function runProgressTest() {
