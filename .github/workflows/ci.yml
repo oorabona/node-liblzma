@@ -312,6 +312,8 @@ jobs:
         run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNTIME_LINK: static
+          ENABLE_THREAD_SUPPORT: 'no'
 
       - name: Build TypeScript
         run: pnpm run build
