@@ -36,6 +36,7 @@ interface CliOptions {
   compress: boolean;
   decompress: boolean;
   list: boolean;
+  benchmark: boolean;
   keep: boolean;
   force: boolean;
   stdout: boolean;
@@ -113,6 +114,7 @@ function parseCliArgs(args: string[]): CliOptions {
       compress: { type: 'boolean', short: 'z', default: false },
       decompress: { type: 'boolean', short: 'd', default: false },
       list: { type: 'boolean', short: 'l', default: false },
+      benchmark: { type: 'boolean', short: 'B', default: false },
       keep: { type: 'boolean', short: 'k', default: false },
       force: { type: 'boolean', short: 'f', default: false },
       stdout: { type: 'boolean', short: 'c', default: false },
@@ -131,6 +133,7 @@ function parseCliArgs(args: string[]): CliOptions {
     compress: values.compress === true,
     decompress: values.decompress === true,
     list: values.list === true,
+    benchmark: values.benchmark === true,
     keep: values.keep === true,
     force: values.force === true,
     stdout: values.stdout === true,
@@ -159,6 +162,7 @@ Operation mode:
   -z, --compress    force compression
   -d, --decompress  force decompression
   -l, --list        list information about .xz files
+  -B, --benchmark   benchmark native vs WASM compression
 
 Operation modifiers:
   -k, --keep        keep (don't delete) input files
@@ -208,7 +212,11 @@ License: LGPL-3.0`);
 /**
  * Determine operation mode based on options and file extension
  */
-function determineMode(options: CliOptions, filename: string): 'compress' | 'decompress' | 'list' {
+function determineMode(
+  options: CliOptions,
+  filename: string
+): 'compress' | 'decompress' | 'list' | 'benchmark' {
+  if (options.benchmark) return 'benchmark';
   if (options.list) return 'list';
   if (options.decompress) return 'decompress';
   if (options.compress) return 'compress';
@@ -296,95 +304,115 @@ function listFile(filename: string, options: CliOptions): number {
 /**
  * Compress a file
  */
-async function compressFile(inputFile: string, options: CliOptions): Promise<number> {
-  const outputFile = options.stdout
-    ? null
-    : (options.output ?? getOutputFilename(inputFile, 'compress'));
 
-  // Check if output exists
+/** Resolve output file and check for overwrites. Returns null for stdout mode. */
+function resolveOutputFile(
+  inputFile: string,
+  mode: 'compress' | 'decompress',
+  options: CliOptions
+): string | null {
+  if (options.stdout) return null;
+  return options.output ?? getOutputFilename(inputFile, mode);
+}
+
+/** Attach verbose progress tracking to a stream. */
+function attachProgress(
+  stream: {
+    on(event: 'progress', cb: (p: { bytesRead: number; bytesWritten: number }) => void): void;
+  },
+  inputFile: string,
+  totalSize: number
+): void {
+  let lastPercent = -1;
+  stream.on('progress', ({ bytesRead, bytesWritten }) => {
+    const percent = Math.floor((bytesRead / totalSize) * 100);
+    if (percent !== lastPercent) {
+      lastPercent = percent;
+      process.stderr.write(
+        `\r${inputFile}: ${percent}% (${formatBytes(bytesRead)} -> ${formatBytes(bytesWritten)})`
+      );
+    }
+  });
+}
+
+/** Clean up a partial output file and reset tracking state. */
+function cleanupPartialOutput(outputFile: string | null): void {
+  if (outputFile && existsSync(outputFile)) {
+    try {
+      unlinkSync(outputFile);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+  currentOutputFile = null;
+}
+
+/** Read file content using fd-based operations (avoids TOCTOU race). Returns [data, fileSize]. */
+function readFileSafe(inputFile: string): { data: Buffer; size: number } {
+  const fd = openSync(inputFile, 'r');
+  try {
+    const size = fstatSync(fd).size;
+    const data = readFileSync(fd);
+    return { data, size };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Write compressed/decompressed output to stdout or file. */
+function writeOutput(output: Buffer | Uint8Array, outputFile: string | null): void {
+  if (outputFile) {
+    writeFileSync(outputFile, output);
+  } else {
+    process.stdout.write(output);
+  }
+}
+
+/** Delete the original file after successful compression/decompression. */
+function removeOriginalIfNeeded(inputFile: string, options: CliOptions): void {
+  if (!options.keep && !options.stdout) {
+    unlinkSync(inputFile);
+  }
+}
+
+async function compressFile(inputFile: string, options: CliOptions): Promise<number> {
+  const outputFile = resolveOutputFile(inputFile, 'compress', options);
+
   if (outputFile && existsSync(outputFile) && !options.force) {
     warn(`nxz: ${outputFile}: File already exists; use -f to overwrite`);
     return EXIT_ERROR;
   }
 
-  // Track output file for SIGINT cleanup
   currentOutputFile = outputFile;
 
-  // Use fd-based operations to avoid TOCTOU race between stat and read
-  let fd: number | null = openSync(inputFile, 'r');
   try {
-    const stat = fstatSync(fd);
+    const { data, size } = readFileSafe(inputFile);
     const presetValue = options.extreme ? options.preset | preset.EXTREME : options.preset;
 
-    if (options.stdout) {
-      // Write to stdout
-      const input = readFileSync(fd);
-      closeSync(fd);
-      fd = null;
-      const compressed = xzSync(input, { preset: presetValue });
-      process.stdout.write(compressed);
-    } else if (stat.size <= STREAM_THRESHOLD_BYTES) {
-      // Small file: use sync
-      const input = readFileSync(fd);
-      closeSync(fd);
-      fd = null;
-      const compressed = xzSync(input, { preset: presetValue });
-      writeFileSync(outputFile!, compressed);
+    if (!outputFile || size <= STREAM_THRESHOLD_BYTES) {
+      // Stdout or small file: sync compression
+      const compressed = xzSync(data, { preset: presetValue });
+      writeOutput(compressed, outputFile);
     } else {
-      // Large file: use streams
-      closeSync(fd);
-      fd = null;
+      // Large file: stream compression with optional progress
       const compressor = createXz({ preset: presetValue });
-
       if (options.verbose) {
-        let lastPercent = -1;
-        compressor.on('progress', ({ bytesRead, bytesWritten }) => {
-          const percent = Math.floor((bytesRead / stat.size) * 100);
-          if (percent !== lastPercent) {
-            lastPercent = percent;
-            process.stderr.write(
-              `\r${inputFile}: ${percent}% (${formatBytes(bytesRead)} -> ${formatBytes(bytesWritten)})`
-            );
-          }
-        });
+        attachProgress(compressor, inputFile, size);
       }
-
-      await pipeline(createReadStream(inputFile), compressor, createWriteStream(outputFile!));
-
+      await pipeline(createReadStream(inputFile), compressor, createWriteStream(outputFile));
       if (options.verbose) {
         process.stderr.write('\n');
       }
     }
 
-    // Delete original unless -k or -c
-    if (!options.keep && !options.stdout) {
-      unlinkSync(inputFile);
-    }
-
-    // Clear tracking after successful completion
+    removeOriginalIfNeeded(inputFile, options);
     currentOutputFile = null;
     return EXIT_SUCCESS;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     warn(`nxz: ${inputFile}: ${message}`);
-    // Cleanup partial output
-    if (outputFile && existsSync(outputFile)) {
-      try {
-        unlinkSync(outputFile);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-    currentOutputFile = null;
+    cleanupPartialOutput(outputFile);
     return EXIT_ERROR;
-  } finally {
-    if (fd !== null) {
-      try {
-        closeSync(fd);
-      } catch {
-        /* ignore close errors in cleanup */
-      }
-    }
   }
 }
 
@@ -392,82 +420,47 @@ async function compressFile(inputFile: string, options: CliOptions): Promise<num
  * Decompress a file
  */
 async function decompressFile(inputFile: string, options: CliOptions): Promise<number> {
-  const outputFile = options.stdout
-    ? null
-    : (options.output ?? getOutputFilename(inputFile, 'decompress'));
+  const outputFile = resolveOutputFile(inputFile, 'decompress', options);
 
-  // Check if output exists
   if (outputFile && existsSync(outputFile) && !options.force) {
     warn(`nxz: ${outputFile}: File already exists; use -f to overwrite`);
     return EXIT_ERROR;
   }
 
-  // Track output file for SIGINT cleanup
   currentOutputFile = outputFile;
 
   try {
-    // Validate XZ format — read file once, use buffer length for size checks
-    const fileData = readFileSync(inputFile);
-    if (!isXZ(fileData)) {
+    const { data, size } = readFileSafe(inputFile);
+
+    if (!isXZ(data)) {
       warn(`nxz: ${inputFile}: File format not recognized`);
       currentOutputFile = null;
       return EXIT_ERROR;
     }
 
-    const fileSize = fileData.length;
-
-    if (options.stdout) {
-      // Write to stdout
-      const decompressed = unxzSync(fileData);
-      process.stdout.write(decompressed);
-    } else if (fileSize <= STREAM_THRESHOLD_BYTES) {
-      // Small file: use sync
-      const decompressed = unxzSync(fileData);
-      writeFileSync(outputFile!, decompressed);
+    if (!outputFile || size <= STREAM_THRESHOLD_BYTES) {
+      // Stdout or small file: sync decompression
+      const decompressed = unxzSync(data);
+      writeOutput(decompressed, outputFile);
     } else {
-      // Large file: use streams with progress
+      // Large file: stream decompression with optional progress
       const decompressor = createUnxz();
-
       if (options.verbose) {
-        let lastPercent = -1;
-        decompressor.on('progress', ({ bytesRead, bytesWritten }) => {
-          const percent = Math.floor((bytesRead / fileSize) * 100);
-          if (percent !== lastPercent) {
-            lastPercent = percent;
-            process.stderr.write(
-              `\r${inputFile}: ${percent}% (${formatBytes(bytesRead)} -> ${formatBytes(bytesWritten)})`
-            );
-          }
-        });
+        attachProgress(decompressor, inputFile, size);
       }
-
-      await pipeline(createReadStream(inputFile), decompressor, createWriteStream(outputFile!));
-
+      await pipeline(createReadStream(inputFile), decompressor, createWriteStream(outputFile));
       if (options.verbose) {
         process.stderr.write('\n');
       }
     }
 
-    // Delete original unless -k or -c
-    if (!options.keep && !options.stdout) {
-      unlinkSync(inputFile);
-    }
-
-    // Clear tracking after successful completion
+    removeOriginalIfNeeded(inputFile, options);
     currentOutputFile = null;
     return EXIT_SUCCESS;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     warn(`nxz: ${inputFile}: ${message}`);
-    // Cleanup partial output
-    if (outputFile && existsSync(outputFile)) {
-      try {
-        unlinkSync(outputFile);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-    currentOutputFile = null;
+    cleanupPartialOutput(outputFile);
     return EXIT_ERROR;
   }
 }
@@ -475,6 +468,142 @@ async function decompressFile(inputFile: string, options: CliOptions): Promise<n
 /**
  * Process a single file
  */
+
+/** Measure execution time of an async function in milliseconds. */
+async function measureAsync<T>(fn: () => Promise<T>): Promise<{ result: T; ms: number }> {
+  const start = performance.now();
+  const result = await fn();
+  return { result, ms: performance.now() - start };
+}
+
+/** Measure execution time of a sync function in milliseconds. */
+function measureSync<T>(fn: () => T): { result: T; ms: number } {
+  const start = performance.now();
+  const result = fn();
+  return { result, ms: performance.now() - start };
+}
+
+/** Format milliseconds for display. */
+function formatMs(ms: number): string {
+  if (ms < 1) return `${(ms * 1000).toFixed(0)} µs`;
+  if (ms < 1000) return `${ms.toFixed(1)} ms`;
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+
+/** Format a ratio as "Nx faster" or "Nx slower". */
+function formatSpeedup(baseline: number, candidate: number): string {
+  if (candidate === 0 || baseline === 0) return 'N/A';
+  const ratio = baseline / candidate;
+  if (ratio >= 1) return `${ratio.toFixed(1)}x faster`;
+  return `${(1 / ratio).toFixed(1)}x slower`;
+}
+
+/**
+ * Benchmark native vs WASM compression/decompression on a file.
+ */
+async function benchmarkFile(inputFile: string, options: CliOptions): Promise<number> {
+  // Initialize WASM module with Node.js file-based loader
+  const { initModule, resetModule } = await import('../wasm/bindings.js');
+  const { xzAsync: wasmXzAsync, unxzAsync: wasmUnxzAsync } = await import('../wasm/index.js');
+  const { readFileSync: fsReadFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+
+  const wasmDir = dirname(fileURLToPath(import.meta.url));
+  const wasmPath = join(wasmDir, '..', 'wasm', 'liblzma.wasm');
+
+  resetModule();
+  await initModule(async () => {
+    const { default: createLZMA } = await import('../wasm/liblzma.js');
+    const wasmBinary = fsReadFileSync(wasmPath);
+    return (await createLZMA({ wasmBinary })) as import('../wasm/types.js').LZMAModule;
+  });
+
+  const { data, size } = readFileSafe(inputFile);
+  const presetValue = options.extreme ? options.preset | preset.EXTREME : options.preset;
+
+  console.error(
+    `\nBenchmark: ${inputFile} (${formatBytes(size)}, preset ${options.preset}${options.extreme ? 'e' : ''})\n`
+  );
+
+  // --- Compression ---
+  const nativeCompress = measureSync(() => xzSync(data, { preset: presetValue }));
+  const wasmCompress = await measureAsync(() => wasmXzAsync(data, { preset: presetValue }));
+
+  // --- Decompression ---
+  const nativeDecompress = measureSync(() => unxzSync(nativeCompress.result));
+  const wasmDecompress = await measureAsync(() => wasmUnxzAsync(wasmCompress.result));
+
+  // --- Verify correctness ---
+  const nativeOk = Buffer.compare(nativeDecompress.result, data) === 0;
+  const wasmOk = Buffer.compare(Buffer.from(wasmDecompress.result), data) === 0;
+
+  // --- Cross-decompression ---
+  const crossNativeToWasm = await measureAsync(() => wasmUnxzAsync(nativeCompress.result));
+  const crossWasmToNative = measureSync(() => unxzSync(Buffer.from(wasmCompress.result)));
+  const crossOk1 = Buffer.compare(Buffer.from(crossNativeToWasm.result), data) === 0;
+  const crossOk2 = Buffer.compare(crossWasmToNative.result, data) === 0;
+
+  // --- Output table ---
+  const col1 = 22;
+  const col2 = 16;
+  const col3 = 16;
+  const col4 = 18;
+  const sep = '-'.repeat(col1 + col2 + col3 + col4 + 7);
+
+  const row = (label: string, native: string, wasm: string, diff: string) =>
+    `  ${label.padEnd(col1)} ${native.padStart(col2)} ${wasm.padStart(col3)} ${diff.padStart(col4)}`;
+
+  console.error(sep);
+  console.error(row('', 'Native', 'WASM', 'Comparison'));
+  console.error(sep);
+  console.error(
+    row(
+      'Compress time',
+      formatMs(nativeCompress.ms),
+      formatMs(wasmCompress.ms),
+      formatSpeedup(wasmCompress.ms, nativeCompress.ms)
+    )
+  );
+  console.error(
+    row(
+      'Compressed size',
+      formatBytes(nativeCompress.result.length),
+      formatBytes(wasmCompress.result.length),
+      nativeCompress.result.length === wasmCompress.result.length
+        ? 'identical'
+        : `${((wasmCompress.result.length / nativeCompress.result.length - 1) * 100).toFixed(1)}%`
+    )
+  );
+  console.error(
+    row(
+      'Decompress time',
+      formatMs(nativeDecompress.ms),
+      formatMs(wasmDecompress.ms),
+      formatSpeedup(wasmDecompress.ms, nativeDecompress.ms)
+    )
+  );
+  console.error(row('Roundtrip OK', nativeOk ? 'YES' : 'FAIL', wasmOk ? 'YES' : 'FAIL', ''));
+  console.error(sep);
+  console.error(
+    row('Cross: Native→WASM', '', formatMs(crossNativeToWasm.ms), crossOk1 ? 'OK' : 'FAIL')
+  );
+  console.error(
+    row('Cross: WASM→Native', formatMs(crossWasmToNative.ms), '', crossOk2 ? 'OK' : 'FAIL')
+  );
+  console.error(sep);
+
+  const allOk = nativeOk && wasmOk && crossOk1 && crossOk2;
+  console.error(
+    `\n  Verdict: ${allOk ? 'ALL PASS — Both backends produce valid output' : 'FAIL — Data mismatch detected'}\n`
+  );
+
+  // Reset WASM module to not interfere with other operations
+  resetModule();
+
+  return allOk ? EXIT_SUCCESS : EXIT_ERROR;
+}
+
 async function processFile(filename: string, options: CliOptions): Promise<number> {
   // Check file exists
   if (!existsSync(filename)) {
@@ -493,6 +622,8 @@ async function processFile(filename: string, options: CliOptions): Promise<numbe
   switch (mode) {
     case 'list':
       return listFile(filename, options);
+    case 'benchmark':
+      return benchmarkFile(filename, options);
     case 'compress':
       return compressFile(filename, options);
     case 'decompress':

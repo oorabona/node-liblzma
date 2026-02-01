@@ -149,6 +149,10 @@ cat file.txt | nxz -c > file.txt.xz
 
 # Quiet mode - suppress warnings (-q)
 nxz -q file.txt
+
+# Benchmark native vs WASM performance (-B)
+nxz -B file.txt
+nxz -B -3 file.txt     # with preset 3
 ```
 
 ## All Options
@@ -158,6 +162,7 @@ nxz -q file.txt
 | `-z` | `--compress` | Force compression mode |
 | `-d` | `--decompress` | Force decompression mode |
 | `-l` | `--list` | List archive information |
+| `-B` | `--benchmark` | Benchmark native vs WASM performance |
 | `-k` | `--keep` | Keep original file (don't delete) |
 | `-f` | `--force` | Overwrite existing output file |
 | `-c` | `--stdout` | Write to stdout, keep original file |
@@ -190,51 +195,157 @@ pnpm dlx --package node-liblzma nxz --help
 
 ## Benchmark
 
-Compare `nxz` performance against native `xz`:
+### Running Benchmarks
 
 ```bash
-# Run default benchmark (1MB, 10MB, 100MB at presets 0, 6, 9)
+# Compare nxz (native) vs system xz across file sizes
 ./scripts/benchmark.sh
+./scripts/benchmark.sh -s 1,50,200 -p 6,9         # custom sizes/presets
+./scripts/benchmark.sh -o csv > results.csv        # export as CSV/JSON
 
-# Custom sizes and presets
-./scripts/benchmark.sh -s 1,50,200 -p 6,9
-
-# Export as CSV
-./scripts/benchmark.sh -o csv > benchmark-results.csv
-
-# Export as JSON
-./scripts/benchmark.sh -o json > benchmark-results.json
+# Compare native addon vs WASM backend
+nxz --benchmark file.txt
+nxz -B -3 large-file.bin                           # with preset 3
 ```
 
-**Typical Results (Intel i9-13980HX, Node.js v24):**
+### Performance Hierarchy
 
-| File Size | Preset | Compression Δ | Decompression Δ |
-|-----------|--------|---------------|-----------------|
-| 1 MB | -6 | +43% | +550% |
-| 10 MB | -6 | +10% | +173% |
-| 100 MB | -6 | +118% | +323% |
-| 100 MB | -9 | **+4%** | +60% |
+All three backends use the same liblzma library and produce **identical compression ratios**. The difference is purely in speed:
 
-**Key findings:**
-- **Compression ratio**: Identical (same liblzma library)
-- **Large files + high preset (-9)**: Only ~4% slower - very competitive!
-- **Small files**: Node.js startup (~35ms) dominates
-- **Decompression**: Native xz is extremely fast, so relative overhead is higher
+```
+System xz  >  nxz native (C++ addon)  >  nxz WASM (Emscripten)
+ fastest        ~1-2x slower               ~2-5x slower (decompress)
+                                           ~1x (compress, large files)
+```
 
-**When to use nxz:**
-- Cross-platform scripts (Windows/macOS/Linux)
-- When xz binary is not available
-- Large file compression where portability matters
-- CI/CD pipelines with Node.js already installed
+### Full Comparison (246 KB source code, preset 6)
 
-**When to use native xz:**
-- Batch processing many small files
-- Maximum decompression speed needed
-- Shell scripts on Unix systems
+| Backend | Compress | Decompress | Compressed Size | Environment |
+|---------|----------|------------|-----------------|-------------|
+| **System `xz` 5.8** | 81 ms | 4 ms | 76.7 KB | C binary, no overhead |
+| **nxz native** | 90 ms | 3.4 ms | 76.7 KB | Node.js + C++ addon (N-API) |
+| **nxz WASM** | 86 ms | 7.9 ms | 76.7 KB | Node.js + Emscripten WASM |
+
+### Scaling by File Size (nxz native vs system xz, preset 6)
+
+| File Size | Compression Δ | Decompression Δ |
+|-----------|---------------|-----------------|
+| 1 MB | +43% | +550% |
+| 10 MB | +10% | +173% |
+| 100 MB | +118% | +323% |
+| 100 MB (-9) | **+4%** | +60% |
+
+### Native Addon vs WASM (nxz -B, preset 6)
+
+| Data | Compress | Decompress | Notes |
+|------|----------|------------|-------|
+| 1 KB text | WASM 2.8x slower | WASM 4.9x slower | Small data: startup overhead dominates |
+| 135 KB binary | ~1:1 | WASM 2x slower | Compression near-parity |
+| 246 KB source | ~1:1 | WASM 2.3x slower | Realistic workload |
+| 1 MB random | ~1:1 | WASM 1.6x slower | Gap narrows with size |
+
+### Key Findings
+
+- **Compression ratio**: Identical across all three backends (same liblzma)
+- **Compression speed**: nxz WASM reaches near-parity with native on data >100 KB
+- **Decompression speed**: Native is always faster (2-5x); system xz is fastest for large batch jobs
+- **Cross-compatible**: All outputs are interchangeable — native can decompress WASM output and vice versa
+- **Presets 0-6**: Fully supported everywhere; 7-9 require native (exceed WASM 256MB limit)
+- **Small files**: Node.js startup (~35ms) dominates; use system xz for batch processing
+
+### When to Use What
+
+| Scenario | Recommended |
+|----------|-------------|
+| Browser | WASM (only option) |
+| Node.js, performance-critical | Native addon |
+| Node.js, no C++ toolchain available | WASM (`node-liblzma/wasm`) |
+| Cross-platform scripts | nxz CLI |
+| Batch processing many files | System xz |
+| CI/CD with Node.js already installed | nxz CLI |
+
+## Browser Usage
+
+> **[Live Demo](https://oorabona.github.io/node-liblzma/demo/)** — Try XZ compression in your browser right now.
+
+node-liblzma v3.0.0+ supports XZ compression in the browser via WebAssembly. The same API works in both Node.js and browsers — bundlers (Vite, Webpack, esbuild) automatically resolve the WASM-backed implementation.
+
+### Basic Usage
+
+```typescript
+// Bundlers auto-resolve to WASM in browser, native in Node.js
+import { xzAsync, unxzAsync, isXZ } from 'node-liblzma';
+
+// Compress
+const compressed = await xzAsync('Hello, browser!');
+
+// Decompress
+const original = await unxzAsync(compressed);
+
+// Check if data is XZ-compressed
+if (isXZ(someBuffer)) {
+  const data = await unxzAsync(someBuffer);
+}
+```
+
+### Streaming with Web Streams API
+
+```typescript
+import { createXz, createUnxz } from 'node-liblzma';
+
+// Compress a fetch response
+const response = await fetch('/large-file.bin');
+const compressed = response.body.pipeThrough(createXz({ preset: 6 }));
+
+// Decompress
+const decompressed = compressedStream.pipeThrough(createUnxz());
+```
+
+### Import Modes
+
+| Import | When to use |
+|--------|-------------|
+| `node-liblzma` | Standard — bundler resolves to WASM (browser) or native (Node.js) |
+| `node-liblzma/wasm` | Explicit WASM usage in Node.js (no native addon needed) |
+| `node-liblzma/inline` | Zero-config — WASM embedded as base64 (no external file to serve) |
+
+```typescript
+// Explicit WASM (works in Node.js too, no native build required)
+import { xzAsync } from 'node-liblzma/wasm';
+
+// Inline mode (larger bundle, but no WASM file to configure)
+import { ensureInlineInit, xzAsync } from 'node-liblzma/inline';
+await ensureInlineInit(); // Decodes embedded base64 WASM
+const compressed = await xzAsync(data);
+```
+
+### Browser Limitations
+
+- **No sync APIs**: `xzSync()` / `unxzSync()` throw `LZMAError` in browsers
+- **Presets 0-6 only**: Presets 7-9 require more memory than WASM's 256MB limit
+- **No filesystem**: `xzFile()` / `unxzFile()` are not available
+- **No Node Streams**: Use `createXz()` / `createUnxz()` (Web TransformStream) instead of `Xz` / `Unxz` classes
+
+### Bundle Size
+
+| Component | Raw | Gzipped |
+|-----------|-----|---------|
+| liblzma.wasm | ~107KB | ~52KB |
+| Glue code (liblzma.js) | ~6KB | ~2KB |
+| **Total** | **~113KB** | **~54KB** |
+
+For detailed browser setup instructions, see [docs/BROWSER.md](docs/BROWSER.md).
 
 # What's new ?
 
 ## Latest Updates (2026)
+
+* **Browser/WASM Support (v3.0.0)**: Full XZ compression and decompression in the browser
+  - Same API as Node.js (`xzAsync`, `unxzAsync`, `createXz`, `createUnxz`)
+  - WASM binary: ~52KB gzipped (under 100KB budget)
+  - Web Streams API for streaming compression/decompression
+  - Zero-config inline mode: `import from 'node-liblzma/inline'`
+  - See [Browser Usage](#browser-usage) section
 
 * **CLI Tool (nxz)**: Portable xz-like command line tool included in the package
   - Full xz compatibility: `-z`, `-d`, `-l`, `-k`, `-f`, `-c`, `-o`, `-v`, `-q`

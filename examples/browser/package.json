@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "node-liblzma-browser-demo",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}

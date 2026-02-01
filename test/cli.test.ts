@@ -2,7 +2,7 @@
  * Tests for nxz CLI tool
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -491,6 +491,48 @@ describe('nxz CLI', () => {
           expect(result.stderr).toContain('No such file'); // stderr should have message
         });
       });
+    });
+  });
+
+  describe('benchmark mode', () => {
+    /** Run nxz and capture stderr even on success (runNxz drops stderr on exit 0). */
+    function runBenchmark(args: string[], cwd: string) {
+      const proc = spawnSync('node', [NXZ_PATH, ...args], {
+        cwd,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        encoding: 'utf-8',
+        timeout: 30_000,
+      });
+      return { stdout: proc.stdout, stderr: proc.stderr, exitCode: proc.status ?? 1 };
+    }
+
+    it('should benchmark native vs WASM on a file', () => {
+      const inputFile = join(tempDir, 'bench-input.txt');
+      writeFileSync(inputFile, 'Benchmark test data. '.repeat(50));
+
+      const result = runBenchmark(['--benchmark', inputFile], tempDir);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('Benchmark:');
+      expect(result.stderr).toContain('Native');
+      expect(result.stderr).toContain('WASM');
+      expect(result.stderr).toContain('Compress time');
+      expect(result.stderr).toContain('Decompress time');
+      expect(result.stderr).toContain('Roundtrip OK');
+      expect(result.stderr).toContain('ALL PASS');
+      // Original file should not be deleted
+      expect(existsSync(inputFile)).toBe(true);
+    });
+
+    it('should accept preset with benchmark', () => {
+      const inputFile = join(tempDir, 'bench-preset.txt');
+      writeFileSync(inputFile, 'Preset benchmark data. '.repeat(50));
+
+      const result = runBenchmark(['-B', '-3', inputFile], tempDir);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('preset 3');
+      expect(result.stderr).toContain('ALL PASS');
     });
   });
 });

@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": [],
+    "outDir": "./lib"
+  },
+  "include": [
+    "src/wasm/**/*",
+    "src/lzma.browser.ts",
+    "src/lzma.inline.ts",
+    "src/errors.ts",
+    "src/types.ts"
+  ]
+}

@@ -10,6 +10,8 @@ on:
       - 'docs/**/*.md'
       - 'typedoc.json'
       - 'llms.txt'
+      - 'examples/browser/**'
+      - 'src/wasm/**'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +47,15 @@ jobs:
 
       - name: Copy llms.txt to docs site
         run: cp llms.txt docs-site/
+
+      - name: Build TypeScript and WASM artifacts
+        run: pnpm build
+
+      - name: Build browser demo
+        working-directory: examples/browser
+        run: |
+          pnpm install
+          pnpm exec vite build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

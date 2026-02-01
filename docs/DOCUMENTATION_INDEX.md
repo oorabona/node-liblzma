@@ -4,7 +4,7 @@ doc-meta:
   scope: project
   type: index
   created: 2026-01-24
-  updated: 2026-01-25
+  updated: 2026-02-01
 ---
 
 # Documentation Index
@@ -14,6 +14,7 @@ doc-meta:
 | Category | Document | Status |
 |----------|----------|--------|
 | Architecture | [Overview](plans/architecture.md) | draft |
+| Browser/WASM | [Browser Usage Guide](BROWSER.md) | canonical |
 
 ## By Scope
 
@@ -25,6 +26,7 @@ _Add scope indexes as they are created:_
 | Story | Spec | Status |
 |-------|------|--------|
 | CLI-NXZ | [nxz CLI Tool](plans/cli-nxz.md) | canonical |
+| WASM-BROWSER | [WASM Browser Support](plans/wasm-browser-support.md) | canonical |
 
 ## Audits & Reviews
 
@@ -34,8 +36,10 @@ _Add scope indexes as they are created:_
 
 ## Backlogs
 
-- [Main Backlog](../TODO.md)
+- [Project Backlog](../TODO.md) (includes WASM blocks)
 
 ## Archived
+
+- [Archived tasks — 2026-02](historic/done-2026-02.md)
 
 See [docs/historic/](historic/) for deprecated documentation.

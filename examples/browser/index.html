@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>node-liblzma Browser Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+    h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; }
+    .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }
+    .card h2 { margin-bottom: 1rem; font-size: 1.1rem; }
+    textarea { width: 100%; height: 80px; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; resize: vertical; }
+    button { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; margin: 0.5rem 0.5rem 0.5rem 0; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+    #log { background: #1a1a2e; color: #0f0; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.85rem; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .log-info { color: #0ff; }
+    .log-success { color: #0f0; }
+    .log-error { color: #f44; }
+    .log-data { color: #ff0; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 1rem; }
+    .stat { text-align: center; padding: 0.75rem; background: #f8f9fa; border-radius: 4px; }
+    .stat-value { font-size: 1.5rem; font-weight: bold; color: #2563eb; }
+    .stat-label { font-size: 0.75rem; color: #666; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>node-liblzma Browser Demo</h1>
+  <p class="subtitle">XZ/LZMA2 compression via WebAssembly</p>
+
+  <div class="card">
+    <h2>1. Buffer API (xzAsync / unxzAsync)</h2>
+    <textarea id="input-text" placeholder="Enter text to compress...">Hello from the browser! This is a test of node-liblzma WASM compression. The quick brown fox jumps over the lazy dog. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</textarea>
+    <div>
+      <button class="btn-primary" id="btn-compress" onclick="runBufferTest()">Compress &amp; Decompress</button>
+      <button class="btn-secondary" id="btn-large" onclick="runLargeTest()">Test 100KB</button>
+      <button class="btn-secondary" id="btn-presets" onclick="runPresetTest()">Compare Presets 0-6</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Streaming API (createXz / createUnxz)</h2>
+    <button class="btn-primary" id="btn-stream" onclick="runStreamTest()">Stream Compress &amp; Decompress</button>
+    <button class="btn-secondary" id="btn-progress" onclick="runProgressTest()">Stream with Progress Bar (500KB)</button>
+    <div id="progress-container" style="display:none; margin-top: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+        <span id="progress-label" style="font-size: 0.85rem; min-width: 90px;">Compressing</span>
+        <div style="flex:1; background: #e5e7eb; border-radius: 4px; height: 20px; overflow: hidden;">
+          <div id="progress-bar" style="height: 100%; background: #2563eb; border-radius: 4px; width: 0%; transition: width 0.1s;"></div>
+        </div>
+        <span id="progress-pct" style="font-size: 0.85rem; min-width: 40px; text-align: right;">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Utilities</h2>
+    <button class="btn-secondary" id="btn-utils" onclick="runUtilsTest()">Version &amp; isXZ Check</button>
+    <button class="btn-secondary" id="btn-file-index" onclick="runFileIndexTest()">Parse File Index</button>
+  </div>
+
+  <div class="card">
+    <h2>4. Error Handling</h2>
+    <button class="btn-secondary" id="btn-sync-error" onclick="runSyncErrorTest()">xzSync (should throw)</button>
+    <button class="btn-secondary" id="btn-corrupt" onclick="runCorruptDataTest()">Decompress Corrupt Data</button>
+  </div>
+
+  <div class="stats" id="stats" style="display:none;">
+    <div class="stat"><div class="stat-value" id="stat-version">-</div><div class="stat-label">liblzma version</div></div>
+    <div class="stat"><div class="stat-value" id="stat-ratio">-</div><div class="stat-label">Compression Ratio</div></div>
+    <div class="stat"><div class="stat-value" id="stat-compress">-</div><div class="stat-label">Compress Time</div></div>
+    <div class="stat"><div class="stat-value" id="stat-decompress">-</div><div class="stat-label">Decompress Time</div></div>
+  </div>
+
+  <div id="log"></div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
