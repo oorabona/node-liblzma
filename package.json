@@ -9,14 +9,33 @@
   },
   "exports": {
     ".": {
-      "import": "./lib/lzma.js",
+      "browser": {
+        "types": "./lib/lzma.browser.d.ts",
+        "import": "./lib/lzma.browser.js",
+        "default": "./lib/lzma.browser.js"
+      },
       "types": "./index.d.ts",
+      "import": "./lib/lzma.js",
       "default": "./lib/lzma.js"
+    },
+    "./wasm": {
+      "types": "./lib/wasm/index.d.ts",
+      "import": "./lib/wasm/index.js",
+      "default": "./lib/wasm/index.js"
+    },
+    "./inline": {
+      "types": "./lib/lzma.inline.d.ts",
+      "import": "./lib/lzma.inline.js",
+      "default": "./lib/lzma.inline.js"
     }
   },
   "scripts": {
     "postinstall": "node-gyp-build",
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-wasm-artifacts.js",
+    "build:wasm": "bash src/wasm/build.sh",
+    "build:wasm:size": "bash src/wasm/build.sh --size-only",
+    "build:wasm:inline": "node scripts/generate-wasm-inline.js",
+    "build:wasm:all": "pnpm build:wasm && pnpm build:wasm:inline",
     "build:watch": "tsc --watch",
     "prepare": "simple-git-hooks && pnpm run build",
     "prebuildify": "prebuildify --napi --strip -t $(node -v)",
@@ -66,6 +85,8 @@
   "files": [
     "lib/",
     "src/bindings/",
+    "src/wasm/liblzma.js",
+    "src/wasm/liblzma.wasm",
     "scripts/build_xz_with_cmake.py",
     "scripts/download_xz_from_github.py",
     "scripts/copy_dll.py",

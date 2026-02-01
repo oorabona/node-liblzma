@@ -1,0 +1,62 @@
+---
+name: Build WASM
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - "src/wasm/**"
+      - "deps/xz/**"
+      - ".github/workflows/build-wasm.yml"
+    branches:
+      - master
+      - "release/**"
+      - "feat/wasm-*"
+  pull_request:
+    paths:
+      - "src/wasm/**"
+      - "deps/xz/**"
+      - ".github/workflows/build-wasm.yml"
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-wasm:
+    name: Build & Validate WASM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Download XZ sources
+        run: python scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Build WASM
+        run: bash src/wasm/build.sh
+
+      - name: Size gate
+        run: bash src/wasm/check-size.sh
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: wasm-build
+          path: |
+            src/wasm/liblzma.wasm
+            src/wasm/liblzma.js
+          retention-days: 30

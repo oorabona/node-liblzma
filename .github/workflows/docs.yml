@@ -10,6 +10,8 @@ on:
       - 'docs/**/*.md'
       - 'typedoc.json'
       - 'llms.txt'
+      - 'examples/browser/**'
+      - 'src/wasm/**'
   workflow_dispatch:
 
 permissions:
@@ -26,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -45,6 +47,34 @@ jobs:
 
       - name: Copy llms.txt to docs site
         run: cp llms.txt docs-site/
+
+      - name: Build TypeScript
+        run: pnpm build
+
+      - name: Setup Python (for XZ download)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Download XZ sources
+        run: python scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Build WASM artifacts
+        run: bash src/wasm/build.sh
+
+      - name: Build browser demo
+        working-directory: examples/browser
+        run: |
+          pnpm install
+          pnpm exec vite build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
