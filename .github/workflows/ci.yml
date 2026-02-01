@@ -284,12 +284,29 @@ jobs:
           name: wasm-build
           path: src/wasm
 
+      - name: Install system dependencies
+        uses: ./.github/actions/install-system-deps
+        with:
+          use-global-liblzma: 'false'
+
       - name: Setup build environment
         uses: ./.github/actions/setup-env
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache-prefix: 'coverage'
           ccache-max-size: '200M'
+
+      - name: Cache build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            build/liblzma
+            prebuilds
+          key: >-
+            coverage-${{ runner.os }}-build-static-no-${{ needs.download-xz.outputs.xz-cache-key }}
+          restore-keys: |
+            coverage-${{ runner.os }}-build-static-no-
+            smoke-${{ runner.os }}-build-static-no-
 
       - name: Install and build
         run: pnpm install --frozen-lockfile
