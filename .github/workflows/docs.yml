@@ -48,8 +48,27 @@ jobs:
       - name: Copy llms.txt to docs site
         run: cp llms.txt docs-site/
 
-      - name: Build TypeScript and WASM artifacts
+      - name: Build TypeScript
         run: pnpm build
+
+      - name: Setup Python (for XZ download)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Download XZ sources
+        run: python scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Build WASM artifacts
+        run: bash src/wasm/build.sh
 
       - name: Build browser demo
         working-directory: examples/browser

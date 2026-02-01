@@ -74,7 +74,10 @@ Options:
 ### Streaming API
 
 ```typescript
-import { createXz, createUnxz } from 'node-liblzma';
+import { initModule, createXz, createUnxz } from 'node-liblzma';
+
+// Initialize the WASM module first (required before using any API)
+await initModule();
 
 // Returns a standard Web TransformStream<Uint8Array, Uint8Array>
 const xzStream = createXz({ preset: 3 });
@@ -87,6 +90,8 @@ const compressed = response.body.pipeThrough(createXz());
 // Pipe decompression
 const decompressedStream = compressedStream.pipeThrough(createUnxz());
 ```
+
+> **Note:** `initModule()` must be called once before using any WASM function. See [Custom WASM Loading](#custom-wasm-loading) for advanced initialization.
 
 ### Utility Functions
 
@@ -102,7 +107,8 @@ versionNumber(); // 50080020
 
 // Parse XZ file metadata
 const info = parseFileIndex(xzData);
-// { compressedSize, uncompressedSize, streamCount, check }
+// { compressedSize, streamCount, blockCount, check, memoryUsage }
+// Note: uncompressedSize is always 0 (footer-only parsing; full index parsing not yet implemented)
 ```
 
 ### Custom WASM Loading

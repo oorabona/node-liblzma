@@ -46,12 +46,24 @@ export function createXz(opts?: LZMAOptions): TransformStream<Uint8Array, Uint8A
 
   return new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
-      processChunk(module, stream, outPtr, chunk, LZMA_RUN, controller);
+      try {
+        processChunk(module, stream, outPtr, chunk, LZMA_RUN, controller);
+      } catch (e) {
+        doCleanup();
+        throw e;
+      }
     },
     flush(controller) {
-      processChunk(module, stream, outPtr, new Uint8Array(0), LZMA_FINISH, controller);
-      doCleanup();
+      try {
+        processChunk(module, stream, outPtr, new Uint8Array(0), LZMA_FINISH, controller);
+      } finally {
+        doCleanup();
+      }
     },
+    /* cancel() frees WASM resources when the readable side is cancelled.
+       Part of the Streams spec but not yet in TypeScript's DOM lib. */
+    // @ts-expect-error cancel is a valid Transformer method per Streams spec
+    cancel: doCleanup,
   });
 }
 
@@ -85,15 +97,27 @@ export function createUnxz(): TransformStream<Uint8Array, Uint8Array> {
   return new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
       if (finished) return;
-      const done = processChunk(module, stream, outPtr, chunk, LZMA_RUN, controller);
-      if (done) finished = true;
+      try {
+        const done = processChunk(module, stream, outPtr, chunk, LZMA_RUN, controller);
+        if (done) finished = true;
+      } catch (e) {
+        doCleanup();
+        throw e;
+      }
     },
     flush(controller) {
-      if (!finished) {
-        processChunk(module, stream, outPtr, new Uint8Array(0), LZMA_FINISH, controller);
+      try {
+        if (!finished) {
+          processChunk(module, stream, outPtr, new Uint8Array(0), LZMA_FINISH, controller);
+        }
+      } finally {
+        doCleanup();
       }
-      doCleanup();
     },
+    /* cancel() frees WASM resources when the readable side is cancelled.
+       Part of the Streams spec but not yet in TypeScript's DOM lib. */
+    // @ts-expect-error cancel is a valid Transformer method per Streams spec
+    cancel: doCleanup,
   });
 }
 

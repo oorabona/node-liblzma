@@ -7,8 +7,8 @@
  * Usage:
  *   import { xzAsync, unxzAsync } from 'node-liblzma/inline';
  *
- * The WASM module is automatically initialized on first use via
- * a custom loader that decodes the embedded base64 binary.
+ * Unlike the standard WASM entry point, initialization is NOT automatic.
+ * Call `ensureInlineInit()` once before using any exported function.
  *
  * Trade-off: Larger JS bundle (~70KB base64 vs ~52KB binary fetch)
  * but no external file to serve and no fetch() required.
@@ -24,7 +24,7 @@ let initialized = false;
 
 /**
  * Ensures the WASM module is initialized with the inline binary.
- * Called automatically by all exported functions.
+ * Must be called once before using any other exported function.
  */
 async function ensureInlineInit(): Promise<LZMAModule> {
   if (!initialized) {

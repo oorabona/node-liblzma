@@ -79,7 +79,7 @@ export function easyDecoderMemusage(): number {
 export interface XZFileIndex {
   /** Uncompressed size in bytes */
   uncompressedSize: number;
-  /** Compressed size in bytes (excluding headers) */
+  /** Compressed size in bytes (total file size including headers) */
   compressedSize: number;
   /** Number of streams in the file */
   streamCount: number;
@@ -124,7 +124,7 @@ export function parseFileIndex(buffer: Uint8Array | ArrayBuffer): XZFileIndex {
     ((footer[4] | (footer[5] << 8) | (footer[6] << 16) | (footer[7] << 24)) + 1) * 4;
 
   return {
-    uncompressedSize: 0, // Would need full index parsing
+    uncompressedSize: 0, // Not available from footer alone; requires full index parsing
     compressedSize: data.byteLength,
     streamCount: 1,
     blockCount: 1,

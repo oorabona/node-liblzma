@@ -16,6 +16,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { performance } from 'node:perf_hooks';
 import { pipeline } from 'node:stream/promises';
 import { parseArgs } from 'node:util';
 import {
