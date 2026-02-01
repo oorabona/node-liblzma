@@ -50,8 +50,8 @@ describe('WASM Decompress (Block 3)', () => {
       const compressed = await xzAsync('Callback decompress test');
       await new Promise<void>((resolve, reject) => {
         unxz(compressed, (err, result) => {
-          if (err) return reject(err);
-          expect(new TextDecoder().decode(result!)).toBe('Callback decompress test');
+          if (err || !result) return reject(err ?? new Error('No result'));
+          expect(new TextDecoder().decode(result)).toBe('Callback decompress test');
           resolve();
         });
       });
