@@ -24,9 +24,17 @@ jobs:
     name: Build & Validate WASM
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
-          submodules: true
+          python-version: '3.x'
+
+      - name: Download XZ sources
+        run: python scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14

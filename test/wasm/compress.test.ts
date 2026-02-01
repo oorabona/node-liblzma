@@ -63,7 +63,7 @@ describe('WASM Compress (Block 3)', () => {
         xz(input, (err, result) => {
           if (err) return reject(err);
           expect(result).toBeDefined();
-          expect(result![0]).toBe(0xfd);
+          expect(result?.[0]).toBe(0xfd);
           resolve();
         });
       }));
@@ -72,7 +72,7 @@ describe('WASM Compress (Block 3)', () => {
       new Promise<void>((resolve, reject) => {
         xz('Test with opts', { preset: 3 }, (err, result) => {
           if (err) return reject(err);
-          expect(result![0]).toBe(0xfd);
+          expect(result?.[0]).toBe(0xfd);
           resolve();
         });
       }));

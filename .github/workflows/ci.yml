@@ -191,6 +191,39 @@ jobs:
           retention-days: 1
           compression-level: 1
 
+  # Build WASM artifacts (once on Linux, shared across all test jobs)
+  build-wasm:
+    name: Build WASM
+    runs-on: ubuntu-latest
+    needs: download-xz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download XZ sources
+        uses: actions/download-artifact@v5
+        with:
+          name: xz-sources
+          path: .
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Build WASM
+        run: bash src/wasm/build.sh
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: wasm-build
+          path: |
+            src/wasm/liblzma.wasm
+            src/wasm/liblzma.js
+          retention-days: 1
+
   # Lint and format job (run once, not per matrix combination)
   quality:
     name: Code Quality
@@ -225,7 +258,7 @@ jobs:
   # Smoke tests (fast, essential combinations only)
   smoke-test:
     name: Smoke Test
-    needs: [setup, download-xz, quality]
+    needs: [setup, download-xz, build-wasm, quality]
     if: needs.setup.outputs.run-smoke-only == 'true'
     strategy:
       fail-fast: true  # Fail fast on smoke tests to save CI minutes
@@ -247,6 +280,12 @@ jobs:
         with:
           name: xz-sources
           path: .
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: wasm-build
+          path: src/wasm
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -300,7 +339,7 @@ jobs:
   # Full matrix (comprehensive testing)
   full-test:
     name: Full Test Matrix
-    needs: [setup, download-xz, quality]
+    needs: [setup, download-xz, build-wasm, quality]
     if: needs.setup.outputs.run-full-matrix == 'true'
     strategy:
       fail-fast: false
@@ -332,6 +371,12 @@ jobs:
         with:
           name: xz-sources
           path: .
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: wasm-build
+          path: src/wasm
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -387,7 +432,7 @@ jobs:
   # Multi-threading capability tests (separate job due to complexity)
   threading-test:
     name: Threading Tests
-    needs: [setup, download-xz, quality]
+    needs: [setup, download-xz, build-wasm, quality]
     if: needs.setup.outputs.run-full-matrix == 'true'
     strategy:
       fail-fast: false
@@ -412,6 +457,12 @@ jobs:
         with:
           name: xz-sources
           path: .
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: wasm-build
+          path: src/wasm
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -465,7 +516,7 @@ jobs:
   # Final summary
   summary:
     name: CI Summary
-    needs: [setup, quality, smoke-test, full-test, threading-test]
+    needs: [setup, quality, build-wasm, smoke-test, full-test, threading-test]
     if: always()
     runs-on: ubuntu-latest
     steps:
