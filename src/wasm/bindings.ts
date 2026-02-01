@@ -8,6 +8,7 @@
 import { createLZMAError, LZMAError } from '../errors.js';
 import { copyFromWasm, copyToWasm, type WasmLzmaStream, wasmAlloc, wasmFree } from './memory.js';
 import {
+  LZMA_BUF_ERROR,
   LZMA_CHECK_CRC64,
   LZMA_FINISH,
   LZMA_OK,
@@ -275,7 +276,7 @@ export function streamBufferDecode(
       }
 
       // Buffer too small — grow and retry
-      if (ret === 10 /* LZMA_BUF_ERROR */) {
+      if (ret === LZMA_BUF_ERROR) {
         wasmFree(module, outPtr);
         outSize *= 4;
         outPtr = wasmAlloc(module, outSize);

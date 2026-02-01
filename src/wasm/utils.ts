@@ -47,7 +47,8 @@ export function versionNumber(): number {
  * Get memory usage estimate for the easy encoder with given preset.
  *
  * Note: In WASM, this is approximated based on preset level.
- * Presets 7-9 will report high values (>256MB) that exceed WASM limits.
+ * Presets 7-9 require significantly more memory at runtime than reported here
+ * and may exceed the default WASM memory limit (256MB).
  */
 export function easyEncoderMemusage(preset: number): number {
   // Approximate memory usage per preset (from liblzma docs)

@@ -28,20 +28,26 @@ let initialized = false;
  */
 async function ensureInlineInit(): Promise<LZMAModule> {
   if (!initialized) {
-    initialized = true;
-    return initModule(async () => {
-      // Decode base64 to binary
-      const binaryString = atob(WASM_BASE64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const wasmBinary = bytes.buffer;
+    try {
+      const module = await initModule(async () => {
+        // Decode base64 to binary
+        const binaryString = atob(WASM_BASE64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const wasmBinary = bytes.buffer;
 
-      // Dynamically import the Emscripten glue
-      const { default: createLZMA } = await import('./wasm/liblzma.js');
-      return (await createLZMA({ wasmBinary })) as LZMAModule;
-    });
+        // Dynamically import the Emscripten glue
+        const { default: createLZMA } = await import('./wasm/liblzma.js');
+        return (await createLZMA({ wasmBinary })) as LZMAModule;
+      });
+      initialized = true;
+      return module;
+    } catch (err) {
+      initialized = false;
+      throw err;
+    }
   }
   // Already initialized — return current module
   const { getModule } = await import('./wasm/bindings.js');
