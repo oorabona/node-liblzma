@@ -56,6 +56,35 @@ describe('WASM Decompress (Block 3)', () => {
         });
       });
     });
+
+    it('should accept opts + callback (3-arg overload)', async () => {
+      const compressed = await xzAsync('Opts overload test');
+      await new Promise<void>((resolve, reject) => {
+        unxz(compressed, {}, (err, result) => {
+          if (err || !result) return reject(err ?? new Error('No result'));
+          expect(new TextDecoder().decode(result)).toBe('Opts overload test');
+          resolve();
+        });
+      });
+    });
+
+    it('should pass error to callback on invalid input', () =>
+      new Promise<void>((resolve) => {
+        const garbage = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x05]);
+        unxz(garbage, (err) => {
+          expect(err).toBeInstanceOf(Error);
+          resolve();
+        });
+      }));
+
+    it('should pass error to callback with opts on invalid input', () =>
+      new Promise<void>((resolve) => {
+        const garbage = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x05]);
+        unxz(garbage, {}, (err) => {
+          expect(err).toBeInstanceOf(Error);
+          resolve();
+        });
+      }));
   });
 
   describe('unxzSync', () => {

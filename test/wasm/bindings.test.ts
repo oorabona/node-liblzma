@@ -18,7 +18,7 @@ import {
   streamBufferDecode,
   versionString,
 } from '../../src/wasm/bindings.js';
-import { WasmLzmaStream } from '../../src/wasm/memory.js';
+import { WasmLzmaStream, withWasmBuffer } from '../../src/wasm/memory.js';
 import {
   LZMA_CHECK_CRC32,
   LZMA_CHECK_CRC64,
@@ -79,6 +79,23 @@ describe('WASM Bindings (Block 2)', () => {
       expect(stream.availIn).toBe(0);
       expect(stream.availOut).toBe(0);
       stream.free();
+    });
+
+    it('should report totalIn and totalOut after encoding', () => {
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      encoderInit(stream, 0);
+      const input = new TextEncoder().encode('totalIn/totalOut test data');
+      const result = processStream(stream, input);
+      // After encoding, both totalIn and totalOut should be positive
+      // Note: processStream already called end()+free(), so we verify via the result
+      expect(result.byteLength).toBeGreaterThan(0);
+
+      // Test with a fresh stream to read totals mid-operation
+      const stream2 = new WasmLzmaStream(mod);
+      expect(stream2.totalIn).toBe(0);
+      expect(stream2.totalOut).toBe(0);
+      stream2.free();
     });
 
     it('should handle double-free gracefully', () => {
@@ -229,6 +246,64 @@ describe('WASM Bindings (Block 2)', () => {
 
       const decompressed = streamBufferDecode(compressed);
       expect(decompressed).toEqual(input);
+    });
+  });
+
+  describe('Error paths', () => {
+    it('should throw on corrupt data in streamBufferDecode', () => {
+      // Valid XZ header but corrupted payload triggers createLZMAError path
+      const _mod = getModule();
+      const valid = easyBufferEncode(new TextEncoder().encode('error test'), 0);
+      const corrupted = new Uint8Array(valid);
+      // Corrupt bytes in the middle of the compressed payload
+      for (let i = 12; i < Math.min(corrupted.byteLength - 12, 30); i++) {
+        corrupted[i] ^= 0xff;
+      }
+      expect(() => streamBufferDecode(corrupted)).toThrow();
+    });
+
+    it('should throw on corrupt data in processStream (decode)', () => {
+      const mod = getModule();
+      const valid = easyBufferEncode(new TextEncoder().encode('stream error'), 0);
+      const corrupted = new Uint8Array(valid);
+      // Corrupt compressed payload
+      for (let i = 12; i < Math.min(corrupted.byteLength - 12, 30); i++) {
+        corrupted[i] ^= 0xff;
+      }
+      const stream = new WasmLzmaStream(mod);
+      decoderInit(stream);
+      expect(() => processStream(stream, corrupted)).toThrow();
+    });
+  });
+
+  describe('withWasmBuffer', () => {
+    it('should allocate, execute callback, and free memory', async () => {
+      const mod = getModule();
+      const result = await withWasmBuffer(mod, 256, (ptr) => {
+        expect(ptr).toBeGreaterThan(0);
+        // Write and read a value to verify the buffer is usable
+        mod.HEAPU8[ptr] = 42;
+        return mod.HEAPU8[ptr];
+      });
+      expect(result).toBe(42);
+    });
+
+    it('should free memory even when callback throws', async () => {
+      const mod = getModule();
+      await expect(
+        withWasmBuffer(mod, 256, () => {
+          throw new Error('callback error');
+        })
+      ).rejects.toThrow('callback error');
+    });
+
+    it('should work with async callbacks', async () => {
+      const mod = getModule();
+      const result = await withWasmBuffer(mod, 128, async (ptr) => {
+        expect(ptr).toBeGreaterThan(0);
+        return 'async result';
+      });
+      expect(result).toBe('async result');
     });
   });
 

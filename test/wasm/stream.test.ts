@@ -90,6 +90,17 @@ describe('WASM Streaming (Block 4)', () => {
     });
   });
 
+  describe('Error handling', () => {
+    it('should error on completely invalid data in decompression stream', async () => {
+      // Feed random garbage that isn't valid XZ at all
+      const garbage = new Uint8Array(1024);
+      for (let i = 0; i < garbage.length; i++) garbage[i] = (i * 7 + 13) % 256;
+
+      const decompressStream = createInputStream(garbage).pipeThrough(createUnxz());
+      await expect(collectStream(decompressStream)).rejects.toThrow();
+    });
+  });
+
   describe('Chunked streaming', () => {
     it('should handle data split into small chunks', async () => {
       const original = new TextEncoder().encode('A'.repeat(50000));

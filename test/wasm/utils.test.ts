@@ -135,5 +135,90 @@ describe('WASM Utils (Block 5)', () => {
       const magic = new Uint8Array([0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]);
       expect(() => parseFileIndex(magic)).toThrow(/too small/);
     });
+
+    it('should throw on invalid XZ footer magic bytes', async () => {
+      const compressed = await xzAsync('footer test');
+      const corrupted = new Uint8Array(compressed);
+      // Corrupt the footer magic 'YZ' (last 2 bytes)
+      corrupted[corrupted.byteLength - 1] = 0x00;
+      corrupted[corrupted.byteLength - 2] = 0x00;
+      expect(() => parseFileIndex(corrupted)).toThrow(/Invalid XZ footer/);
+    });
+
+    it('should throw on invalid backward size', async () => {
+      const compressed = await xzAsync('backward size test');
+      const corrupted = new Uint8Array(compressed);
+      // Set backward size bytes (footer offset 4-7) to a huge value
+      // that would place the index outside the file
+      corrupted[corrupted.byteLength - 8] = 0xff;
+      corrupted[corrupted.byteLength - 7] = 0xff;
+      corrupted[corrupted.byteLength - 6] = 0xff;
+      corrupted[corrupted.byteLength - 5] = 0x7f;
+      expect(() => parseFileIndex(corrupted)).toThrow(/Invalid backward size/);
+    });
+
+    it('should throw on invalid XZ index indicator', async () => {
+      const compressed = await xzAsync('index indicator test');
+      const corrupted = new Uint8Array(compressed);
+      // The index indicator is at: fileSize - 12 - backwardSize
+      // Read backward size from footer (little-endian u32 at offset -8)
+      const footer = corrupted.subarray(corrupted.byteLength - 12);
+      const backwardSize =
+        ((footer[4] | (footer[5] << 8) | (footer[6] << 16) | (footer[7] << 24)) + 1) * 4;
+      const indexStart = corrupted.byteLength - 12 - backwardSize;
+      // Corrupt the index indicator byte (should be 0x00)
+      corrupted[indexStart] = 0xff;
+      expect(() => parseFileIndex(corrupted)).toThrow(/Invalid XZ index indicator/);
+    });
+
+    it('should throw on VLI with too many continuation bytes', () => {
+      // Build fake XZ data with valid header, footer, and backward size
+      // but a VLI in the index that has 10+ continuation bytes (all with high bit set)
+      const compressed = new Uint8Array(36);
+      // XZ magic header
+      compressed.set([0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]);
+      // XZ footer at last 12 bytes: CRC32(4) + BackwardSize(4) + Flags(2) + 'YZ'(2)
+      const footerStart = compressed.byteLength - 12;
+      // Backward size = (0 + 1) * 4 = 4 → index is 4 bytes before footer
+      compressed[footerStart + 4] = 0x00;
+      compressed[footerStart + 5] = 0x00;
+      compressed[footerStart + 6] = 0x00;
+      compressed[footerStart + 7] = 0x00;
+      // Footer flags
+      compressed[footerStart + 8] = 0x00;
+      compressed[footerStart + 9] = 0x00;
+      // Footer magic 'YZ'
+      compressed[footerStart + 10] = 0x59;
+      compressed[footerStart + 11] = 0x5a;
+      // Index section at footerStart - 4
+      const indexStart = footerStart - 4;
+      compressed[indexStart] = 0x00; // Valid index indicator
+      // VLI with all continuation bytes (high bit set) — will exceed 9 bytes
+      compressed[indexStart + 1] = 0x80;
+      compressed[indexStart + 2] = 0x80;
+      compressed[indexStart + 3] = 0x80;
+      // Need more bytes for VLI overflow — extend the buffer
+      // Actually the VLI reader will run past available bytes and throw "Truncated VLI"
+      // Let's make a bigger buffer with 10+ continuation bytes
+      const big = new Uint8Array(48);
+      big.set([0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]); // header
+      const bFooterStart = big.byteLength - 12;
+      // Backward size = (3 + 1) * 4 = 16 → index starts 16 bytes before footer
+      big[bFooterStart + 4] = 0x03;
+      big[bFooterStart + 5] = 0x00;
+      big[bFooterStart + 6] = 0x00;
+      big[bFooterStart + 7] = 0x00;
+      big[bFooterStart + 8] = 0x00;
+      big[bFooterStart + 9] = 0x00;
+      big[bFooterStart + 10] = 0x59;
+      big[bFooterStart + 11] = 0x5a;
+      const bIndexStart = bFooterStart - 16;
+      big[bIndexStart] = 0x00; // index indicator
+      // Fill VLI record count with 10 continuation bytes (all have high bit set)
+      for (let i = 1; i <= 10; i++) {
+        big[bIndexStart + i] = 0x80;
+      }
+      expect(() => parseFileIndex(big)).toThrow(/too many bytes/);
+    });
   });
 });
