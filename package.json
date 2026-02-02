@@ -142,5 +142,6 @@
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec nano-staged"
-  }
+  },
+  "packageManager": "pnpm@10.15.0"
 }
