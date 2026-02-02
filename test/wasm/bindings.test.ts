@@ -7,6 +7,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  autoDecoderInit,
   checkIsSupported,
   decoderInit,
   easyBufferEncode,
@@ -147,6 +148,37 @@ describe('WASM Bindings (Block 2)', () => {
       const stream = new WasmLzmaStream(mod);
       try {
         decoderInit(stream);
+        expect(memusage(stream)).toBeGreaterThan(0);
+      } finally {
+        end(stream);
+        stream.free();
+      }
+    });
+  });
+
+  describe('Auto decoder initialization', () => {
+    it('should initialize an auto decoder and decompress XZ data', () => {
+      const input = new TextEncoder().encode('Auto decoder test');
+      const compressed = easyBufferEncode(input, 0);
+
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      try {
+        autoDecoderInit(stream);
+        expect(memusage(stream)).toBeGreaterThan(0);
+        const result = processStream(stream, compressed);
+        expect(result).toEqual(input);
+      } finally {
+        end(stream);
+        stream.free();
+      }
+    });
+
+    it('should accept a custom memlimit as number', () => {
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      try {
+        autoDecoderInit(stream, 128 * 1024 * 1024);
         expect(memusage(stream)).toBeGreaterThan(0);
       } finally {
         end(stream);
