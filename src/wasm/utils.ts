@@ -102,9 +102,11 @@ function readVLI(data: Uint8Array, offset: number): [number, number] {
   let value = 0;
   let shift = 0;
   for (let i = 0; i < 9; i++) {
+    /* v8 ignore start - unreachable via parseFileIndex: buffer always has enough bytes */
     if (offset + i >= data.byteLength) {
       throw new Error('Truncated VLI in XZ index');
     }
+    /* v8 ignore stop */
     const byte = data[offset + i];
     value |= (byte & 0x7f) * 2 ** shift;
     shift += 7;

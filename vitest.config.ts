@@ -38,7 +38,7 @@ export default defineConfig({
       // Configurations V8 pour précision maximale
       cleanOnRerun: true,
       all: false, // N'inclut que les fichiers qui sont réellement chargés
-      skipFull: true, // Plus rapide et plus précis
+      skipFull: true,
       // Nouvelle option Vitest 3.2+ pour améliorer la précision
       experimentalAstAwareRemapping: true,
       ignoreEmptyLines: true,

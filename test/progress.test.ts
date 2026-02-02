@@ -2,8 +2,8 @@
  * Tests for progress events in compression/decompression streams
  */
 import { describe, expect, it } from 'vitest';
-import type { ProgressInfo } from '../lib/lzma.js';
-import { createUnxz, createXz } from '../lib/lzma.js';
+import type { ProgressInfo } from '../src/lzma.js';
+import { createUnxz, createXz } from '../src/lzma.js';
 
 describe('Progress Events', () => {
   const testData = Buffer.alloc(100_000, 'A'); // 100KB of data

@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { isXZ, unxzSync, xzSync } from '../lib/lzma.js';
+import { isXZ, unxzSync, xzSync } from '../src/lzma.js';
 
 const NXZ_PATH = join(import.meta.dirname, '..', 'lib', 'cli', 'nxz.js');
 

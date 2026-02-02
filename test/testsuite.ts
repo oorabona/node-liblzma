@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import * as xzStream from '../lib/lzma.js';
+import * as xzStream from '../src/lzma.js';
 import * as helpers from './helpers.utils.js';
 
 const __filename = fileURLToPath(import.meta.url);

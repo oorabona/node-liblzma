@@ -290,10 +290,11 @@ export abstract class XzStream extends Transform {
       }
       try {
         clonedFilters = [...opts.filters];
-        /* v8 ignore next 3 */
+        /* v8 ignore start */
       } catch (_error) {
         throw new Error('Filters need to be in an array!');
       }
+      /* v8 ignore stop */
     } else {
       clonedFilters = [filter.LZMA2];
     }
@@ -314,10 +315,11 @@ export abstract class XzStream extends Transform {
     assert.ok(Array.isArray(this._opts.filters), 'Filters need to be in an array!');
 
     // Add default filter LZMA2 if none provided
-    /* v8 ignore next 2 */
+    /* v8 ignore start */
     if (this._opts.filters.indexOf(filter.LZMA2) === -1) {
       this._opts.filters.push(filter.LZMA2);
     }
+    /* v8 ignore stop */
 
     // Ensure LZMA2 is always the last filter (requirement of liblzma)
     const lzma2Index = this._opts.filters.indexOf(filter.LZMA2);
@@ -419,12 +421,10 @@ export abstract class XzStream extends Transform {
       if (cb) {
         process.nextTick(cb);
       }
-      /* v8 ignore next 4 */
     } else if (ws.ending) {
       if (cb) {
         this.once('end', cb);
       }
-      /* v8 ignore next 5 - drain handling is difficult to test reliably */
     } else if (ws.needDrain) {
       this.once('drain', () => {
         this.flush(cb);
@@ -494,11 +494,12 @@ export abstract class XzStream extends Transform {
   }
 
   override _flush(callback: TransformCallback): void {
-    /* v8 ignore next 4 - Defensive check for double close scenario */
+    /* v8 ignore start - Defensive check for double close scenario */
     if (this._closed) {
       process.nextTick(() => callback());
       return;
     }
+    /* v8 ignore stop */
     this._transform(Buffer.alloc(0), 'utf8', callback);
   }
 
@@ -515,9 +516,10 @@ export abstract class XzStream extends Transform {
     let availInBefore = chunk?.length;
     let availOutBefore = this._chunkSize - this._offset;
     let inOff = 0;
-    /* v8 ignore next 3 */
+    /* v8 ignore start */
 
     if (!async) {
+      /* v8 ignore stop */
       // Doing it synchronously
       const buffers: Buffer[] = [];
       let nread = 0;
@@ -607,16 +609,18 @@ export abstract class XzStream extends Transform {
     // Async path
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex but necessary async LZMA callback logic with proper error handling
     const callback = (errno: number, availInAfter: number, availOutAfter: number): boolean => {
-      /* v8 ignore next 3 - error state handling is difficult to test */
+      /* v8 ignore start - error state handling is difficult to test */
       if (this._hadError) {
         return false;
       }
-      /* v8 ignore next 5 - async error path handling */
+      /* v8 ignore stop */
+      /* v8 ignore start - async error path handling */
       // F-003: If LZMA engine returned an error, emit onerror event (matches sync path at line 438)
       if (errno !== liblzma.LZMA_OK && errno !== liblzma.LZMA_STREAM_END) {
         this.emit('onerror', errno);
         return false;
       }
+      /* v8 ignore stop */
       /* v8 ignore next */
 
       const used = availOutBefore - availOutAfter;
@@ -637,9 +641,10 @@ export abstract class XzStream extends Transform {
       }
 
       if (availOutAfter === 0 || availInAfter > 0) {
-        /* v8 ignore next 2 - complex async processing continuation */
+        /* v8 ignore start - complex async processing continuation */
         inOff += (availInBefore ?? 0) - availInAfter;
         availInBefore = availInAfter;
+        /* v8 ignore stop */
         this.lzma.code(
           flushFlag,
           chunk,
@@ -999,9 +1004,10 @@ export function xzSync(buffer: Buffer | string, opts?: LZMAOptions): Buffer {
 export function xzAsync(buffer: Buffer | string, opts?: LZMAOptions): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     xz(buffer, opts || {}, (error, result) => {
-      /* v8 ignore next 3 - error handling is tested in callback-based tests */
+      /* v8 ignore start - error handling is tested in callback-based tests */
       if (error) {
         reject(error);
+        /* v8 ignore stop */
       } else {
         resolve(result as Buffer);
       }
@@ -1024,9 +1030,10 @@ export function xzAsync(buffer: Buffer | string, opts?: LZMAOptions): Promise<Bu
 export function unxzAsync(buffer: Buffer | string, opts?: LZMAOptions): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     unxz(buffer, opts || {}, (error, result) => {
-      /* v8 ignore next 2 - error handling is tested in callback-based tests */
+      /* v8 ignore start - error handling is tested in callback-based tests */
       if (error) {
         reject(error);
+        /* v8 ignore stop */
       } else {
         resolve(result as Buffer);
       }
@@ -1054,12 +1061,13 @@ function xzBuffer(engine: XzStream, buffer: Buffer | string, callback: Compressi
     engine.close();
   };
 
-  /* v8 ignore next 5 - error callback path */
+  /* v8 ignore start - error callback path */
   const onError = (err: Error): void => {
     engine.removeListener('end', onEnd);
     engine.removeListener('readable', flow);
     callback(err);
   };
+  /* v8 ignore stop */
 
   engine.on('error', onError);
   engine.on('end', onEnd);
@@ -1074,7 +1082,6 @@ function xzBufferSync(engine: XzStream, buffer: Buffer | string): Buffer {
     buf = Buffer.from(buffer);
   } else if (buffer instanceof Buffer) {
     buf = buffer;
-    /* v8 ignore next 3 - type validation error path */
   } else {
     throw new TypeError('Not a string or buffer');
   }

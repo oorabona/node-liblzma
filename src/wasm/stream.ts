@@ -48,10 +48,12 @@ export function createXz(opts?: LZMAOptions): TransformStream<Uint8Array, Uint8A
     transform(chunk, controller) {
       try {
         processChunk(module, stream, outPtr, chunk, LZMA_RUN, controller);
+        /* v8 ignore start - requires WASM compressor to error on valid input */
       } catch (e) {
         doCleanup();
         throw e;
       }
+      /* v8 ignore stop */
     },
     flush(controller) {
       try {
@@ -107,9 +109,11 @@ export function createUnxz(): TransformStream<Uint8Array, Uint8Array> {
     },
     flush(controller) {
       try {
+        /* v8 ignore start - requires partial XZ block that doesn't error in transform */
         if (!finished) {
           processChunk(module, stream, outPtr, new Uint8Array(0), LZMA_FINISH, controller);
         }
+        /* v8 ignore stop */
       } finally {
         doCleanup();
       }

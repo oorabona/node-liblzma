@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createUnxz, createXz, filter, hasThreads, Xz, xzSync } from '../lib/lzma.js';
+import { createUnxz, createXz, filter, hasThreads, Xz, xzSync } from '../src/lzma.js';
 
 describe('Xz Compressor options', () => {
   it('should only allow Array filters', () => {

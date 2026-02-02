@@ -48,9 +48,10 @@ export async function initModule(loader?: () => Promise<LZMAModule>): Promise<LZ
     if (loader) {
       moduleInstance = await loader();
     } else {
-      // Dynamic import of the Emscripten glue code
+      /* v8 ignore start - default import path only used in browser environments */
       const { default: createLZMA } = await import('./liblzma.js');
       moduleInstance = (await createLZMA()) as LZMAModule;
+      /* v8 ignore stop */
     }
     return moduleInstance;
   })();
@@ -101,9 +102,11 @@ export function encoderInit(
 ): void {
   const module = getModule();
   const ret = module._lzma_easy_encoder(stream.ptr, preset, check);
+  /* v8 ignore start - requires C-level encoder init failure */
   if (ret !== LZMA_OK) {
     throw createLZMAError(ret);
   }
+  /* v8 ignore stop */
 }
 
 /**
@@ -120,9 +123,11 @@ export function decoderInit(
   const module = getModule();
   const limit = typeof memlimit === 'number' ? BigInt(memlimit) : memlimit;
   const ret = module._lzma_stream_decoder(stream.ptr, limit, 0);
+  /* v8 ignore start - requires C-level decoder init failure */
   if (ret !== LZMA_OK) {
     throw createLZMAError(ret);
   }
+  /* v8 ignore stop */
 }
 
 /**
@@ -139,9 +144,11 @@ export function autoDecoderInit(
   const module = getModule();
   const limit = typeof memlimit === 'number' ? BigInt(memlimit) : memlimit;
   const ret = module._lzma_auto_decoder(stream.ptr, limit, 0);
+  /* v8 ignore start - requires C-level auto decoder init failure */
   if (ret !== LZMA_OK) {
     throw createLZMAError(ret);
   }
+  /* v8 ignore stop */
 }
 
 /**
@@ -212,9 +219,11 @@ export function easyBufferEncode(
       outSize
     );
 
+    /* v8 ignore start - requires C-level buffer encode failure */
     if (ret !== LZMA_OK) {
       throw createLZMAError(ret);
     }
+    /* v8 ignore stop */
 
     const outPos = module.getValue(outPosPtr, 'i32');
     return copyFromWasm(module, outPtr, outPos);
@@ -283,10 +292,14 @@ export function streamBufferDecode(
         continue;
       }
 
+      /* v8 ignore start */
       throw createLZMAError(ret);
+      /* v8 ignore stop */
     }
 
+    /* v8 ignore start */
     throw new LZMAError('Decompression failed: output buffer exhausted', 10);
+    /* v8 ignore stop */
   } finally {
     wasmFree(module, inPtr);
     wasmFree(module, outPtr);

@@ -14,8 +14,10 @@ import {
   encoderInit,
   end,
   getModule,
+  initModule,
   memusage,
   processStream,
+  resetModule,
   streamBufferDecode,
   versionString,
 } from '../../src/wasm/bindings.js';
@@ -336,6 +338,38 @@ describe('WASM Bindings (Block 2)', () => {
         return 'async result';
       });
       expect(result).toBe('async result');
+    });
+  });
+
+  describe('getModule without init', () => {
+    it('should throw when module is not initialized', () => {
+      resetModule();
+      expect(() => getModule()).toThrow('WASM module not initialized');
+    });
+
+    // Re-initialize for subsequent tests
+    afterAll(async () => {
+      await loadWasmModule();
+    });
+  });
+
+  describe('initModule concurrency', () => {
+    it('should return the same module when called concurrently', async () => {
+      // Reset so we can test the init flow fresh
+      resetModule();
+
+      // Call initModule twice concurrently — second call should hit the modulePromise branch
+      const [mod1, mod2] = await Promise.all([loadWasmModule(), loadWasmModule()]);
+
+      expect(mod1).toBe(mod2);
+      expect(mod1._malloc).toBeTypeOf('function');
+    });
+
+    it('should return cached instance on subsequent calls', async () => {
+      // Module is already loaded from previous test
+      const mod1 = getModule();
+      const mod2 = await initModule();
+      expect(mod1).toBe(mod2);
     });
   });
 

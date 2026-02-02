@@ -253,4 +253,42 @@ describe('Stream Lifecycle Operations', () => {
       });
     });
   });
+
+  it('should handle flush during backpressure (needDrain)', async () => {
+    const xz = new lzma.Xz({ preset: 0 });
+    streams.push(xz);
+
+    // Use a tiny highWaterMark to trigger backpressure quickly
+    const { Writable } = await import('node:stream');
+    const sink = new Writable({
+      highWaterMark: 1,
+      write(_chunk, _encoding, cb) {
+        // Slow consumer — introduce a small delay to maintain backpressure
+        setTimeout(cb, 1);
+      },
+    });
+
+    xz.pipe(sink);
+
+    // Write data until write() returns false (backpressure)
+    const chunk = Buffer.alloc(64 * 1024, 0x42);
+    let drainNeeded = false;
+    while (!drainNeeded) {
+      drainNeeded = !xz.write(chunk);
+    }
+
+    // Now the writable buffer is full — flush should hit the needDrain path
+    await new Promise<void>((resolve) => {
+      xz.flush(() => {
+        resolve();
+      });
+    });
+
+    // Clean up
+    xz.end();
+    await new Promise<void>((resolve) => {
+      sink.on('finish', resolve);
+      sink.on('close', resolve);
+    });
+  });
 });

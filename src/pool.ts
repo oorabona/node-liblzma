@@ -164,8 +164,9 @@ export class LZMAPool extends EventEmitter {
     }
 
     const item = this.queue.shift();
-    /* c8 ignore next - should never happen because we check queue length before */
+    /* v8 ignore start - should never happen because we check queue length before */
     if (!item) return;
+    /* v8 ignore stop */
 
     this.metrics.active++;
     this.metrics.queued = this.queue.length;

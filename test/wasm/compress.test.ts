@@ -78,6 +78,21 @@ describe('WASM Compress (Block 3)', () => {
       }));
   });
 
+  describe('xz error callback', () => {
+    it('should pass error to callback on compression failure', () =>
+      new Promise<void>((resolve, reject) => {
+        // Preset 99 is invalid — easyBufferEncode will throw LZMA_OPTIONS_ERROR
+        xz('test data', { preset: 99 }, (err, _result) => {
+          try {
+            expect(err).toBeInstanceOf(Error);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }));
+  });
+
   describe('xzSync', () => {
     it('SC-10b: should throw in browser (WASM) environment', () => {
       expect(() => xzSync('test')).toThrow(/Sync operations not supported/);

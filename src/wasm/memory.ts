@@ -13,9 +13,11 @@ import { LZMA_STREAM_OFFSETS, LZMA_STREAM_SIZE, type LZMAModule } from './types.
  */
 export function wasmAlloc(module: LZMAModule, size: number): number {
   const ptr = module._malloc(size);
+  /* v8 ignore start - malloc failure requires exhausting WASM heap */
   if (ptr === 0) {
     throw new Error(`WASM malloc failed for ${size} bytes`);
   }
+  /* v8 ignore stop */
   // Zero the allocated memory
   module.HEAPU8.fill(0, ptr, ptr + size);
   return ptr;

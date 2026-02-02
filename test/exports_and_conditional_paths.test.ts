@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as lzma from '../lib/lzma.js';
+import * as lzma from '../src/lzma.js';
 
 describe('Exports and Conditional Paths', () => {
   it('should test _flush method (uncovered function)', () => {
