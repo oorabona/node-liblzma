@@ -35,7 +35,7 @@ jobs:
       version: ${{ steps.capture.outputs.version }}
       tag: ${{ steps.capture.outputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -80,7 +80,7 @@ jobs:
     needs: pre-flight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.pre-flight.outputs.tag }}
           fetch-depth: 0
