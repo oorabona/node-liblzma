@@ -13,17 +13,10 @@ export default defineConfig({
     // Retry failed tests once to handle intermittent race conditions
     retry: 1,
 
-    // Use forks universally to avoid IPC channel issues (Vitest #8201)
-    // This resolves "Channel closed" errors on GitHub Actions
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true, // Run tests sequentially in single fork
-        isolate: true, // Isolate test environment
-        maxThreads: 1, // Explicit thread control for shutdown stability
-        minThreads: 1,
-      },
-    },
+    // Run tests sequentially in single worker with isolation (Vitest 4 flat config)
+    // Replaces old pool/poolOptions — resolves "Channel closed" errors on CI
+    maxWorkers: 1,
+    isolate: true,
 
     // Coverage configuration - V8 optimisé pour précision max
     coverage: {
