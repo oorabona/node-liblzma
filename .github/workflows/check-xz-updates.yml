@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload XZ sources as artifact
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: xz-source-${{ steps.check.outputs.latest }}
           path: deps/xz-artifact/
@@ -235,7 +235,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload XZ sources as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: xz-source-${{ needs.check-updates.outputs.current_version }}
           path: deps/xz/
