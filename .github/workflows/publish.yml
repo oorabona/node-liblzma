@@ -100,7 +100,13 @@ jobs:
 
       - name: Publish node-liblzma to npm with provenance
         if: ${{ inputs.skip_npm != true }}
-        run: npm publish --provenance --access public
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "node-liblzma@${VERSION}" version 2>/dev/null; then
+            echo "⏭️ node-liblzma@${VERSION} already published, skipping"
+          else
+            npm publish --provenance --access public
+          fi
 
       - name: Publish workspace packages
         if: ${{ inputs.skip_npm != true }}
