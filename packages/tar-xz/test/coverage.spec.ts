@@ -213,6 +213,28 @@ describe('Coverage: applyPaxAttributes', () => {
     expect(result.uname).toBe('newuser');
     expect(result.gname).toBe('newgroup');
   });
+
+  it('applies partial attributes (no path, no size)', () => {
+    const entry: TarEntry = {
+      name: 'keep.txt',
+      type: TarEntryType.FILE,
+      size: 100,
+      mode: 0o644,
+      uid: 1000,
+      gid: 1000,
+      mtime: 1000000,
+      uname: 'user',
+      gname: 'group',
+      devmajor: 0,
+      devminor: 0,
+      linkname: '',
+    };
+
+    const result = applyPaxAttributes(entry, { mtime: 9999999.9 });
+    expect(result.name).toBe('keep.txt');
+    expect(result.size).toBe(100);
+    expect(result.mtime).toBe(9999999);
+  });
 });
 
 describe('Coverage: createPaxHeaderBlocks', () => {
