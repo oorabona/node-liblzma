@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-02-06
+
+### Added
+- add tar-xz library and nxz standalone CLI packages ([bb915c6](https://github.com/oorabona/node-liblzma/commit/bb915c6))
+
+### Fixed
+- restore packageManager field required by pnpm/action-setup ([ec6c358](https://github.com/oorabona/node-liblzma/commit/ec6c358))
+- add USE_GLOBAL=false to coverage job for bundled liblzma build (ci) ([be6f7ad](https://github.com/oorabona/node-liblzma/commit/be6f7ad))
+- add RUNTIME_LINK and ENABLE_THREAD_SUPPORT env vars to coverage job (ci) ([20adea6](https://github.com/oorabona/node-liblzma/commit/20adea6))
+- add system deps and build cache to coverage job (ci) ([8d071b9](https://github.com/oorabona/node-liblzma/commit/8d071b9))
+- use token param instead of env for Codecov action (ci) ([394b66b](https://github.com/oorabona/node-liblzma/commit/394b66b))
+- remove tag push trigger from publish.yml and add manual-release workflow (ci) ([a7d6642](https://github.com/oorabona/node-liblzma/commit/a7d6642))
+
+### Changed
+- improve coverage to 100% lines/functions across all modules (coverage) ([a1ebf58](https://github.com/oorabona/node-liblzma/commit/a1ebf58))
+- migrate poolOptions to Vitest 4 top-level config ([4faf866](https://github.com/oorabona/node-liblzma/commit/4faf866))
+- add autoDecoderInit coverage tests (wasm) ([608ae36](https://github.com/oorabona/node-liblzma/commit/608ae36))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([7b11b3f](https://github.com/oorabona/node-liblzma/commit/7b11b3f))
+- clean .npmrc and remove packageManager field ([f4dc9a4](https://github.com/oorabona/node-liblzma/commit/f4dc9a4))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([2a24fa8](https://github.com/oorabona/node-liblzma/commit/2a24fa8))
+- improve coverage from 91% to 94.5% with targeted tests (wasm) ([63b9b5f](https://github.com/oorabona/node-liblzma/commit/63b9b5f))
+
 ## [3.0.0] - 2026-02-01
 
 ### Added
@@ -330,7 +352,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...HEAD
 [3.0.0]: https://github.com/oorabona/node-liblzma/compare/v2.2.0...v3.0.0
 [2.0.3]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...v2.0.2
@@ -341,3 +363,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
 [v2.2.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.2.0
 [2.2.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.2.0
+[v3.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v3.1.0
+[3.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v3.1.0
