@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "NodeJS wrapper for liblzma",
   "type": "module",
   "main": "./lib/lzma.js",
@@ -86,6 +86,7 @@
   "types": "index.d.ts",
   "files": [
     "lib/",
+    "prebuilds/",
     "src/bindings/",
     "src/wasm/liblzma.js",
     "src/wasm/liblzma.wasm",
