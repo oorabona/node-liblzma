@@ -8,6 +8,7 @@ on:
       - "binding.gyp"
       - "scripts/**"
       - "test/**"
+      - "packages/**"
       # Build configuration
       - "package.json"
       - "pnpm-lock.yaml"
@@ -34,12 +35,13 @@ on:
       - "binding.gyp"
       - "scripts/**"
       - "test/**"
+      - "packages/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "tsconfig.json"
       - "biome.json"
       - "xz-version.json"
-      - ".github/workflows/ci-unified.yml"
+      - ".github/workflows/ci.yml"
       - "!**/*.md"
       - "!docs/**"
     branches:
