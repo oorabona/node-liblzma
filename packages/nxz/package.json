@@ -1,5 +1,5 @@
 {
-  "name": "nxz",
+  "name": "nxz-cli",
   "version": "1.0.0",
   "description": "Portable xz-like CLI tool for Node.js — compress, decompress, and handle tar.xz archives",
   "type": "module",

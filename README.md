@@ -321,9 +321,9 @@ Archives created by nxz are fully compatible with system `tar -xJf`.
 <summary><strong>One-shot usage (without global install)</strong></summary>
 
 ```bash
-# Standalone nxz package (recommended — smaller, faster install)
-npx nxz --help
-pnpm dlx nxz --help
+# Standalone nxz-cli package (recommended — smaller, faster install)
+npx nxz-cli --help
+pnpm dlx nxz-cli --help
 
 # Or via the full node-liblzma package
 npx --package node-liblzma nxz --help
@@ -348,7 +348,7 @@ node-liblzma powers a family of focused packages:
 |---------|-------------|---------|
 | [`node-liblzma`](https://www.npmjs.com/package/node-liblzma) | Core XZ library — Node.js native + browser WASM | `npm i node-liblzma` |
 | [`tar-xz`](https://www.npmjs.com/package/tar-xz) | Create/extract .tar.xz archives — Node.js + browser | `npm i tar-xz` |
-| [`nxz`](https://www.npmjs.com/package/nxz) | Standalone CLI — `npx nxz file.txt` | `npx nxz` |
+| [`nxz-cli`](https://www.npmjs.com/package/nxz-cli) | Standalone CLI — `npx nxz-cli file.txt` | `npx nxz-cli` |
 
 ### tar-xz — tar.xz archives
 
@@ -372,18 +372,18 @@ const files = await extractTarXz(archive);
 const entries = await listTarXz(archive);
 ```
 
-### nxz — standalone CLI
+### nxz-cli — standalone CLI
 
 A lightweight wrapper package for running `nxz` without installing the full `node-liblzma`:
 
 ```bash
 # No install needed
-npx nxz file.txt              # compress
-npx nxz -d file.txt.xz        # decompress
-npx nxz -T src/ -o app.tar.xz # create tar.xz archive
+npx nxz-cli file.txt              # compress
+npx nxz-cli -d file.txt.xz        # decompress
+npx nxz-cli -T src/ -o app.tar.xz # create tar.xz archive
 
 # Or install globally
-npm install -g nxz
+npm install -g nxz-cli
 ```
 
 ## API Reference
@@ -799,7 +799,7 @@ npm config set python python3
 ## Related Projects
 
 - [tar-xz](https://www.npmjs.com/package/tar-xz) — Create/extract tar.xz archives (powered by node-liblzma)
-- [nxz](https://www.npmjs.com/package/nxz) — Standalone CLI for XZ compression
+- [nxz-cli](https://www.npmjs.com/package/nxz-cli) — Standalone CLI for XZ compression
 - [lzma-purejs](https://github.com/cscott/lzma-purejs) — Pure JavaScript LZMA implementation
 - [node-xz](https://github.com/robey/node-xz) — Node binding of XZ library
 - [lzma-native](https://github.com/addaleax/lzma-native) — Complete XZ library bindings
