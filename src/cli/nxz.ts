@@ -33,13 +33,25 @@ import {
 } from '../lzma.js';
 
 // Dynamic import for tar-xz (optional dependency)
-type TarXzModule = typeof import('tar-xz');
+// Interface defined inline to avoid compile-time dependency on tar-xz
+interface TarEntry {
+  name: string;
+  size: number;
+  type: string;
+  mode?: number;
+  mtime?: number;
+}
+interface TarXzModule {
+  create(opts: { file: string; cwd: string; files: string[]; preset?: number }): Promise<void>;
+  extract(opts: { file: string; cwd?: string; strip?: number }): Promise<TarEntry[]>;
+  list(opts: { file: string }): Promise<TarEntry[]>;
+}
 let tarXzModule: TarXzModule | null = null;
 
 async function loadTarXz(): Promise<TarXzModule> {
   if (!tarXzModule) {
     try {
-      tarXzModule = await import('tar-xz');
+      tarXzModule = (await import('tar-xz')) as unknown as TarXzModule;
     } catch {
       throw new Error('tar-xz package not available. Install it with: pnpm add tar-xz');
     }
