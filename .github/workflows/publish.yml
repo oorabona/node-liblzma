@@ -124,9 +124,10 @@ jobs:
             else
               echo "📦 Publishing ${PKG_NAME}@${PKG_VERSION}"
               # pnpm pack resolves workspace: protocols in the tarball
-              TARBALL=$(cd "$pkg" && pnpm pack --pack-destination /tmp 2>/dev/null | tail -1)
+              TARBALL_PATH=$(cd "$pkg" && pnpm pack --pack-destination /tmp 2>/dev/null | tail -1)
+              echo "  Tarball: ${TARBALL_PATH}"
               # npm publish handles OIDC token exchange correctly
-              npm publish "/tmp/${TARBALL}" --provenance --access public
+              npm publish "${TARBALL_PATH}" --provenance --access public
             fi
           done
 
