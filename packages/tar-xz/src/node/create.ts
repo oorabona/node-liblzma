@@ -99,8 +99,8 @@ class TarPack extends Transform {
     this.push(createEndOfArchive());
   }
 
+  /* v8 ignore next 4 - required by Transform interface but never called (data pushed via addEntry) */
   _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback): void {
-    // Pass through any data pushed to us
     callback(null, chunk);
   }
 }

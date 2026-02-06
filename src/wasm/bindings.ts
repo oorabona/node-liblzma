@@ -47,8 +47,8 @@ export async function initModule(loader?: () => Promise<LZMAModule>): Promise<LZ
   modulePromise = (async () => {
     if (loader) {
       moduleInstance = await loader();
-    } else {
       /* v8 ignore start - default import path only used in browser environments */
+    } else {
       const { default: createLZMA } = await import('./liblzma.js');
       moduleInstance = (await createLZMA()) as LZMAModule;
       /* v8 ignore stop */

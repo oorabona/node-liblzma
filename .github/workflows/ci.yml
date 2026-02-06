@@ -314,7 +314,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_GLOBAL: 'false'
           RUNTIME_LINK: static
-          ENABLE_THREAD_SUPPORT: 'no'
+          ENABLE_THREAD_SUPPORT: 'yes'
 
       - name: Build TypeScript
         run: pnpm run build
@@ -322,11 +322,14 @@ jobs:
       - name: Run tests with coverage
         run: pnpm vitest run --coverage
 
+      - name: Run tar-xz tests with coverage
+        run: pnpm --filter tar-xz exec vitest run --coverage
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage/lcov.info
+          files: coverage/lcov.info,packages/tar-xz/coverage/lcov.info
           flags: unittests
           fail_ci_if_error: false
 
