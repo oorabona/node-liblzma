@@ -106,7 +106,7 @@ jobs:
         if: ${{ inputs.skip_npm != true }}
         run: |
           # Publish workspace packages (pure JS, no prebuilds needed)
-          # pnpm publish resolves workspace:^ to real versions automatically
+          # Use pnpm pack (resolves workspace:^ protocols) + npm publish (OIDC-compatible)
           # Order matters: tar-xz before nxz (nxz depends on tar-xz)
           for pkg in packages/tar-xz packages/nxz; do
             PKG_NAME=$(node -p "require('./$pkg/package.json').name")
@@ -117,7 +117,10 @@ jobs:
               echo "⏭️ ${PKG_NAME}@${PKG_VERSION} already published, skipping"
             else
               echo "📦 Publishing ${PKG_NAME}@${PKG_VERSION}"
-              pnpm --filter "${PKG_NAME}" publish --provenance --access public --no-git-checks
+              # pnpm pack resolves workspace: protocols in the tarball
+              TARBALL=$(cd "$pkg" && pnpm pack --pack-destination /tmp 2>/dev/null | tail -1)
+              # npm publish handles OIDC token exchange correctly
+              npm publish "/tmp/${TARBALL}" --provenance --access public
             fi
           done
 
