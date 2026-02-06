@@ -2,7 +2,9 @@
 
 node-liblzma v3.0.0+ provides full XZ/LZMA2 compression and decompression in the browser via WebAssembly. This guide covers setup, usage patterns, and bundler configuration.
 
-> **[Live Demo](https://oorabona.github.io/node-liblzma/demo/)** — Try it in your browser. Source code in [`examples/browser/`](../examples/browser/).
+> **[Live Demo](https://oorabona.github.io/node-liblzma/demo/)** — Try XZ compression in your browser. Source code in [`examples/browser/`](../examples/browser/).
+>
+> **[tar-xz Demo](https://oorabona.github.io/node-liblzma/tar-xz/)** — Create and extract tar.xz archives in your browser. Powered by the [`tar-xz`](https://www.npmjs.com/package/tar-xz) package.
 
 ## Quick Start
 

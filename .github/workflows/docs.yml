@@ -11,6 +11,7 @@ on:
       - 'typedoc.json'
       - 'llms.txt'
       - 'examples/browser/**'
+      - 'packages/tar-xz/**'
       - 'src/wasm/**'
   workflow_dispatch:
 
@@ -75,6 +76,10 @@ jobs:
         run: |
           pnpm install --ignore-scripts
           pnpm exec vite build
+
+      - name: Build tar-xz demo
+        working-directory: packages/tar-xz
+        run: pnpm exec vite build --config demo/vite.config.ts
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

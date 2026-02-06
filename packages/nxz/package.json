@@ -1,0 +1,43 @@
+{
+  "name": "nxz",
+  "version": "1.0.0",
+  "description": "Portable xz-like CLI tool for Node.js — compress, decompress, and handle tar.xz archives",
+  "type": "module",
+  "bin": {
+    "nxz": "./bin/nxz.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "dependencies": {
+    "node-liblzma": "workspace:^",
+    "tar-xz": "workspace:^"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oorabona/node-liblzma",
+    "directory": "packages/nxz"
+  },
+  "keywords": [
+    "xz",
+    "lzma",
+    "compress",
+    "decompress",
+    "tar",
+    "tar.xz",
+    "cli",
+    "nxz"
+  ],
+  "author": "Olivier ORABONA",
+  "license": "LGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/oorabona/node-liblzma/issues"
+  },
+  "homepage": "https://github.com/oorabona/node-liblzma/tree/master/packages/nxz",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  }
+}

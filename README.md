@@ -22,6 +22,9 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
   - [v2.0.0 — TypeScript Modernization](#v200--typescript-modernization)
 - [Browser Usage](#browser-usage)
 - [CLI Tool (nxz)](#cli-tool-nxz)
+- [Ecosystem Packages](#ecosystem-packages)
+  - [tar-xz — tar.xz archives](#tar-xz--tarxz-archives)
+  - [nxz — standalone CLI](#nxz--standalone-cli)
 - [API Reference](#api-reference)
   - [API Comparison with Zlib](#api-comparison-with-zlib)
   - [Options](#options)
@@ -129,10 +132,12 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 - **CLI tool (nxz)**: Portable xz-like command line tool
   - Full xz compatibility: `-z`, `-d`, `-l`, `-k`, `-f`, `-c`, `-o`, `-v`, `-q`
   - Compression presets 0-9 with extreme mode (`-e`)
+  - tar.xz archive support: create, list, extract (compatible with system `tar`)
   - Progress display, stdin/stdout piping, benchmarking (`-B`)
+- **tar-xz package**: Create/extract `.tar.xz` archives — Node.js streaming + browser WASM
 - **Progress events**: Monitor compression/decompression in real-time
 - **XZ Utils 5.8.x**: Updated to latest stable version
-- **458+ tests**: Comprehensive test suite with 100% code coverage
+- **519 tests**: Comprehensive test suite with 100% code coverage
 
 ### v2.0.0 — TypeScript Modernization
 
@@ -271,6 +276,26 @@ nxz -l file.txt.xz
 nxz -B file.txt
 ```
 
+### tar.xz Archives
+
+nxz can create, list, and extract `.tar.xz` archives — auto-detected from file extension:
+
+```bash
+# Create a tar.xz archive from files/directories
+nxz -T src/ lib/ README.md -o project.tar.xz
+
+# List archive contents
+nxz -Tl project.tar.xz
+
+# Extract archive to a directory
+nxz -Td project.tar.xz -o output/
+
+# Extract with path stripping (like tar --strip-components)
+nxz -Td project.tar.xz --strip=1 -o output/
+```
+
+Archives created by nxz are fully compatible with system `tar -xJf`.
+
 ### All Options
 
 | Option | Long | Description |
@@ -278,15 +303,17 @@ nxz -B file.txt
 | `-z` | `--compress` | Force compression mode |
 | `-d` | `--decompress` | Force decompression mode |
 | `-l` | `--list` | List archive information |
+| `-T` | `--tar` | Treat file as tar.xz archive (auto-detected for .tar.xz/.txz) |
 | `-B` | `--benchmark` | Benchmark native vs WASM performance |
 | `-k` | `--keep` | Keep original file (don't delete) |
 | `-f` | `--force` | Overwrite existing output file |
 | `-c` | `--stdout` | Write to stdout, keep original file |
-| `-o` | `--output=FILE` | Write output to specified file |
+| `-o` | `--output=FILE` | Write output to specified file (or directory for tar extract) |
 | `-v` | `--verbose` | Show progress for large files |
 | `-q` | `--quiet` | Suppress warning messages |
 | `-0`..`-9` | | Compression level (default: 6) |
 | `-e` | `--extreme` | Extreme compression (slower) |
+| | `--strip=N` | Strip N leading path components on tar extract |
 | `-h` | `--help` | Show help |
 | `-V` | `--version` | Show version |
 
@@ -294,10 +321,12 @@ nxz -B file.txt
 <summary><strong>One-shot usage (without global install)</strong></summary>
 
 ```bash
-# npm/npx
-npx --package node-liblzma nxz --help
+# Standalone nxz package (recommended — smaller, faster install)
+npx nxz --help
+pnpm dlx nxz --help
 
-# pnpm
+# Or via the full node-liblzma package
+npx --package node-liblzma nxz --help
 pnpm dlx --package node-liblzma nxz --help
 ```
 
@@ -310,6 +339,52 @@ pnpm dlx --package node-liblzma nxz --help
 | 0 | Success |
 | 1 | Error (file not found, format error, etc.) |
 | 130 | Interrupted (SIGINT/Ctrl+C) |
+
+## Ecosystem Packages
+
+node-liblzma powers a family of focused packages:
+
+| Package | Description | Install |
+|---------|-------------|---------|
+| [`node-liblzma`](https://www.npmjs.com/package/node-liblzma) | Core XZ library — Node.js native + browser WASM | `npm i node-liblzma` |
+| [`tar-xz`](https://www.npmjs.com/package/tar-xz) | Create/extract .tar.xz archives — Node.js + browser | `npm i tar-xz` |
+| [`nxz`](https://www.npmjs.com/package/nxz) | Standalone CLI — `npx nxz file.txt` | `npx nxz` |
+
+### tar-xz — tar.xz archives
+
+> **[Live Demo](https://oorabona.github.io/node-liblzma/tar-xz/)** — Create and extract tar.xz archives in your browser.
+
+A library for working with `.tar.xz` archives, with dual Node.js (streaming) and browser (buffer-based) APIs. This fills the gap left by [node-tar](https://github.com/isaacs/node-tar) which does not support `.tar.xz`.
+
+```typescript
+// Node.js — streaming API
+import { create, extract, list } from 'tar-xz';
+
+await create({ file: 'archive.tar.xz', cwd: './src', files: ['index.ts', 'utils.ts'] });
+const entries = await list({ file: 'archive.tar.xz' });
+await extract({ file: 'archive.tar.xz', cwd: './output' });
+
+// Browser — buffer-based API
+import { createTarXz, extractTarXz, listTarXz } from 'tar-xz';
+
+const archive = await createTarXz({ files: [{ name: 'hello.txt', content: data }] });
+const files = await extractTarXz(archive);
+const entries = await listTarXz(archive);
+```
+
+### nxz — standalone CLI
+
+A lightweight wrapper package for running `nxz` without installing the full `node-liblzma`:
+
+```bash
+# No install needed
+npx nxz file.txt              # compress
+npx nxz -d file.txt.xz        # decompress
+npx nxz -T src/ -o app.tar.xz # create tar.xz archive
+
+# Or install globally
+npm install -g nxz
+```
 
 ## API Reference
 
@@ -580,7 +655,7 @@ npm install
 ## Testing
 
 ```bash
-pnpm test              # Run all 458+ tests
+pnpm test              # Run all 519 tests
 pnpm test:watch        # Watch mode
 pnpm test:coverage     # Coverage report
 pnpm type-check        # TypeScript type checking
@@ -723,6 +798,8 @@ npm config set python python3
 
 ## Related Projects
 
+- [tar-xz](https://www.npmjs.com/package/tar-xz) — Create/extract tar.xz archives (powered by node-liblzma)
+- [nxz](https://www.npmjs.com/package/nxz) — Standalone CLI for XZ compression
 - [lzma-purejs](https://github.com/cscott/lzma-purejs) — Pure JavaScript LZMA implementation
 - [node-xz](https://github.com/robey/node-xz) — Node binding of XZ library
 - [lzma-native](https://github.com/addaleax/lzma-native) — Complete XZ library bindings

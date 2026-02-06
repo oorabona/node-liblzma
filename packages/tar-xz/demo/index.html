@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tar-xz — Browser Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>tar-xz</h1>
+        <p class="subtitle">Create and extract tar.xz archives in the browser</p>
+      </header>
+
+      <main>
+        <!-- Create Archive Section -->
+        <section class="card">
+          <h2>Create Archive</h2>
+          <div id="drop-zone" class="drop-zone">
+            <div class="drop-zone-content">
+              <span class="icon">📁</span>
+              <p>Drop files here or click to browse</p>
+              <input type="file" id="file-input" multiple hidden />
+            </div>
+          </div>
+
+          <div id="file-list" class="file-list"></div>
+
+          <div class="controls">
+            <label>
+              Preset:
+              <select id="preset-select">
+                <option value="1">1 (Fast)</option>
+                <option value="2">2</option>
+                <option value="3" selected>3 (Default)</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+            <button id="create-btn" class="btn primary" disabled>
+              Create tar.xz
+            </button>
+          </div>
+        </section>
+
+        <!-- Extract Archive Section -->
+        <section class="card">
+          <h2>Extract Archive</h2>
+          <div class="upload-controls">
+            <label class="btn">
+              Choose .tar.xz file
+              <input type="file" id="archive-input" accept=".tar.xz,.txz" hidden />
+            </label>
+            <button id="extract-btn" class="btn" disabled>Extract All</button>
+            <button id="download-all-btn" class="btn" disabled>Download All</button>
+          </div>
+
+          <div id="archive-tree" class="tree-view"></div>
+        </section>
+
+        <!-- Stats Section -->
+        <section id="stats" class="card stats" hidden>
+          <h2>Stats</h2>
+          <div class="stats-grid">
+            <div class="stat">
+              <span class="stat-label">Files</span>
+              <span id="stat-files" class="stat-value">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Original</span>
+              <span id="stat-original" class="stat-value">0 B</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Compressed</span>
+              <span id="stat-compressed" class="stat-value">0 B</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Ratio</span>
+              <span id="stat-ratio" class="stat-value">0%</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Time</span>
+              <span id="stat-time" class="stat-value">0ms</span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          Powered by
+          <a href="https://github.com/oorabona/node-liblzma" target="_blank">node-liblzma</a>
+          — WASM XZ compression in the browser
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

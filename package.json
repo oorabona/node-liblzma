@@ -27,7 +27,8 @@
       "types": "./lib/lzma.inline.d.ts",
       "import": "./lib/lzma.inline.js",
       "default": "./lib/lzma.inline.js"
-    }
+    },
+    "./cli": "./lib/cli/nxz.js"
   },
   "scripts": {
     "postinstall": "node-gyp-build",
@@ -40,7 +41,7 @@
     "prepare": "simple-git-hooks && pnpm run build",
     "prebuildify": "prebuildify --napi --strip -t $(node -v)",
     "prebuildify:win": "for /f \"usebackq tokens=*\" %v in (`node -v`) do prebuildify -t %v --napi --strip",
-    "test": "vitest run",
+    "test": "vitest run && pnpm -r --filter './packages/*' test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --config vitest.config.monocart.ts --coverage",
     "test:coverage-v8": "vitest run --coverage",
@@ -73,6 +74,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "4.0.18",
     "nano-staged": "^0.9.0",
+    "prebuildify": "^6.0.1",
     "release-it": "^19.2.4",
     "simple-git-hooks": "^2.13.1",
     "tsd": "^0.33.0",

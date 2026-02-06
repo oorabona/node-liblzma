@@ -27,6 +27,7 @@ _Add scope indexes as they are created:_
 |-------|------|--------|
 | CLI-NXZ | [nxz CLI Tool](plans/cli-nxz.md) | canonical |
 | WASM-BROWSER | [WASM Browser Support](plans/wasm-browser-support.md) | canonical |
+| TAR-XZ | [tar-xz Package](../packages/tar-xz/README.md) | canonical |
 
 ## Audits & Reviews
 

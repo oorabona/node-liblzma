@@ -32,12 +32,28 @@ import {
   xzSync,
 } from '../lzma.js';
 
+// Dynamic import for tar-xz (optional dependency)
+type TarXzModule = typeof import('tar-xz');
+let tarXzModule: TarXzModule | null = null;
+
+async function loadTarXz(): Promise<TarXzModule> {
+  if (!tarXzModule) {
+    try {
+      tarXzModule = await import('tar-xz');
+    } catch {
+      throw new Error('tar-xz package not available. Install it with: pnpm add tar-xz');
+    }
+  }
+  return tarXzModule;
+}
+
 /** CLI options parsed from arguments */
 interface CliOptions {
   compress: boolean;
   decompress: boolean;
   list: boolean;
   benchmark: boolean;
+  tar: boolean;
   keep: boolean;
   force: boolean;
   stdout: boolean;
@@ -48,6 +64,7 @@ interface CliOptions {
   version: boolean;
   preset: number;
   extreme: boolean;
+  strip: number;
   files: string[];
 }
 
@@ -116,10 +133,12 @@ function parseCliArgs(args: string[]): CliOptions {
       decompress: { type: 'boolean', short: 'd', default: false },
       list: { type: 'boolean', short: 'l', default: false },
       benchmark: { type: 'boolean', short: 'B', default: false },
+      tar: { type: 'boolean', short: 'T', default: false },
       keep: { type: 'boolean', short: 'k', default: false },
       force: { type: 'boolean', short: 'f', default: false },
       stdout: { type: 'boolean', short: 'c', default: false },
       output: { type: 'string', short: 'o' },
+      strip: { type: 'string', default: '0' },
       verbose: { type: 'boolean', short: 'v', default: false },
       quiet: { type: 'boolean', short: 'q', default: false },
       help: { type: 'boolean', short: 'h', default: false },
@@ -135,6 +154,7 @@ function parseCliArgs(args: string[]): CliOptions {
     decompress: values.decompress === true,
     list: values.list === true,
     benchmark: values.benchmark === true,
+    tar: values.tar === true,
     keep: values.keep === true,
     force: values.force === true,
     stdout: values.stdout === true,
@@ -145,6 +165,7 @@ function parseCliArgs(args: string[]): CliOptions {
     version: values.version === true,
     preset: presetLevel,
     extreme: values.extreme === true,
+    strip: Number.parseInt(String(values.strip ?? '0'), 10),
     files: positionals,
   };
 }
@@ -165,11 +186,16 @@ Operation mode:
   -l, --list        list information about .xz files
   -B, --benchmark   benchmark native vs WASM compression
 
+Archive mode (tar.xz):
+  -T, --tar         treat file as tar.xz archive
+                    Auto-detected for .tar.xz and .txz files
+  --strip=N         strip N leading path components on extract (default: 0)
+
 Operation modifiers:
   -k, --keep        keep (don't delete) input files
   -f, --force       force overwrite of output file
   -c, --stdout      write to standard output and don't delete input files
-  -o, --output=FILE write output to FILE
+  -o, --output=FILE write output to FILE (or directory for tar extract)
 
 Compression presets:
   -0 ... -9         compression preset level (default: 6)
@@ -182,6 +208,14 @@ Other options:
   -V, --version     display version information and exit
 
 With no FILE, or when FILE is -, read standard input.
+
+Examples:
+  nxz file.txt              compress file.txt to file.txt.xz
+  nxz -d file.xz            decompress file.xz
+  nxz -T -z dir/            create archive.tar.xz from dir/
+  nxz -l archive.tar.xz     list contents of archive
+  nxz -d archive.tar.xz     extract archive to current directory
+  nxz -d -o dest/ arch.txz  extract archive to dest/
 
 Report bugs at: https://github.com/oorabona/node-liblzma/issues`);
 }
@@ -211,13 +245,35 @@ License: LGPL-3.0`);
 }
 
 /**
+ * Check if file is a tar.xz archive based on extension
+ */
+function isTarXzFile(filename: string): boolean {
+  return filename.endsWith('.tar.xz') || filename.endsWith('.txz');
+}
+
+/**
  * Determine operation mode based on options and file extension
  */
 function determineMode(
   options: CliOptions,
   filename: string
-): 'compress' | 'decompress' | 'list' | 'benchmark' {
+): 'compress' | 'decompress' | 'list' | 'benchmark' | 'tar-list' | 'tar-create' | 'tar-extract' {
   if (options.benchmark) return 'benchmark';
+
+  // Tar mode: explicit -T flag or auto-detected from extension
+  const isTar = options.tar || isTarXzFile(filename);
+
+  if (isTar) {
+    if (options.list) return 'tar-list';
+    if (options.decompress) return 'tar-extract';
+    if (options.compress) return 'tar-create';
+    // Auto-detect: if file exists and is .tar.xz/.txz, extract; otherwise create
+    if (isTarXzFile(filename)) {
+      return options.list ? 'tar-list' : 'tar-extract';
+    }
+    return 'tar-create';
+  }
+
   if (options.list) return 'list';
   if (options.decompress) return 'decompress';
   if (options.compress) return 'compress';
@@ -605,6 +661,188 @@ async function benchmarkFile(inputFile: string, options: CliOptions): Promise<nu
   return allOk ? EXIT_SUCCESS : EXIT_ERROR;
 }
 
+/**
+ * List contents of a tar.xz archive
+ */
+async function listTarFile(filename: string, options: CliOptions): Promise<number> {
+  try {
+    const tarXz = await loadTarXz();
+    const entries = await tarXz.list({ file: filename });
+
+    if (options.verbose) {
+      // Verbose format with permissions, size, date
+      for (const entry of entries) {
+        const typeChar = entry.type === '5' ? 'd' : '-';
+        const modeStr = entry.mode?.toString(8).padStart(4, '0') ?? '0644';
+        const size = formatBytes(entry.size).padStart(10);
+        const date = entry.mtime ? new Date(entry.mtime * 1000).toISOString().slice(0, 16) : '';
+        console.log(`${typeChar}${modeStr} ${size} ${date} ${entry.name}`);
+      }
+    } else {
+      // Simple format: just names
+      for (const entry of entries) {
+        console.log(entry.name);
+      }
+    }
+
+    if (!options.quiet) {
+      console.error(`\nTotal: ${entries.length} entries`);
+    }
+
+    return EXIT_SUCCESS;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    warn(`nxz: ${filename}: ${message}`);
+    return EXIT_ERROR;
+  }
+}
+
+/**
+ * Create a tar.xz archive from files/directories
+ */
+function findCommonParent(paths: string[]): string {
+  if (paths.length === 0) return process.cwd();
+  if (paths.length === 1) return paths[0];
+  const parts = paths.map((p) => p.split('/'));
+  const common: string[] = [];
+  for (let i = 0; i < parts[0].length; i++) {
+    const segment = parts[0][i];
+    if (parts.every((p) => p[i] === segment)) {
+      common.push(segment);
+    } else {
+      break;
+    }
+  }
+  return common.join('/') || '/';
+}
+
+async function createTarFile(files: string[], options: CliOptions): Promise<number> {
+  try {
+    const tarXz = await loadTarXz();
+    const path = await import('node:path');
+
+    // Determine output filename
+    let outputFile = options.output;
+    if (!outputFile) {
+      // Use first file/dir name as base
+      const base = path.basename(files[0]).replace(/\/$/, '');
+      outputFile = `${base}.tar.xz`;
+    }
+
+    if (existsSync(outputFile) && !options.force) {
+      warn(`nxz: ${outputFile}: File already exists; use -f to overwrite`);
+      return EXIT_ERROR;
+    }
+
+    currentOutputFile = outputFile;
+
+    // Resolve all files to absolute paths for consistent handling
+    const resolvedFiles = files.map((f) => path.resolve(f));
+
+    // Determine cwd (common parent directory)
+    let cwd: string;
+    if (resolvedFiles.length === 1 && statSync(resolvedFiles[0]).isDirectory()) {
+      cwd = resolvedFiles[0];
+    } else {
+      // Find common parent of all files
+      const parents = resolvedFiles.map((f) => (statSync(f).isDirectory() ? f : path.dirname(f)));
+      // Use the first file's parent as cwd for simple cases
+      cwd = parents.length === 1 ? parents[0] : findCommonParent(parents);
+    }
+
+    // Collect files to archive (relative to cwd)
+    const filesToArchive: string[] = [];
+    for (const file of resolvedFiles) {
+      if (statSync(file).isDirectory()) {
+        const { readdirSync } = await import('node:fs');
+        const entries = readdirSync(file, { recursive: true, withFileTypes: true });
+        const dirRelative = path.relative(cwd, file);
+        for (const entry of entries) {
+          if (entry.isFile()) {
+            const entryPath =
+              entry.parentPath === file
+                ? entry.name
+                : `${entry.parentPath.slice(file.length + 1)}/${entry.name}`;
+            filesToArchive.push(dirRelative ? `${dirRelative}/${entryPath}` : entryPath);
+          }
+        }
+      } else {
+        filesToArchive.push(path.relative(cwd, file));
+      }
+    }
+
+    const presetValue = options.extreme ? options.preset | preset.EXTREME : options.preset;
+
+    if (options.verbose) {
+      console.error(`Creating ${outputFile} from ${filesToArchive.length} files...`);
+    }
+
+    await tarXz.create({
+      file: outputFile,
+      cwd,
+      files: filesToArchive,
+      preset: presetValue,
+    });
+
+    if (options.verbose) {
+      const stats = statSync(outputFile);
+      console.error(`Created ${outputFile} (${formatBytes(stats.size)})`);
+    }
+
+    currentOutputFile = null;
+    return EXIT_SUCCESS;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    warn(`nxz: ${message}`);
+    cleanupPartialOutput(currentOutputFile);
+    return EXIT_ERROR;
+  }
+}
+
+/**
+ * Extract a tar.xz archive
+ */
+async function extractTarFile(filename: string, options: CliOptions): Promise<number> {
+  try {
+    const tarXz = await loadTarXz();
+
+    // Determine output directory
+    const outputDir = options.output ?? process.cwd();
+
+    // Create output directory if it doesn't exist
+    if (!existsSync(outputDir)) {
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(outputDir, { recursive: true });
+    }
+
+    if (options.verbose) {
+      console.error(`Extracting ${filename} to ${outputDir}...`);
+    }
+
+    const entries = await tarXz.extract({
+      file: filename,
+      cwd: outputDir,
+      strip: options.strip,
+    });
+
+    if (options.verbose) {
+      for (const entry of entries) {
+        console.error(`  ${entry.name}`);
+      }
+      console.error(`\nExtracted ${entries.length} entries`);
+    }
+
+    // Delete original if not keeping
+    removeOriginalIfNeeded(filename, options);
+
+    return EXIT_SUCCESS;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    warn(`nxz: ${filename}: ${message}`);
+    return EXIT_ERROR;
+  }
+}
+
 async function processFile(filename: string, options: CliOptions): Promise<number> {
   // Check file exists
   if (!existsSync(filename)) {
@@ -612,13 +850,14 @@ async function processFile(filename: string, options: CliOptions): Promise<numbe
     return EXIT_ERROR;
   }
 
-  // Check if it's a directory
-  if (statSync(filename).isDirectory()) {
+  const isDir = statSync(filename).isDirectory();
+  const mode = determineMode(options, filename);
+
+  // Directories are only allowed for tar-create mode
+  if (isDir && mode !== 'tar-create') {
     warn(`nxz: ${filename}: Is a directory, skipping`);
     return EXIT_ERROR;
   }
-
-  const mode = determineMode(options, filename);
 
   switch (mode) {
     case 'list':
@@ -629,6 +868,13 @@ async function processFile(filename: string, options: CliOptions): Promise<numbe
       return compressFile(filename, options);
     case 'decompress':
       return decompressFile(filename, options);
+    case 'tar-list':
+      return listTarFile(filename, options);
+    case 'tar-extract':
+      return extractTarFile(filename, options);
+    case 'tar-create':
+      // tar-create is handled separately since it takes multiple files
+      return EXIT_SUCCESS;
   }
 }
 
@@ -693,6 +939,15 @@ async function main(): Promise<void> {
   if (options.files.length === 0 || (options.files.length === 1 && options.files[0] === '-')) {
     const exitCode = await processStdin(options);
     process.exit(exitCode);
+  }
+
+  // Check for tar-create mode: -T with files that aren't .tar.xz archives
+  if (options.files.length > 0) {
+    const mode = determineMode(options, options.files[0]);
+    if (mode === 'tar-create') {
+      const exitCode = await createTarFile(options.files, options);
+      process.exit(exitCode);
+    }
   }
 
   // Process each file
