@@ -95,6 +95,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Sync workspace package versions
+        run: |
+          ROOT_VERSION=$(node -p "require('./package.json').version")
+          echo "📌 Root version: ${ROOT_VERSION}"
+          for pkg in packages/tar-xz packages/nxz; do
+            PKG_JSON="$pkg/package.json"
+            OLD_VERSION=$(node -p "require('./$PKG_JSON').version")
+            if [ "$OLD_VERSION" != "$ROOT_VERSION" ]; then
+              node -e "
+                const fs = require('fs');
+                const p = JSON.parse(fs.readFileSync('$PKG_JSON', 'utf8'));
+                p.version = '$ROOT_VERSION';
+                fs.writeFileSync('$PKG_JSON', JSON.stringify(p, null, 2) + '\n');
+              "
+              echo "  ✅ $pkg: $OLD_VERSION → $ROOT_VERSION"
+            else
+              echo "  ⏭️ $pkg: already at $ROOT_VERSION"
+            fi
+          done
+
       - name: Build TypeScript
         run: pnpm build
 
