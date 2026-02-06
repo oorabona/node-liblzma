@@ -51,7 +51,9 @@ let tarXzModule: TarXzModule | null = null;
 async function loadTarXz(): Promise<TarXzModule> {
   if (!tarXzModule) {
     try {
-      tarXzModule = (await import('tar-xz')) as unknown as TarXzModule;
+      // Variable import specifier prevents TypeScript from resolving at compile time
+      const modName = 'tar-xz';
+      tarXzModule = (await import(modName)) as TarXzModule;
     } catch {
       throw new Error('tar-xz package not available. Install it with: pnpm add tar-xz');
     }
