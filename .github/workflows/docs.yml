@@ -43,12 +43,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Build documentation
-        run: pnpm typedoc
-
-      - name: Copy llms.txt to docs site
-        run: cp llms.txt docs-site/
-
       - name: Setup Python (for XZ download)
         uses: actions/setup-python@v6
         with:
@@ -70,6 +64,12 @@ jobs:
 
       - name: Build TypeScript
         run: pnpm build
+
+      - name: Build documentation
+        run: pnpm typedoc
+
+      - name: Copy llms.txt to docs site
+        run: cp llms.txt docs-site/
 
       - name: Build browser demo
         working-directory: examples/browser
