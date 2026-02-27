@@ -432,7 +432,7 @@ describe('Callback Validation and Behavior', () => {
             // If we get here, the process didn't crash
             resolve();
           }, 100);
-        } catch (_syncError) {
+        } catch {
           // The exception should be contained
           resolve();
         }

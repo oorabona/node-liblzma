@@ -545,7 +545,7 @@ describe('Flush method edge cases', () => {
     try {
       fs.unlinkSync('test/data/HollywoodSign.jpg.xz');
       fs.unlinkSync('test/data/HollywoodSign.jpg.unxz');
-    } catch (_error) {
+    } catch {
       // Files might not exist, ignore errors
     }
   });

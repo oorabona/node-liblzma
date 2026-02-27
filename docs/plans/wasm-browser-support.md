@@ -1,6 +1,6 @@
 ---
 doc-meta:
-  status: draft
+  status: canonical
   scope: wasm-browser
   type: specification
   created: 2026-01-25

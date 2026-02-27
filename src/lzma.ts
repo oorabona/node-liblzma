@@ -291,7 +291,7 @@ export abstract class XzStream extends Transform {
       try {
         clonedFilters = [...opts.filters];
         /* v8 ignore start */
-      } catch (_error) {
+      } catch {
         throw new Error('Filters need to be in an array!');
       }
       /* v8 ignore stop */
@@ -661,7 +661,7 @@ export abstract class XzStream extends Transform {
       if (cb && !this._closed) {
         try {
           cb();
-        } catch (_error) {
+        } catch {
           // If callback throws, emit error instead of crashing
           this.emit('onerror', liblzma.LZMA_PROG_ERROR);
         }
@@ -670,7 +670,7 @@ export abstract class XzStream extends Transform {
     };
 
     this.lzma.code(flushFlag, chunk, inOff, availInBefore, this._buffer, this._offset, callback);
-    return undefined;
+    return;
   }
 }
 

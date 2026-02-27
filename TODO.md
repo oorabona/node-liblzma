@@ -2,7 +2,7 @@
 
 ## In Progress
 
-- [ ] 🟡 Merge PR #65 (biome 2.4.0, @types/node, typedoc)
+_None_
 
 ## Pending - HIGH
 
@@ -19,6 +19,7 @@ _None_
 - [x] ✅ [Tests] Réorganiser les 23 fichiers de test en sous-dossiers (unit/, integration/, native/, cli/, exports/) (2026-02-27)
 - [x] ✅ [CLI] Contrat compile-time CLI → tar-xz via `import type` (2026-02-27)
 - [x] ✅ [Config] Bumper engines.node >=16 → >=20 dans les 3 packages (2026-02-27)
+- [x] ✅ [Deps] Merge PR #65 — biome 2.4.0, @types/node, typedoc (2026-02-27)
 
 (Archived → docs/historic/done-2026-02.md)
 

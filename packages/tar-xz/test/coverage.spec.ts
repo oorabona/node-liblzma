@@ -244,8 +244,8 @@ describe('Coverage: createPaxHeaderBlocks', () => {
 
     const header = parseHeader(new Uint8Array(blocks[0]));
     expect(header).not.toBeNull();
-    expect(header!.type).toBe(TarEntryType.PAX_HEADER);
-    expect(header!.size).toBeGreaterThan(0);
+    expect(header?.type).toBe(TarEntryType.PAX_HEADER);
+    expect(header?.size).toBeGreaterThan(0);
   });
 });
 
@@ -436,7 +436,7 @@ describe('Coverage: Node API', () => {
 
     it('handles crafted PAX extended headers in extract/list', async () => {
       // Use segments under FS limit but total path > 255 chars for PAX
-      const longName = 'dir/' + 'a'.repeat(120) + '/' + 'b'.repeat(120) + '/file.txt';
+      const longName = `dir/${'a'.repeat(120)}/${'b'.repeat(120)}/file.txt`;
       const tar = buildTar([{ name: longName, content: Buffer.from('PAX content'), usePax: true }]);
 
       const archive = path.join(tempDir, 'archive.tar.xz');
@@ -554,7 +554,7 @@ describe('Coverage: Node API', () => {
       const entries = await extractToMemory(archive, { strip: 1 });
       const fileEntry = entries.find((e) => e.name === 'file.txt');
       expect(fileEntry).toBeDefined();
-      expect(fileEntry!.content.toString()).toBe('Content');
+      expect(fileEntry?.content.toString()).toBe('Content');
     });
   });
 });
