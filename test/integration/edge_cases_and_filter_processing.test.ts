@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as lzma from '../src/lzma.js';
+import * as lzma from '../../src/lzma.js';
 
 describe('Edge Cases and Filter Processing', () => {
   it('should handle explicit zero threads configuration', () => {

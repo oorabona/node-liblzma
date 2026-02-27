@@ -13,7 +13,7 @@ import {
   LZMAMemoryLimitError,
   LZMAOptionsError,
   LZMAProgrammingError,
-} from '../src/errors.js';
+} from '../../src/errors.js';
 
 // LZMA error codes (from liblzma)
 const LZMA_OK = 0;

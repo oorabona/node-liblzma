@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LZMA_FINISH, LZMAStatus, Unxz, Xz } from '../src/lzma.js';
+import { LZMA_FINISH, LZMAStatus, Unxz, Xz } from '../../src/lzma.js';
 
 describe('Filter Validation and Stream States', () => {
   describe('Filter Validation', () => {

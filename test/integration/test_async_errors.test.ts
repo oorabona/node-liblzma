@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { unxzAsync, xzAsync } from '../src/lzma.js';
+import { unxzAsync, xzAsync } from '../../src/lzma.js';
 
 describe('Async Error Handling', () => {
   describe('xzAsync', () => {

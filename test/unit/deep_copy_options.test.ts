@@ -2,7 +2,7 @@
  * Test suite to verify deep copying of LZMA options prevents parameter mutation
  */
 import { describe, expect, it } from 'vitest';
-import * as lzma from '../src/lzma.js';
+import * as lzma from '../../src/lzma.js';
 
 describe('Deep Copy Options', () => {
   it('should not mutate input filters array in XzStream', () => {

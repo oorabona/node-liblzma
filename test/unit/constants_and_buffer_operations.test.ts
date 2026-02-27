@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as lzma from '../src/lzma.js';
+import * as lzma from '../../src/lzma.js';
 
 describe('Constants and Buffer Operations', () => {
   it('should handle all constant exports ', () => {

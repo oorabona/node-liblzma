@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import * as lzma from '../src/lzma.js';
+import * as lzma from '../../src/lzma.js';
 
 describe('Stream Lifecycle Operations', () => {
   /* biome-ignore lint/suspicious/noExplicitAny: Array holds various stream types for cleanup in afterEach */

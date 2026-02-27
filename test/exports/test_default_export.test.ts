@@ -8,7 +8,7 @@ describe('Default Export Tests', () => {
   describe('CommonJS compatibility', () => {
     it('should export all main functions via default export', () => {
       // Test CommonJS require
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       // Core classes
       expect(lzma.default.Xz).toBeDefined();
@@ -30,7 +30,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should export all constants via default export', () => {
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       // Constant objects
       expect(lzma.default.check).toBeDefined();
@@ -56,7 +56,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should have functional createXz and createUnxz in default export', () => {
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       const xzStream = lzma.default.createXz();
       expect(xzStream).toBeInstanceOf(lzma.default.Xz);
@@ -68,7 +68,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should have working sync functions in default export', () => {
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       const testData = 'Test data for default export';
       const compressed = lzma.default.xzSync(testData);
@@ -80,7 +80,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should have working async functions in default export', () => {
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       const testData = 'Test data for async default export';
 
@@ -100,7 +100,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should have working Promise functions in default export', async () => {
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       const testData = 'Test data for Promise default export';
 
@@ -113,7 +113,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should have all filter constants in default export', () => {
-      const lzma = require('../lib/lzma.js');
+      const lzma = require('../../lib/lzma.js');
 
       // Individual filter constants
       expect(lzma.default.LZMA_FILTER_X86).toBeDefined();
@@ -136,7 +136,7 @@ describe('Default Export Tests', () => {
   describe('ESM import compatibility', () => {
     it('should work with named imports', async () => {
       // Dynamic import to test ESM compatibility
-      const { xzSync, unxzSync, createXz, createUnxz } = await import('../src/lzma.js');
+      const { xzSync, unxzSync, createXz, createUnxz } = await import('../../src/lzma.js');
 
       expect(xzSync).toBeDefined();
       expect(unxzSync).toBeDefined();
@@ -151,7 +151,7 @@ describe('Default Export Tests', () => {
 
     it('should work with default import', async () => {
       // Dynamic import of default export
-      const lzmaDefault = await import('../src/lzma.js').then((m) => m.default);
+      const lzmaDefault = await import('../../src/lzma.js').then((m) => m.default);
 
       expect(lzmaDefault.xzSync).toBeDefined();
       expect(lzmaDefault.unxzSync).toBeDefined();
@@ -163,8 +163,8 @@ describe('Default Export Tests', () => {
     });
 
     it('should have consistent constants between named and default exports', async () => {
-      const { LZMA_RUN, LZMA_OK, check } = await import('../src/lzma.js');
-      const lzmaDefault = await import('../src/lzma.js').then((m) => m.default);
+      const { LZMA_RUN, LZMA_OK, check } = await import('../../src/lzma.js');
+      const lzmaDefault = await import('../../src/lzma.js').then((m) => m.default);
 
       // Constants should be identical between exports
       expect(LZMA_RUN).toBe(lzmaDefault.LZMA_RUN);
@@ -175,7 +175,7 @@ describe('Default Export Tests', () => {
 
   describe('Export completeness', () => {
     it('should export all grouped constants', async () => {
-      const { LZMAAction, LZMAStatus, LZMAFilter } = await import('../src/lzma.js');
+      const { LZMAAction, LZMAStatus, LZMAFilter } = await import('../../src/lzma.js');
 
       // LZMAAction group
       expect(LZMAAction.RUN).toBeDefined();
@@ -195,7 +195,7 @@ describe('Default Export Tests', () => {
     });
 
     it('should export error message enum', async () => {
-      const { LZMAErrorMessage } = await import('../src/lzma.js');
+      const { LZMAErrorMessage } = await import('../../src/lzma.js');
 
       expect(LZMAErrorMessage.SUCCESS).toBe('Operation completed successfully');
       expect(LZMAErrorMessage.STREAM_END).toBe('End of stream was reached');
@@ -204,7 +204,7 @@ describe('Default Export Tests', () => {
 
     it('should export all type definitions implicitly', async () => {
       // TypeScript should validate these types are available
-      const { createXz } = await import('../src/lzma.js');
+      const { createXz } = await import('../../src/lzma.js');
 
       // Create stream with typed options
       const stream = createXz({

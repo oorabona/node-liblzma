@@ -5,7 +5,7 @@
 import { Buffer } from 'node:buffer';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { createUnxz, createXz, unxz, unxzAsync, xz, xzAsync } from '../src/lzma.js';
+import { createUnxz, createXz, unxz, unxzAsync, xz, xzAsync } from '../../src/lzma.js';
 
 describe('Concurrency Tests', () => {
   const testData = Buffer.from('Test data for concurrency '.repeat(100));

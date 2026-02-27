@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as lzma from '../src/lzma.js';
+import * as lzma from '../../src/lzma.js';
 
 describe('Error Recovery and State Transitions', () => {
   it('should cover filter validation catch block', () => {

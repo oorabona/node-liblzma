@@ -14,7 +14,7 @@ import {
   versionNumber,
   versionString,
   xzSync,
-} from '../src/lzma.js';
+} from '../../src/lzma.js';
 
 describe('isXZ', () => {
   it('should return true for XZ compressed data', () => {

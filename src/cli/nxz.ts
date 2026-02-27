@@ -19,6 +19,10 @@ import {
 import { performance } from 'node:perf_hooks';
 import { pipeline } from 'node:stream/promises';
 import { parseArgs } from 'node:util';
+// Dynamic import for tar-xz (optional dependency)
+// Type imports are erased at compile time — zero runtime dependency,
+// but TypeScript verifies the contract at build time.
+import type { CreateOptions, ExtractOptions, ListOptions, TarEntry } from 'tar-xz';
 import {
   check,
   createUnxz,
@@ -32,20 +36,11 @@ import {
   xzSync,
 } from '../lzma.js';
 
-// Dynamic import for tar-xz (optional dependency)
-// Interface defined inline to avoid compile-time dependency on tar-xz
-interface TarEntry {
-  name: string;
-  size: number;
-  type: string;
-  mode?: number;
-  mtime?: number;
-}
-interface TarXzModule {
-  create(opts: { file: string; cwd: string; files: string[]; preset?: number }): Promise<void>;
-  extract(opts: { file: string; cwd?: string; strip?: number }): Promise<TarEntry[]>;
-  list(opts: { file: string }): Promise<TarEntry[]>;
-}
+type TarXzModule = {
+  create(opts: CreateOptions): Promise<void>;
+  extract(opts: ExtractOptions): Promise<TarEntry[]>;
+  list(opts: ListOptions): Promise<TarEntry[]>;
+};
 let tarXzModule: TarXzModule | null = null;
 
 async function loadTarXz(): Promise<TarXzModule> {

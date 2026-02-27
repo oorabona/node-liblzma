@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as lzma from '../src/lzma.js';
+import * as lzma from '../../src/lzma.js';
 
 describe('Callback Validation and Behavior', () => {
   describe('Sync Mode Return Values', () => {
