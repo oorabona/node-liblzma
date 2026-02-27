@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  minimatch@<9.0.7: '>=9.0.7'
-  rollup@<4.59.0: '>=4.59.0'
-  basic-ftp@<5.2.0: '>=5.2.0'
-
 importers:
 
   .:

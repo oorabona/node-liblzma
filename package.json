@@ -146,12 +146,5 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm exec nano-staged"
   },
-  "packageManager": "pnpm@10.15.0",
-  "pnpm": {
-    "overrides": {
-      "minimatch@<9.0.7": ">=9.0.7",
-      "rollup@<4.59.0": ">=4.59.0",
-      "basic-ftp@<5.2.0": ">=5.2.0"
-    }
-  }
+  "packageManager": "pnpm@10.15.0"
 }
