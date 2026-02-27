@@ -66,10 +66,10 @@
     "node-gyp-build": "^4.8.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.0",
+    "@biomejs/biome": "^2.4.4",
     "@oorabona/release-it-preset": "^0.9.0",
     "@oorabona/vitest-monocart-coverage": "^2.0.1",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.3.2",
     "@vitest/coverage-istanbul": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "4.0.18",
@@ -146,5 +146,12 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm exec nano-staged"
   },
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.15.0",
+  "pnpm": {
+    "overrides": {
+      "minimatch@<9.0.7": ">=9.0.7",
+      "rollup@<4.59.0": ">=4.59.0",
+      "basic-ftp@<5.2.0": ">=5.2.0"
+    }
+  }
 }
