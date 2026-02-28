@@ -14,7 +14,7 @@ on:
 
 permissions:
   contents: write
-  id-token: write
+  actions: write
 
 concurrency:
   group: release-${{ inputs.tag }}
@@ -45,10 +45,16 @@ jobs:
     secrets: inherit
 
   publish:
-    name: Publish to npm
+    name: Trigger npm publish
     needs: [create-release, build]
-    uses: ./.github/workflows/publish.yml
-    with:
-      tag: ${{ inputs.tag }}
-      skip_npm: ${{ inputs.skip_npm }}
-    secrets: inherit
+    if: ${{ inputs.skip_npm != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger publish workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh workflow run publish.yml -R "$REPO" -f tag="$TAG"
+          echo "Publish workflow triggered for $TAG"
