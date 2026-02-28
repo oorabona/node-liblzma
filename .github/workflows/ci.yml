@@ -253,7 +253,7 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build TypeScript
-        run: pnpm run build
+        run: pnpm run build && pnpm -r --filter './packages/*' run build
 
       - name: Type check
         run: pnpm run type-check
@@ -319,7 +319,7 @@ jobs:
           ENABLE_THREAD_SUPPORT: 'yes'
 
       - name: Build TypeScript
-        run: pnpm run build
+        run: pnpm run build && pnpm -r --filter './packages/*' run build
 
       - name: Run tests with coverage
         run: pnpm vitest run --coverage
@@ -406,7 +406,7 @@ jobs:
             (runner.os == 'macOS' && 'ccache clang++' || '') }}
 
       - name: Build TypeScript
-        run: pnpm run build
+        run: pnpm run build && pnpm -r --filter './packages/*' run build
 
       - name: Run tests
         uses: nick-fields/retry@v3
@@ -499,7 +499,7 @@ jobs:
             (runner.os == 'macOS' && 'ccache clang++' || '') }}
 
       - name: Build TypeScript
-        run: pnpm run build
+        run: pnpm run build && pnpm -r --filter './packages/*' run build
 
       - name: Run tests
         uses: nick-fields/retry@v3
@@ -583,7 +583,7 @@ jobs:
             (runner.os == 'macOS' && 'ccache clang++' || '') }}
 
       - name: Build TypeScript
-        run: pnpm run build
+        run: pnpm run build && pnpm -r --filter './packages/*' run build
 
       - name: Run tests
         uses: nick-fields/retry@v3
