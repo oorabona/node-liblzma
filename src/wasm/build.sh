@@ -20,16 +20,10 @@ OUTPUT_DIR="$SCRIPT_DIR"
 
 # Check Emscripten is available
 if ! command -v emcc &>/dev/null; then
-    # Try local emsdk from spike (development fallback)
-    EMSDK_ENV="$PROJECT_ROOT/wasm-spike/emsdk/emsdk_env.sh"
-    if [ -f "$EMSDK_ENV" ]; then
-        source "$EMSDK_ENV" 2>/dev/null
-    else
-        echo "ERROR: Emscripten (emcc) not found in PATH."
-        echo "Install: https://emscripten.org/docs/getting_started/downloads.html"
-        echo "Or activate: source emsdk/emsdk_env.sh"
-        exit 1
-    fi
+    echo "ERROR: Emscripten (emcc) not found in PATH."
+    echo "Install: https://emscripten.org/docs/getting_started/downloads.html"
+    echo "Or activate: source /path/to/emsdk/emsdk_env.sh"
+    exit 1
 fi
 
 # Check deps/xz exists

@@ -430,7 +430,7 @@ Scenario: SC-18 Concurrent operations
 
 **Deliverables:**
 - [x] Size report (documented above)
-- [x] Working build script: `wasm-spike/build-wasm.sh`
+- [x] Working build script: `src/wasm/build.sh`
 - [x] Decision: **GO**
 
 ---
