@@ -1,18 +1,39 @@
 {
   "name": "nxz-cli",
-  "version": "3.1.2",
+  "version": "3.2.0",
   "description": "Portable xz-like CLI tool for Node.js — compress, decompress, and handle tar.xz archives",
   "type": "module",
+  "main": "./lib/nxz.js",
   "bin": {
-    "nxz": "./bin/nxz.js"
+    "nxz": "./lib/nxz.js"
   },
-  "files": [
-    "bin/"
-  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf lib",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
+    "format": "biome format",
+    "format:write": "biome format --write",
+    "check": "biome check",
+    "check:write": "biome check --write"
+  },
   "dependencies": {
     "node-liblzma": "workspace:^",
     "tar-xz": "workspace:^"
   },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@types/node": "^25.3.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "files": [
+    "lib/"
+  ],
   "engines": {
     "node": ">=20.0.0"
   },

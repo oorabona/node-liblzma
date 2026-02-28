@@ -30,32 +30,16 @@ import {
   unxzSync,
   versionString,
   xzSync,
-} from '../lzma.js';
+} from 'node-liblzma';
+import type { TarEntry } from 'tar-xz';
 
-// Dynamic import for tar-xz (optional dependency)
-// Interface defined inline to avoid build-order circular dependency
-// (root needs tar-xz types, tar-xz depends on root).
-// Keep in sync with packages/tar-xz/src/types.ts
-interface TarEntry {
-  name: string;
-  size: number;
-  type: string;
-  mode?: number;
-  mtime?: number;
-}
-interface TarXzModule {
-  create(opts: { file: string; cwd: string; files: string[]; preset?: number }): Promise<void>;
-  extract(opts: { file: string; cwd?: string; strip?: number }): Promise<TarEntry[]>;
-  list(opts: { file: string }): Promise<TarEntry[]>;
-}
+type TarXzModule = typeof import('tar-xz');
 let tarXzModule: TarXzModule | null = null;
 
 async function loadTarXz(): Promise<TarXzModule> {
   if (!tarXzModule) {
     try {
-      // Variable import specifier prevents TypeScript from resolving at compile time
-      const modName = 'tar-xz';
-      tarXzModule = (await import(modName)) as TarXzModule;
+      tarXzModule = await import('tar-xz');
     } catch {
       throw new Error('tar-xz package not available. Install it with: pnpm add tar-xz');
     }
@@ -241,7 +225,7 @@ Report bugs at: https://github.com/oorabona/node-liblzma/issues`);
  */
 function printVersion(): void {
   // Read package.json for nxz version
-  const packageJsonPath = new URL('../../package.json', import.meta.url);
+  const packageJsonPath = new URL('../package.json', import.meta.url);
   let nxzVersion = 'unknown';
   try {
     const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
@@ -576,20 +560,22 @@ function formatSpeedup(baseline: number, candidate: number): string {
  */
 async function benchmarkFile(inputFile: string, options: CliOptions): Promise<number> {
   // Initialize WASM module with Node.js file-based loader
-  const { initModule, resetModule } = await import('../wasm/bindings.js');
-  const { xzAsync: wasmXzAsync, unxzAsync: wasmUnxzAsync } = await import('../wasm/index.js');
+  const {
+    initModule,
+    resetModule,
+    xzAsync: wasmXzAsync,
+    unxzAsync: wasmUnxzAsync,
+  } = await import('node-liblzma/wasm');
   const { readFileSync: fsReadFileSync } = await import('node:fs');
   const { fileURLToPath } = await import('node:url');
-  const { dirname, join } = await import('node:path');
 
-  const wasmDir = dirname(fileURLToPath(import.meta.url));
-  const wasmPath = join(wasmDir, '..', 'wasm', 'liblzma.wasm');
+  const wasmPath = fileURLToPath(import.meta.resolve('node-liblzma/wasm/liblzma.wasm'));
 
   resetModule();
   await initModule(async () => {
-    const { default: createLZMA } = await import('../wasm/liblzma.js');
+    const { default: createLZMA } = await import('node-liblzma/wasm/liblzma.js');
     const wasmBinary = fsReadFileSync(wasmPath);
-    return (await createLZMA({ wasmBinary })) as import('../wasm/types.js').LZMAModule;
+    return (await createLZMA({ wasmBinary })) as import('node-liblzma/wasm').LZMAModule;
   });
 
   const { data, size } = readFileSafe(inputFile);
@@ -683,7 +669,7 @@ async function benchmarkFile(inputFile: string, options: CliOptions): Promise<nu
 async function listTarFile(filename: string, options: CliOptions): Promise<number> {
   try {
     const tarXz = await loadTarXz();
-    const entries = await tarXz.list({ file: filename });
+    const entries: TarEntry[] = await tarXz.list({ file: filename });
 
     if (options.verbose) {
       // Verbose format with permissions, size, date

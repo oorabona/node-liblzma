@@ -1,6 +1,6 @@
 {
   "name": "tar-xz",
-  "version": "3.1.2",
+  "version": "3.2.0",
   "description": "Create and extract tar.xz archives with streaming support for Node.js and buffer-based API for browsers",
   "type": "module",
   "main": "./lib/index.js",
