@@ -1,12 +1,9 @@
 {
   "name": "node-liblzma",
-  "version": "3.1.2",
+  "version": "3.2.0",
   "description": "NodeJS wrapper for liblzma",
   "type": "module",
   "main": "./lib/lzma.js",
-  "bin": {
-    "nxz": "./lib/cli/nxz.js"
-  },
   "exports": {
     ".": {
       "browser": {
@@ -28,7 +25,11 @@
       "import": "./lib/lzma.inline.js",
       "default": "./lib/lzma.inline.js"
     },
-    "./cli": "./lib/cli/nxz.js"
+    "./wasm/liblzma.js": {
+      "types": "./src/wasm/liblzma.d.ts",
+      "default": "./lib/wasm/liblzma.js"
+    },
+    "./wasm/liblzma.wasm": "./lib/wasm/liblzma.wasm"
   },
   "scripts": {
     "postinstall": "node-gyp-build",
@@ -88,6 +89,7 @@
     "lib/",
     "prebuilds/",
     "src/bindings/",
+    "src/wasm/liblzma.d.ts",
     "src/wasm/liblzma.js",
     "src/wasm/liblzma.wasm",
     "scripts/build_xz_with_cmake.py",

@@ -52,7 +52,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build TypeScript
-        run: pnpm build
+        run: pnpm build && pnpm -r --filter './packages/*' run build
 
       - name: Run tests
         run: pnpm test
@@ -160,7 +160,7 @@ jobs:
           pnpm version ${{ github.event.inputs.version }} --no-git-tag-version
 
       - name: Build TypeScript
-        run: pnpm build
+        run: pnpm build && pnpm -r --filter './packages/*' run build
 
       - name: Publish to npm with tag
         run: pnpm publish --access public --tag ${{ github.event.inputs.prerelease-type }} --provenance --no-git-checks

@@ -6,10 +6,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { isXZ, unxzSync, xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { isXZ, unxzSync, xzSync } from '../../src/lzma.js';
 
-const NXZ_PATH = join(import.meta.dirname, '..', '..', 'lib', 'cli', 'nxz.js');
+const NXZ_PATH = join(import.meta.dirname, '..', 'lib', 'nxz.js');
 
 /**
  * Run nxz CLI and return result
