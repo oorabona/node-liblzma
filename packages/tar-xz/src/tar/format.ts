@@ -97,7 +97,7 @@ function writeString(header: Uint8Array, offset: number, length: number, value: 
   const writeLen = Math.min(bytes.length, length);
 
   for (let i = 0; i < writeLen; i++) {
-    header[offset + i] = bytes[i];
+    header[offset + i] = bytes[i]!;
   }
 
   // Null-terminate if there's room
@@ -165,7 +165,7 @@ export function parseHeader(header: Uint8Array): TarEntry | null {
   }
 
   // Parse type flag
-  const typeFlagChar = String.fromCharCode(header[OFFSETS.typeflag]);
+  const typeFlagChar = String.fromCharCode(header[OFFSETS.typeflag]!);
 
   // Handle legacy type (null or empty = regular file)
   const type: TarEntryTypeValue =

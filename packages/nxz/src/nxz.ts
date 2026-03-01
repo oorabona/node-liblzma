@@ -120,7 +120,7 @@ function parseCliArgs(args: string[]): CliOptions {
   for (const arg of args) {
     const presetMatch = arg.match(/^-(\d)$/);
     if (presetMatch) {
-      presetLevel = Number.parseInt(presetMatch[1], 10);
+      presetLevel = Number.parseInt(presetMatch[1]!, 10);
     } else {
       filteredArgs.push(arg);
     }
@@ -704,13 +704,14 @@ async function listTarFile(filename: string, options: CliOptions): Promise<numbe
  */
 function findCommonParent(paths: string[]): string {
   if (paths.length === 0) return process.cwd();
-  if (paths.length === 1) return paths[0];
+  if (paths.length === 1) return paths[0]!;
   const parts = paths.map((p) => p.split('/'));
   const common: string[] = [];
-  for (let i = 0; i < parts[0].length; i++) {
-    const segment = parts[0][i];
+  const first = parts[0]!;
+  for (let i = 0; i < first.length; i++) {
+    const segment = first[i];
     if (parts.every((p) => p[i] === segment)) {
-      common.push(segment);
+      common.push(segment!);
     } else {
       break;
     }
@@ -727,7 +728,7 @@ async function createTarFile(files: string[], options: CliOptions): Promise<numb
     let outputFile = options.output;
     if (!outputFile) {
       // Use first file/dir name as base
-      const base = path.basename(files[0]).replace(/\/$/, '');
+      const base = path.basename(files[0]!).replace(/\/$/, '');
       outputFile = `${base}.tar.xz`;
     }
 
@@ -743,13 +744,13 @@ async function createTarFile(files: string[], options: CliOptions): Promise<numb
 
     // Determine cwd (common parent directory)
     let cwd: string;
-    if (resolvedFiles.length === 1 && statSync(resolvedFiles[0]).isDirectory()) {
-      cwd = resolvedFiles[0];
+    if (resolvedFiles.length === 1 && statSync(resolvedFiles[0]!).isDirectory()) {
+      cwd = resolvedFiles[0]!;
     } else {
       // Find common parent of all files
       const parents = resolvedFiles.map((f) => (statSync(f).isDirectory() ? f : path.dirname(f)));
       // Use the first file's parent as cwd for simple cases
-      cwd = parents.length === 1 ? parents[0] : findCommonParent(parents);
+      cwd = parents.length === 1 ? parents[0]! : findCommonParent(parents);
     }
 
     // Collect files to archive (relative to cwd)
@@ -945,7 +946,7 @@ async function main(): Promise<void> {
 
   // Check for tar-create mode: -T with files that aren't .tar.xz archives
   if (options.files.length > 0) {
-    const mode = determineMode(options, options.files[0]);
+    const mode = determineMode(options, options.files[0]!);
     if (mode === 'tar-create') {
       const exitCode = await createTarFile(options.files, options);
       process.exit(exitCode);
