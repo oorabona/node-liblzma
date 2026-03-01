@@ -39,6 +39,7 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
 - [Testing](#testing)
 - [Migration Guide (v1 → v2)](#migration-guide)
 - [Contributing](#contributing)
+  - [Releasing](#releasing)
 - [Troubleshooting](#troubleshooting)
 - [Bugs](#bugs)
 - [Acknowledgements](#acknowledgements)
@@ -137,14 +138,14 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 - **tar-xz package**: Create/extract `.tar.xz` archives — Node.js streaming + browser WASM
 - **Progress events**: Monitor compression/decompression in real-time
 - **XZ Utils 5.8.x**: Updated to latest stable version
-- **519 tests**: Comprehensive test suite with 100% code coverage
+- **100% code coverage**: Comprehensive test suite across all packages
 
 ### v2.0.0 — TypeScript Modernization
 
 - **Full TypeScript migration**: Complete rewrite from CoffeeScript
 - **Promise-based APIs**: `xzAsync()` and `unxzAsync()`
 - **Modern tooling**: Vitest, Biome, pnpm, pre-commit hooks
-- **Node.js >= 16** required (updated from >= 12)
+- **Node.js >= 16** required (updated from >= 12; bumped to >= 20 in v3.2.0)
 
 <details>
 <summary><strong>Legacy (N-API migration)</strong></summary>
@@ -655,7 +656,7 @@ npm install
 ## Testing
 
 ```bash
-pnpm test              # Run all 519 tests
+pnpm test              # Run all tests
 pnpm test:watch        # Watch mode
 pnpm test:coverage     # Coverage report
 pnpm type-check        # TypeScript type checking
@@ -741,6 +742,10 @@ docs: add migration guide for v2.0
 3. Run `pnpm check:write && pnpm type-check && pnpm test`
 4. Commit with conventional commits and push
 5. CI checks run automatically on PR
+
+### Releasing
+
+For maintainers: see [docs/RELEASING.md](docs/RELEASING.md) for the complete release process (version bump, changelog, npm publish, cross-repo notifications).
 
 ## Troubleshooting
 
