@@ -18,13 +18,11 @@ graph LR
 
     subgraph "Standalone"
         PR[pre-release.yml<br><i>alpha / beta / rc</i>]
-        RP[republish.yml<br><i>recovery</i>]
     end
 
     style R fill:#4CAF50,color:#fff
     style MR fill:#FF9800,color:#fff
     style PR fill:#2196F3,color:#fff
-    style RP fill:#f44336,color:#fff
 ```
 
 ## Standard Release
@@ -132,23 +130,7 @@ npm install node-liblzma@alpha    # or @beta, @rc
 
 ## Recovery
 
-**Workflow:** `republish.yml` (manual trigger)
-
-Re-publishes an existing release to npm. For cases where npm publish failed but the GitHub Release and prebuilds are intact.
-
-### Inputs
-
-| Input | Type | Description |
-|-------|------|-------------|
-| `version` | string | Semver version (without `v` prefix) |
-| `publish_npm` | boolean | Actually publish (safety gate) |
-| `confirmation` | string | Must type "I understand the risks" |
-
-### Notes
-
-- Uses `NPM_TOKEN` secret (not OIDC) for authentication
-- Downloads prebuilds from the existing GitHub Release
-- Verifies prebuilds exist before publishing
+If npm publish fails partway through, simply re-run `publish.yml` manually via **Actions → Publish → Run workflow** with the same tag. The workflow is idempotent — already-published packages are skipped.
 
 ## npm Packages
 
@@ -194,7 +176,6 @@ Runs weekly to detect new XZ Utils releases:
 | `GPG_PRIVATE_KEY` | Yes | release, check-xz-updates | GPG-sign commits and tags |
 | `GITHUB_TOKEN` | Auto | All workflows | GitHub API access |
 | `CODECOV_TOKEN` | Yes | ci (coverage) | Upload coverage reports |
-| `NPM_TOKEN` | Only republish | republish.yml | Manual npm auth (OIDC handles normal publishes) |
 
 ### OIDC Trusted Publishing
 
