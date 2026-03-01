@@ -15,6 +15,7 @@ doc-meta:
 |----------|----------|--------|
 | Architecture | [Overview](plans/architecture.md) | draft |
 | Browser/WASM | [Browser Usage Guide](BROWSER.md) | canonical |
+| Native Bindings | [Migration Research](plans/native-binding-migration.md) | draft |
 | Release Process | [Releasing](RELEASING.md) | canonical |
 
 ## By Scope
