@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-02-28
+
+### Added
+- enable auto-merge on XZ update PRs (ci) ([eb4e2c7](https://github.com/oorabona/node-liblzma/commit/eb4e2c7))
+
+### Fixed
+- remove flaky timing assertion in async callback test (test) ([0e9349c](https://github.com/oorabona/node-liblzma/commit/0e9349c))
+- revert import type from tar-xz, fix docs workflow step order (ci) ([20fd125](https://github.com/oorabona/node-liblzma/commit/20fd125))
+- patch 5 dependabot alerts via pnpm overrides (security) ([451ac14](https://github.com/oorabona/node-liblzma/commit/451ac14))
+- refresh lockfile to resolve 5 dependabot alerts (security) ([856bddd](https://github.com/oorabona/node-liblzma/commit/856bddd))
+
+### Changed
+- **Breaking**: bump engines.node to >=20 ([4169971](https://github.com/oorabona/node-liblzma/commit/4169971))
+- move nxz CLI to packages/nxz/ standalone workspace package (cli) ([ec54c45](https://github.com/oorabona/node-liblzma/commit/ec54c45))
+- reorganize tests into subdirectories (unit, integration, native, exports, cli) ([4169971](https://github.com/oorabona/node-liblzma/commit/4169971))
+- upgrade Biome to 2.4.0, enable new lint rules ([e530f59](https://github.com/oorabona/node-liblzma/commit/e530f59))
+- achieve 100% coverage for tar-xz and fix Codecov setup (test) ([b5d9ec8](https://github.com/oorabona/node-liblzma/commit/b5d9ec8))
+- add packages/** to CI trigger paths (ci) ([e94026a](https://github.com/oorabona/node-liblzma/commit/e94026a))
+- add workspace package build step to all CI workflows (ci) ([b166582](https://github.com/oorabona/node-liblzma/commit/b166582))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([d6a71cf](https://github.com/oorabona/node-liblzma/commit/d6a71cf))
+- bump the dev-dependencies group with 3 updates (deps-dev) ([ca6c575](https://github.com/oorabona/node-liblzma/commit/ca6c575))
+- bump vite from 6.4.1 to 7.3.1 (deps-dev) ([6cba706](https://github.com/oorabona/node-liblzma/commit/6cba706))
+
+## [3.1.2] - 2026-02-06
+
+### Changed
+- align workspace package versions to root (3.1.1) and auto-sync in CI ([eaeeb5d](https://github.com/oorabona/node-liblzma/commit/eaeeb5d))
+
+## [3.1.1] - 2026-02-06
+
+### Fixed
+- include prebuilds/ in npm package files ([71b2e0d](https://github.com/oorabona/node-liblzma/commit/71b2e0d))
+
 ## [3.1.0] - 2026-02-06
 
 ### Added
@@ -352,16 +385,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
+[3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
+[3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
+[3.1.0]: https://github.com/oorabona/node-liblzma/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/oorabona/node-liblzma/compare/v2.2.0...v3.0.0
 [2.0.3]: https://github.com/oorabona/node-liblzma/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/oorabona/node-liblzma/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/oorabona/node-liblzma/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/oorabona/node-liblzma/compare/v1.1.9...v2.0.0
 [1.1.9]: https://github.com/oorabona/node-liblzma/releases/tag/v1.1.9
-[v2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
-[2.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.1.0
-[v2.2.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.2.0
-[2.2.0]: https://github.com/oorabona/node-liblzma/releases/tag/v2.2.0
-[v3.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v3.1.0
-[3.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v3.1.0
+[2.1.0]: https://github.com/oorabona/node-liblzma/compare/v2.0.3...v2.1.0
+[2.2.0]: https://github.com/oorabona/node-liblzma/compare/v2.1.0...v2.2.0
