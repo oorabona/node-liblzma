@@ -4,7 +4,7 @@ doc-meta:
   scope: project
   type: index
   created: 2026-01-24
-  updated: 2026-02-01
+  updated: 2026-03-01
 ---
 
 # Documentation Index
@@ -15,6 +15,7 @@ doc-meta:
 |----------|----------|--------|
 | Architecture | [Overview](plans/architecture.md) | draft |
 | Browser/WASM | [Browser Usage Guide](BROWSER.md) | canonical |
+| Release Process | [Releasing](RELEASING.md) | canonical |
 
 ## By Scope
 
