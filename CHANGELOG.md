@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- consolidate release.yml into single end-to-end workflow (bump → changelog → tag → build → publish → notify) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
-- add notify-downstream job to trigger docker-containers upstream-monitor on release (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+- consolidate release.yml into single end-to-end workflow (bump → changelog → tag → build → publish) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
 - align git committer identity across all workflows to real identity (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
 
 ### Removed

@@ -4,33 +4,66 @@ This document describes the complete release and delivery pipeline for node-libl
 
 ## Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ Standard Release                                                    │
-│                                                                     │
-│ release.yml → build-artifacts.yml → publish.yml → notify-downstream │
-│ (bump, tag)   (3 platforms)         (3 npm pkgs)   (docker-containers)
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph "Standard Release"
+        R[release.yml<br><i>bump, tag, changelog</i>] --> BA[build-artifacts.yml<br><i>Linux, macOS, Windows</i>]
+        BA --> P[publish.yml<br><i>3 npm packages + OIDC</i>]
+    end
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ Emergency / Manual                                                  │
-│                                                                     │
-│ manual-release.yml → build-artifacts.yml → publish.yml              │
-│ (existing tag)       (3 platforms)         (3 npm pkgs)             │
-└─────────────────────────────────────────────────────────────────────┘
+    subgraph "Emergency"
+        MR[manual-release.yml<br><i>existing tag</i>] --> BA2[build-artifacts.yml]
+        BA2 --> P2[publish.yml]
+    end
 
-┌──────────────────────────┐  ┌──────────────────────────┐
-│ Pre-release (standalone) │  │ Recovery (standalone)     │
-│ pre-release.yml          │  │ republish.yml             │
-│ (alpha/beta/rc)          │  │ (re-publish failed npm)   │
-└──────────────────────────┘  └──────────────────────────┘
+    subgraph "Standalone"
+        PR[pre-release.yml<br><i>alpha / beta / rc</i>]
+        RP[republish.yml<br><i>recovery</i>]
+    end
+
+    subgraph "Downstream (pull-based)"
+        NPM[(npm registry)] -.->|daily poll| DC[docker-containers<br>upstream-monitor]
+    end
+
+    P --> NPM
+    P2 --> NPM
+
+    style R fill:#4CAF50,color:#fff
+    style MR fill:#FF9800,color:#fff
+    style PR fill:#2196F3,color:#fff
+    style RP fill:#f44336,color:#fff
 ```
+
+### Downstream detection
+
+Downstream projects (e.g., `docker-containers`) detect new releases via **pull-based polling** — no cross-repo PAT needed. The `docker-containers` upstream-monitor runs daily and checks npm for new versions. Maximum detection delay: 24 hours.
 
 ## Standard Release
 
 **Workflow:** `release.yml` (manual trigger via GitHub Actions UI)
 
 This is the primary release path. It handles everything end-to-end.
+
+```mermaid
+sequenceDiagram
+    participant M as Maintainer
+    participant R as release.yml
+    participant BA as build-artifacts.yml
+    participant P as publish.yml
+    participant NPM as npm registry
+
+    M->>R: workflow_dispatch (patch/minor/major)
+    R->>R: release-it: bump version + CHANGELOG
+    R->>R: GPG-sign commit + tag
+    R->>R: Push to master
+    R->>R: Create GitHub Release
+    R->>BA: Build prebuilds (3 platforms)
+    BA-->>R: Upload to GitHub Release assets
+    R->>P: gh workflow run publish.yml
+    P->>NPM: Publish node-liblzma (OIDC)
+    P->>NPM: Publish tar-xz (OIDC)
+    P->>NPM: Publish nxz-cli (OIDC)
+```
 
 ### Inputs
 
@@ -48,7 +81,6 @@ This is the primary release path. It handles everything end-to-end.
 5. **GitHub Release** — Created automatically with generated release notes
 6. **Build prebuilds** — Cross-platform native binaries via `build-artifacts.yml`
 7. **Publish to npm** — All 3 packages via `publish.yml` (OIDC provenance)
-8. **Notify downstream** — Triggers `docker-containers` upstream-monitor (best-effort)
 
 ### How to run
 
@@ -172,7 +204,6 @@ Runs weekly to detect new XZ Utils releases:
 |--------|----------|---------|---------|
 | `GPG_PRIVATE_KEY` | Yes | release, check-xz-updates | GPG-sign commits and tags |
 | `GITHUB_TOKEN` | Auto | All workflows | GitHub API access |
-| `DOWNSTREAM_TOKEN` | Optional | release (notify-downstream) | PAT with `actions:write` on `oorabona/docker-containers` |
 | `CODECOV_TOKEN` | Yes | ci (coverage) | Upload coverage reports |
 | `NPM_TOKEN` | Only republish | republish.yml | Manual npm auth (OIDC handles normal publishes) |
 
@@ -207,7 +238,3 @@ All release commits and tags are signed with GPG key `B98806DCD4E29D4D`. The `cr
 Actions performed by `GITHUB_TOKEN` don't trigger other GitHub workflows. This is why:
 - `release.yml` uses `gh workflow run` (creates a new workflow_dispatch event) instead of relying on release events
 - `manual-release.yml` exists as a fallback for when automated chains break
-
-### Downstream notification fails
-
-The `notify-downstream` job in `release.yml` requires a `DOWNSTREAM_TOKEN` PAT with `actions:write` on `oorabona/docker-containers`. If not configured, the job silently skips — the docker-containers daily upstream-monitor will detect the new version within 24 hours.

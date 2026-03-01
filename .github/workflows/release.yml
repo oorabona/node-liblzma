@@ -123,26 +123,3 @@ jobs:
         run: |
           gh workflow run publish.yml -R "$REPO" -f tag="$TAG"
           echo "Publish workflow triggered for $TAG"
-
-  notify-downstream:
-    name: Notify downstream projects
-    needs: [release, publish]
-    if: ${{ inputs.skip_npm != true }}
-    runs-on: ubuntu-latest
-    steps:
-      # Trigger docker-containers upstream monitor to detect new version.
-      # Requires DOWNSTREAM_TOKEN secret (PAT with actions:write on target repo).
-      # Falls back silently if token not configured — docker-containers daily
-      # upstream-monitor will pick up the new version within 24h anyway.
-      - name: Trigger docker-containers rebuild
-        env:
-          GH_TOKEN: ${{ secrets.DOWNSTREAM_TOKEN }}
-        run: |
-          if [ -n "$GH_TOKEN" ]; then
-            gh workflow run upstream-monitor.yaml \
-              -R oorabona/docker-containers \
-              && echo "docker-containers upstream-monitor triggered" \
-              || echo "Warning: trigger failed"
-          else
-            echo "Skipped: DOWNSTREAM_TOKEN not configured (daily poll will detect within 24h)"
-          fi
