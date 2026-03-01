@@ -21,22 +21,11 @@ graph LR
         RP[republish.yml<br><i>recovery</i>]
     end
 
-    subgraph "Downstream (pull-based)"
-        NPM[(npm registry)] -.->|daily poll| DC[docker-containers<br>upstream-monitor]
-    end
-
-    P --> NPM
-    P2 --> NPM
-
     style R fill:#4CAF50,color:#fff
     style MR fill:#FF9800,color:#fff
     style PR fill:#2196F3,color:#fff
     style RP fill:#f44336,color:#fff
 ```
-
-### Downstream detection
-
-Downstream projects (e.g., `docker-containers`) detect new releases via **pull-based polling** — no cross-repo PAT needed. The `docker-containers` upstream-monitor runs daily and checks npm for new versions. Maximum detection delay: 24 hours.
 
 ## Standard Release
 
