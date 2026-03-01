@@ -33,4 +33,4 @@ _None_
 | HIGH | 0 | Done |
 | LOW | 6 | Nice to have |
 
-**Last story:** WASM Browser Support — v3.0.0 (2026-02-01)
+**Last story:** CI consolidation — release workflows + CHANGELOG backfill (2026-03-01)

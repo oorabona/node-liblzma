@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- consolidate release.yml into single end-to-end workflow (bump → changelog → tag → build → publish → notify) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+- add notify-downstream job to trigger docker-containers upstream-monitor on release (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+- align git committer identity across all workflows to real identity (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+
+### Removed
+- delete on-release-merged.yml (dead workflow, GITHUB_TOKEN merges never triggered it) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+- delete test-with-artifacts.yml (dead workflow, never called) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+
+### Fixed
+- backfill CHANGELOG.md for v3.1.1, v3.1.2, v3.2.0 (missed during manual releases) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+
 ## [3.2.0] - 2026-02-28
 
 ### Added
