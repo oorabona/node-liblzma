@@ -239,6 +239,25 @@ describe('WASM Bindings (Block 2)', () => {
       const garbage = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
       expect(() => streamBufferDecode(garbage)).toThrow();
     });
+
+    it('should accept a number memlimit', () => {
+      const original = new TextEncoder().encode('memlimit number test');
+      const compressed = easyBufferEncode(original, 0);
+      const decompressed = streamBufferDecode(compressed, 128 * 1024 * 1024);
+      expect(decompressed).toEqual(original);
+    });
+
+    it('should decompress data larger than 4096 bytes', () => {
+      // Generate data > 1024 bytes compressed so outSize starts >= 4096
+      // 8KB of repetitive data compresses well but still > 1024 bytes raw
+      const original = new Uint8Array(8192);
+      for (let i = 0; i < original.length; i++) {
+        original[i] = i % 256;
+      }
+      const compressed = easyBufferEncode(original, 0);
+      const decompressed = streamBufferDecode(compressed);
+      expect(decompressed).toEqual(original);
+    });
   });
 
   describe('processStream (streaming encode/decode)', () => {
