@@ -871,7 +871,9 @@ export enum LZMAErrorMessage {
 
 /**
  * Array of error messages indexed by LZMA status code.
- * @deprecated Use LZMAErrorMessage enum instead
+ * @deprecated Use {@link LZMAErrorMessage} enum instead
+ * @since 3.0.0
+ * @see {@link LZMAErrorMessage}
  */
 export const messages: readonly string[] = [
   LZMAErrorMessage.SUCCESS,
