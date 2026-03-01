@@ -10,7 +10,6 @@ export {
   createEndOfArchive,
   createHeader,
   isEmptyBlock,
-  isUstarHeader,
   parseHeader,
   verifyChecksum,
 } from './format.js';

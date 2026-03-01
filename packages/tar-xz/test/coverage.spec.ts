@@ -13,7 +13,6 @@ import {
   calculatePadding,
   createEndOfArchive,
   createHeader,
-  isUstarHeader,
   parseHeader,
 } from '../src/tar/format.js';
 import {
@@ -106,18 +105,6 @@ describe('Coverage: checksum edge cases', () => {
     buf[0] = 'z'.charCodeAt(0);
     buf[1] = '!'.charCodeAt(0);
     expect(parseOctal(buf, 0, 4)).toBe(0);
-  });
-});
-
-describe('Coverage: isUstarHeader', () => {
-  it('returns true for valid ustar header', () => {
-    expect(isUstarHeader(createHeader({ name: 'test.txt' }))).toBe(true);
-  });
-
-  it('returns false for non-ustar data', () => {
-    const buf = new Uint8Array(512);
-    buf[0] = 1;
-    expect(isUstarHeader(buf)).toBe(false);
   });
 });
 

@@ -133,10 +133,6 @@ export function isEmptyBlock(block: Uint8Array): boolean {
 /**
  * Check if header has valid USTAR magic
  */
-export function isUstarHeader(header: Uint8Array): boolean {
-  const magic = parseString(header, OFFSETS.magic, LENGTHS.magic);
-  return magic === 'ustar' || magic === 'ustar\0';
-}
 
 /**
  * Parse TAR header into entry metadata
