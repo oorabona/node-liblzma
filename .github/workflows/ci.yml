@@ -275,13 +275,13 @@ jobs:
           fetch-depth: 1
 
       - name: Download XZ sources
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: xz-sources
           path: .
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: wasm-build
           path: src/wasm
@@ -356,13 +356,13 @@ jobs:
           fetch-depth: 1
 
       - name: Download XZ sources
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: xz-sources
           path: .
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: wasm-build
           path: src/wasm
@@ -447,13 +447,13 @@ jobs:
           fetch-depth: 1
 
       - name: Download XZ sources
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: xz-sources
           path: .
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: wasm-build
           path: src/wasm
@@ -533,13 +533,13 @@ jobs:
           fetch-depth: 1
 
       - name: Download XZ sources
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: xz-sources
           path: .
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: wasm-build
           path: src/wasm
