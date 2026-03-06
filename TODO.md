@@ -2,18 +2,16 @@
 
 ## In Progress
 
-- [ ] 🟡 [Refactor] Code health audit cleanup — deduplicate, reduce complexity, unify constants (2026-03-06)
+_None_
 
 ## Pending - HIGH
 
-- [ ] 🔧 [tar-xz] Refactorer `processBuffer` extract/list (CC 54/34, sim 0.985) + `_write` (sim 0.988) — extraire logique commune — Priority: H (from code-health 2026-03-06)
+_None_
 
 ## Pending - MEDIUM
 
 - [ ] 🔧 [Config] Activer `exactOptionalPropertyTypes` dans packages/nxz et packages/tar-xz tsconfig — HIGH breakage risk on callback signatures, needs separate refactor story — Priority: M (from /review F-001, deferred from audit cleanup)
-- [ ] 🔧 [WASM] Extraire `flush`/`transform` dupliqués dans WasmXzStream/WasmUnxzStream (sim 1.0) — Priority: M (from code-health 2026-03-06)
-- [ ] 🔧 [tar-xz] Extraire `stripPath` en shared util browser/node (sim 0.997) — Priority: M (from code-health 2026-03-06)
-- [ ] 🔧 [API] Unifier les constantes LZMA error — single source of truth (errors.ts vs wasm/types.ts, 11 groupes dupliqués) — Priority: M (from code-health 2026-03-06)
+- [ ] 🔧 [tar-xz] Refactorer `processBuffer` extract/list (CC 54/34) — state machines différentes (extract stocke contenu, list skip), extraire parsing header commun — Priority: M (demoted from H: base class not worth 10-line _write, focus on CC reduction)
 
 ## Pending - LOW (Nice to Have)
 
@@ -24,13 +22,11 @@
 - [ ] 🔧 [API] Verify xzFile/unxzFile appear in documented API surface and have explicit test coverage (0 internal callers, public API only) — Priority: L (from astix audit)
 - [ ] 💡 [tar-xz] Review exported internal utilities (calculateChecksum, parseOctal, writeChecksum, createPaxData, parsePaxData, applyPaxAttributes) — 0 external consumers, consider making internal-only to reduce API surface — Priority: L (from astix audit)
 - [ ] 💡 [Pool] Inspect unreachable path in processQueue (3/4 paths reached) — dead guard condition or latent bug. Already has `v8 ignore` — Priority: L (from astix audit)
-- [ ] 🔧 [Test] Extraire `collectStream` helper dupliqué (compat.test.ts vs stream.test.ts, sim 0.999) — Priority: L (from code-health 2026-03-06)
-- [ ] 🔧 [Shared] Extraire `formatBytes` en util partagé (nxz.ts vs tar-xz/demo, sim 0.964) — Priority: L (from code-health 2026-03-06)
-- [ ] 💡 [tar-xz] Nettoyer types non-utilisés: TarEntryType (0 callers), TarEntryWithData (0 callers), CreateHeaderOptions (0 callers) — Priority: L (from code-health 2026-03-06)
-- [ ] 🔧 [Scripts] Fix shellcheck warnings — TIME_CMD unused (benchmark.sh:85), unquoted vars (check-size.sh:41-42) — Priority: L (from code-health 2026-03-06)
+- [ ] 💡 [tar-xz] Nettoyer types non-utilisés: TarEntryType (0 callers), TarEntryWithData (0 callers), CreateHeaderOptions (0 callers) — vérifier public API avant suppression — Priority: L (from code-health 2026-03-06)
 
 ## Completed
 
+- [x] ✅ [Refactor] Code health cleanup: collectStream helper, error constants unification, stripPath shared util, shellcheck fixes (2026-03-06)
 - [x] ✅ [tar-xz] Remove dead `isUstarHeader` — deleted function, re-export, and tests (2026-03-01)
 - [x] ✅ [Test] Duplicate root-level test files — FALSE POSITIVE, migration was complete (2026-03-01)
 - [x] ✅ [Config] Enable `noUncheckedIndexedAccess` in tar-xz and nxz tsconfig (2026-03-01)
@@ -45,15 +41,21 @@
 
 _None_
 
+## Reviewed / Skipped (code-health 2026-03-06)
+
+- [~] [WASM] flush/transform stream.ts — variance intentionnelle (Unxz track `finished` state), pas de dedup possible sans dégrader la lisibilité
+- [~] [Shared] formatBytes — implémentations différentes (nxz: KiB/MiB binaire vs demo: KB/MB log-based), pas de vrai doublon
+- [~] [tar-xz] _write base class — identique mais trivial (10 LOC), base class pour si peu n'est pas rentable
+
 ---
 
 ## Quick Reference
 
 | Priority | Count | Status |
 |----------|-------|--------|
-| HIGH | 1 | tar-xz processBuffer/extract dedup |
-| MEDIUM | 4 | stream dedup, stripPath, error constants, exactOptionalPropertyTypes |
-| LOW | 11 | Nice to have |
+| HIGH | 0 | Cleared |
+| MEDIUM | 2 | exactOptionalPropertyTypes, processBuffer CC reduction |
+| LOW | 8 | Nice to have |
 
 **Last audit:** code-health full audit (2026-03-06)
-**Last story:** CI consolidation — release workflows + CHANGELOG backfill (2026-03-01)
+**Last story:** Code health cleanup — dedup, constants, shellcheck (2026-03-06)
