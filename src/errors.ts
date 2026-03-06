@@ -105,30 +105,28 @@ export class LZMAProgrammingError extends LZMAError {
 /**
  * Factory function to create appropriate error instance based on errno
  */
+
+// --- LZMA Return Codes ---
+// From liblzma/base.h lzma_ret enum (0-11)
+
+// Codes 0-4 are success/informational status codes, not errors:
+export const LZMA_OK = 0; // Operation completed successfully
+export const LZMA_STREAM_END = 1; // End of stream reached
+export const LZMA_NO_CHECK = 2; // Input stream has no integrity check
+export const LZMA_UNSUPPORTED_CHECK = 3; // Cannot calculate integrity check
+export const LZMA_GET_CHECK = 4; // Integrity check type now available
+
+// Codes 5-11 are actual error codes:
+export const LZMA_MEM_ERROR = 5; // Cannot allocate memory
+export const LZMA_MEMLIMIT_ERROR = 6; // Memory usage limit reached
+export const LZMA_FORMAT_ERROR = 7; // File format not recognized
+export const LZMA_OPTIONS_ERROR = 8; // Invalid or unsupported options
+export const LZMA_DATA_ERROR = 9; // Data is corrupt
+export const LZMA_BUF_ERROR = 10; // No progress possible
+export const LZMA_PROG_ERROR = 11; // Programming error
+
 export function createLZMAError(errno: number, message?: string): LZMAError {
-  // LZMA return codes mapping from liblzma/base.h:
-  // Codes 0-4 are success/informational status codes, not errors.
-  // They are handled by the default case below.
-  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation - shows full lzma_ret enum range (0-11) */
-  const LZMA_OK = 0; // Operation completed successfully
-  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
-  const LZMA_STREAM_END = 1; // End of stream reached
-  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
-  const LZMA_NO_CHECK = 2; // Input stream has no integrity check
-  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
-  const LZMA_UNSUPPORTED_CHECK = 3; // Cannot calculate integrity check
-  /* biome-ignore lint/correctness/noUnusedVariables: Kept for documentation */
-  const LZMA_GET_CHECK = 4; // Integrity check type now available
-
-  // Actual error codes (5-11) - these get specialized error classes:
-  const LZMA_MEM_ERROR = 5; // Cannot allocate memory
-  const LZMA_MEMLIMIT_ERROR = 6; // Memory usage limit reached
-  const LZMA_FORMAT_ERROR = 7; // File format not recognized
-  const LZMA_OPTIONS_ERROR = 8; // Invalid or unsupported options
-  const LZMA_DATA_ERROR = 9; // Data is corrupt
-  const LZMA_BUF_ERROR = 10; // No progress possible
-  const LZMA_PROG_ERROR = 11; // Programming error
-
+  // Uses module-level LZMA_* constants defined above (from liblzma/base.h)
   switch (errno) {
     case LZMA_MEM_ERROR:
       return new LZMAMemoryError(errno);

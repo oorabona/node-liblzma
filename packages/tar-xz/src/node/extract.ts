@@ -16,6 +16,7 @@ import {
   parsePaxData,
 } from '../tar/index.js';
 import type { PaxAttributes } from '../tar/pax.js';
+import { stripPath } from '../tar/utils.js';
 import { type ExtractOptions, type TarEntry, TarEntryType } from '../types.js';
 
 /**
@@ -172,18 +173,6 @@ class TarUnpack extends Writable {
       callback();
     }
   }
-}
-
-/**
- * Strip leading path components from a path
- */
-function stripPath(filePath: string, strip: number): string {
-  if (strip <= 0) {
-    return filePath;
-  }
-
-  const parts = filePath.split('/');
-  return parts.slice(strip).join('/');
 }
 
 /**

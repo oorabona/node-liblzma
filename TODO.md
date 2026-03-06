@@ -2,15 +2,18 @@
 
 ## In Progress
 
-_None_
+- [ ] 🟡 [Refactor] Code health audit cleanup — deduplicate, reduce complexity, unify constants (2026-03-06)
 
 ## Pending - HIGH
 
-_None_
+- [ ] 🔧 [tar-xz] Refactorer `processBuffer` extract/list (CC 54/34, sim 0.985) + `_write` (sim 0.988) — extraire logique commune — Priority: H (from code-health 2026-03-06)
 
 ## Pending - MEDIUM
 
 - [ ] 🔧 [Config] Activer `exactOptionalPropertyTypes` dans packages/nxz et packages/tar-xz tsconfig — HIGH breakage risk on callback signatures, needs separate refactor story — Priority: M (from /review F-001, deferred from audit cleanup)
+- [ ] 🔧 [WASM] Extraire `flush`/`transform` dupliqués dans WasmXzStream/WasmUnxzStream (sim 1.0) — Priority: M (from code-health 2026-03-06)
+- [ ] 🔧 [tar-xz] Extraire `stripPath` en shared util browser/node (sim 0.997) — Priority: M (from code-health 2026-03-06)
+- [ ] 🔧 [API] Unifier les constantes LZMA error — single source of truth (errors.ts vs wasm/types.ts, 11 groupes dupliqués) — Priority: M (from code-health 2026-03-06)
 
 ## Pending - LOW (Nice to Have)
 
@@ -21,6 +24,10 @@ _None_
 - [ ] 🔧 [API] Verify xzFile/unxzFile appear in documented API surface and have explicit test coverage (0 internal callers, public API only) — Priority: L (from astix audit)
 - [ ] 💡 [tar-xz] Review exported internal utilities (calculateChecksum, parseOctal, writeChecksum, createPaxData, parsePaxData, applyPaxAttributes) — 0 external consumers, consider making internal-only to reduce API surface — Priority: L (from astix audit)
 - [ ] 💡 [Pool] Inspect unreachable path in processQueue (3/4 paths reached) — dead guard condition or latent bug. Already has `v8 ignore` — Priority: L (from astix audit)
+- [ ] 🔧 [Test] Extraire `collectStream` helper dupliqué (compat.test.ts vs stream.test.ts, sim 0.999) — Priority: L (from code-health 2026-03-06)
+- [ ] 🔧 [Shared] Extraire `formatBytes` en util partagé (nxz.ts vs tar-xz/demo, sim 0.964) — Priority: L (from code-health 2026-03-06)
+- [ ] 💡 [tar-xz] Nettoyer types non-utilisés: TarEntryType (0 callers), TarEntryWithData (0 callers), CreateHeaderOptions (0 callers) — Priority: L (from code-health 2026-03-06)
+- [ ] 🔧 [Scripts] Fix shellcheck warnings — TIME_CMD unused (benchmark.sh:85), unquoted vars (check-size.sh:41-42) — Priority: L (from code-health 2026-03-06)
 
 ## Completed
 
@@ -44,9 +51,9 @@ _None_
 
 | Priority | Count | Status |
 |----------|-------|--------|
-| HIGH | 0 | Cleared |
-| MEDIUM | 1 | exactOptionalPropertyTypes deferred |
-| LOW | 7 | Nice to have |
+| HIGH | 1 | tar-xz processBuffer/extract dedup |
+| MEDIUM | 4 | stream dedup, stripPath, error constants, exactOptionalPropertyTypes |
+| LOW | 11 | Nice to have |
 
-**Last audit:** astix project audit cleanup (2026-03-01)
+**Last audit:** code-health full audit (2026-03-06)
 **Last story:** CI consolidation — release workflows + CHANGELOG backfill (2026-03-01)

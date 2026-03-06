@@ -5,26 +5,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createUnxz, createXz } from '../../src/wasm/stream.js';
+import { collectStream } from './helpers.utils.js';
 import { loadWasmModule, unloadWasmModule } from './wasm-helpers.utils.js';
-
-/** Collect all chunks from a ReadableStream into a single Uint8Array */
-async function collectStream(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  const total = chunks.reduce((sum, c) => sum + c.byteLength, 0);
-  const result = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result;
-}
 
 /** Create a ReadableStream from a Uint8Array, optionally splitting into chunks */
 function createInputStream(data: Uint8Array, chunkSize?: number): ReadableStream<Uint8Array> {

@@ -79,12 +79,6 @@ command -v xz &>/dev/null || error "xz not found in PATH"
 command -v node &>/dev/null || error "node not found in PATH"
 [[ -f "$NXZ" ]] || error "nxz not found at $NXZ (run 'pnpm build' first)"
 
-# Check /usr/bin/time for memory measurement
-TIME_CMD=""
-if [[ -x /usr/bin/time ]]; then
-    TIME_CMD="/usr/bin/time -v"
-fi
-
 # Create temp directory
 TEMP_DIR=$(mktemp -d -t nxz-benchmark-XXXXXX)
 log "Temp directory: $TEMP_DIR"

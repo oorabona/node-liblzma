@@ -21,3 +21,4 @@ export {
   needsPaxHeaders,
   parsePaxData,
 } from './pax.js';
+export { stripPath } from './utils.js';
