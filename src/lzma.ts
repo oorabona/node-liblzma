@@ -188,21 +188,33 @@ export const LZMAAction = {
  * Used to indicate the result of encoding/decoding operations.
  */
 export const LZMAStatus = {
+  /** Operation completed successfully */
   OK: liblzma.LZMA_OK,
+  /** End of stream was reached */
   STREAM_END: liblzma.LZMA_STREAM_END,
+  /** Input stream has no integrity check */
   NO_CHECK: liblzma.LZMA_NO_CHECK,
+  /** Cannot verify the integrity check type */
   UNSUPPORTED_CHECK: liblzma.LZMA_UNSUPPORTED_CHECK,
+  /** Integrity check type is now available */
   GET_CHECK: liblzma.LZMA_GET_CHECK,
+  /** Cannot allocate memory */
   MEM_ERROR: liblzma.LZMA_MEM_ERROR,
+  /** Memory usage limit was reached */
   MEMLIMIT_ERROR: liblzma.LZMA_MEMLIMIT_ERROR,
+  /** File format not recognized */
   FORMAT_ERROR: liblzma.LZMA_FORMAT_ERROR,
+  /** Invalid or unsupported options */
   OPTIONS_ERROR: liblzma.LZMA_OPTIONS_ERROR,
+  /** Data is corrupt */
   DATA_ERROR: liblzma.LZMA_DATA_ERROR,
+  /** No progress is possible (input/output buffers full) */
   BUF_ERROR: liblzma.LZMA_BUF_ERROR,
+  /** Programming error in caller */
   PROG_ERROR: liblzma.LZMA_PROG_ERROR,
 } as const;
 
-// Additional filter constants
+/** Extended filter constants including aliases and FILTERS_MAX limit. Superset of {@link filter}. */
 export const LZMAFilter = {
   ...filter,
   X86_ALT: liblzma.LZMA_FILTER_X86,
@@ -214,27 +226,51 @@ export const LZMAFilter = {
 } as const;
 
 // Legacy individual exports for backward compatibility
+// Prefer LZMAAction, LZMAStatus, and LZMAFilter objects instead.
+
+/** Action: continue encoding/decoding */
 export const LZMA_RUN = LZMAAction.RUN;
+/** Action: flush pending output synchronously */
 export const LZMA_SYNC_FLUSH = LZMAAction.SYNC_FLUSH;
+/** Action: flush and reset encoder state */
 export const LZMA_FULL_FLUSH = LZMAAction.FULL_FLUSH;
+/** Action: finish the stream — no more input */
 export const LZMA_FINISH = LZMAAction.FINISH;
+/** liblzma return code: operation completed successfully */
 export const LZMA_OK = LZMAStatus.OK;
+/** liblzma return code: end of stream was reached */
 export const LZMA_STREAM_END = LZMAStatus.STREAM_END;
+/** liblzma return code: input stream has no integrity check */
 export const LZMA_NO_CHECK = LZMAStatus.NO_CHECK;
+/** liblzma return code: cannot verify the integrity check type */
 export const LZMA_UNSUPPORTED_CHECK = LZMAStatus.UNSUPPORTED_CHECK;
+/** liblzma return code: integrity check type is now available */
 export const LZMA_GET_CHECK = LZMAStatus.GET_CHECK;
+/** liblzma return code: cannot allocate memory */
 export const LZMA_MEM_ERROR = LZMAStatus.MEM_ERROR;
+/** liblzma return code: memory usage limit was reached */
 export const LZMA_MEMLIMIT_ERROR = LZMAStatus.MEMLIMIT_ERROR;
+/** liblzma return code: file format not recognized */
 export const LZMA_FORMAT_ERROR = LZMAStatus.FORMAT_ERROR;
+/** liblzma return code: invalid or unsupported options */
 export const LZMA_OPTIONS_ERROR = LZMAStatus.OPTIONS_ERROR;
+/** liblzma return code: data is corrupt */
 export const LZMA_DATA_ERROR = LZMAStatus.DATA_ERROR;
+/** liblzma return code: no progress is possible */
 export const LZMA_BUF_ERROR = LZMAStatus.BUF_ERROR;
+/** liblzma return code: programming error in caller */
 export const LZMA_PROG_ERROR = LZMAStatus.PROG_ERROR;
+/** BCJ filter for x86 architecture */
 export const LZMA_FILTER_X86 = LZMAFilter.X86_ALT;
+/** BCJ filter for PowerPC architecture */
 export const LZMA_FILTER_POWERPC = LZMAFilter.POWERPC_ALT;
+/** BCJ filter for IA-64 architecture */
 export const LZMA_FILTER_IA64 = LZMAFilter.IA64_ALT;
+/** BCJ filter for ARM architecture */
 export const LZMA_FILTER_ARM = LZMAFilter.ARM_ALT;
+/** BCJ filter for ARM-Thumb architecture */
 export const LZMA_FILTER_ARMTHUMB = LZMAFilter.ARMTHUMB_ALT;
+/** Maximum number of filters in a chain */
 export const LZMA_FILTERS_MAX = LZMAFilter.FILTERS_MAX;
 /* v8 ignore next */
 

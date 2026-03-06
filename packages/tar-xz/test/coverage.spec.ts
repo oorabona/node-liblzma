@@ -19,6 +19,7 @@ import {
   applyPaxAttributes,
   createPaxData,
   createPaxHeaderBlocks,
+  needsPaxHeaders,
   parsePaxData,
 } from '../src/tar/pax.js';
 import type { TarEntry } from '../src/types.js';
@@ -224,6 +225,78 @@ describe('Coverage: applyPaxAttributes', () => {
   });
 });
 
+describe('Coverage: createPaxRecord boundary (pax.ts:63)', () => {
+  it('recalculates length when digit count changes at 99→100 boundary', () => {
+    // Key "path" + value of 91 'a's → content " path=aaa...a\n" = 98 chars
+    // Initial lengthStr = "98" (2 digits), totalLength = 2 + 98 = 100
+    // "100" has 3 digits ≠ 2 → while loop triggers → recalculates to 101
+    const value = 'a'.repeat(91);
+    const data = createPaxData({ path: value });
+    expect(data).toBeInstanceOf(Uint8Array);
+
+    const text = new TextDecoder().decode(data);
+    expect(text).toMatch(/^\d+ path=/);
+    // Verify the record starts with "101" (3-digit length after recalculation)
+    expect(text).toMatch(/^101 path=/);
+
+    // Roundtrip: parsePaxData should recover the value
+    const parsed = parsePaxData(data);
+    expect(parsed.path).toBe(value);
+  });
+
+  it('does not trigger recalculation when digit count is stable', () => {
+    // Short value: content " path=hello\n" = 12 chars
+    // lengthStr = "12" (2 digits), totalLength = 2 + 12 = 14 → "14" still 2 digits → stable
+    const data = createPaxData({ path: 'hello' });
+    const text = new TextDecoder().decode(data);
+    expect(text).toBe('14 path=hello\n');
+  });
+});
+
+describe('Coverage: needsPaxHeaders linkname (pax.ts:167)', () => {
+  it('returns true when linkname exceeds 100 chars', () => {
+    expect(needsPaxHeaders({ name: 'link', linkname: 'a'.repeat(101) })).toBe(true);
+  });
+
+  it('returns false when linkname is exactly 100 chars', () => {
+    expect(needsPaxHeaders({ name: 'link', linkname: 'a'.repeat(100) })).toBe(false);
+  });
+
+  it('returns false when linkname is absent', () => {
+    expect(needsPaxHeaders({ name: 'link' })).toBe(false);
+  });
+
+  it('returns false when linkname is empty string', () => {
+    expect(needsPaxHeaders({ name: 'link', linkname: '' })).toBe(false);
+  });
+});
+
+describe('Coverage: createHeader isDir + long name split (format.ts:240)', () => {
+  it('creates header for directory with name requiring prefix split', () => {
+    // Directory path > 100 chars with slashes, requiring prefix/name splitting
+    const longDir =
+      'very/long/directory/path/that/exceeds/one/hundred/characters/' +
+      'in/total/length/for/the/name/field/here/test/';
+    expect(longDir.length).toBeGreaterThan(100);
+    expect(longDir.length).toBeLessThanOrEqual(255);
+
+    const header = createHeader({
+      name: longDir,
+      size: 0,
+      mode: 0o755,
+      type: TarEntryType.DIRECTORY,
+    });
+    expect(header).toBeInstanceOf(Uint8Array);
+    expect(header.length).toBe(512);
+
+    // Roundtrip: parseHeader should recover the full name
+    const parsed = parseHeader(header);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.name).toBe(longDir);
+    expect(parsed?.type).toBe(TarEntryType.DIRECTORY);
+  });
+});
+
 describe('Coverage: createPaxHeaderBlocks', () => {
   it('creates parseable PAX header + data blocks', () => {
     const blocks = createPaxHeaderBlocks('file.txt', { path: 'very-long-file.txt' });
@@ -311,6 +384,32 @@ describe('Coverage: Node API', () => {
       await fs.mkdir(dest);
       await extract({ file: archive, cwd: dest });
       expect((await fs.stat(path.join(dest, 'empty.txt'))).size).toBe(0);
+    });
+  });
+
+  // --- Empty directories (collectFiles branch, create.ts:119) ---
+
+  describe('empty directories', () => {
+    it('packs an empty directory into the archive', async () => {
+      const src = path.join(tempDir, 'src');
+      await fs.mkdir(path.join(src, 'emptydir'), { recursive: true });
+
+      const archive = path.join(tempDir, 'archive.tar.xz');
+      await create({ file: archive, cwd: src, files: ['emptydir'] });
+
+      // List should contain only the directory entry
+      const entries = await list({ file: archive });
+      expect(entries).toHaveLength(1);
+      expect(entries[0].name).toBe('emptydir/');
+      expect(entries[0].type).toBe(TarEntryType.DIRECTORY);
+      expect(entries[0].size).toBe(0);
+
+      // Extract and verify the directory exists
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+      await extract({ file: archive, cwd: dest });
+      const stat = await fs.stat(path.join(dest, 'emptydir'));
+      expect(stat.isDirectory()).toBe(true);
     });
   });
 
