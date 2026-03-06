@@ -10,22 +10,19 @@ _None_
 
 ## Pending - MEDIUM
 
-- [ ] 🔧 [Config] Activer `exactOptionalPropertyTypes` dans packages/nxz et packages/tar-xz tsconfig — HIGH breakage risk on callback signatures, needs separate refactor story — Priority: M (from /review F-001, deferred from audit cleanup)
-- [ ] 🔧 [tar-xz] Refactorer `processBuffer` extract/list (CC 54/34) — state machines différentes (extract stocke contenu, list skip), extraire parsing header commun — Priority: M (demoted from H: base class not worth 10-line _write, focus on CC reduction)
+- [ ] 🔧 [Config] Activer `exactOptionalPropertyTypes` — HIGH breakage risk on callback signatures, bénéfice marginal pour une lib. Candidate skip. — Priority: M (from /review F-001)
 
 ## Pending - LOW (Nice to Have)
 
-- [ ] 💡 [Docs] Vérifier complétude des TSDoc sur l'API publique (typedoc bump)
-- [ ] 💡 [Coverage] Investiguer les 5 branches partielles restantes (create.ts:2, format.ts:1, pax.ts:2)
-- [ ] 🔧 [CLI] Refactorer les 4 fonctions haute complexité cognitive dans nxz.ts (determineMode, listTarFile, createTarFile, main) — Priority: L (from /review F-004)
-- [ ] 🔧 [API] Deprecate `messages` array in src/lzma.ts — marked @deprecated with @since 3.0.0. Schedule removal for next major — Priority: L (from astix audit)
-- [ ] 🔧 [API] Verify xzFile/unxzFile appear in documented API surface and have explicit test coverage (0 internal callers, public API only) — Priority: L (from astix audit)
-- [ ] 💡 [tar-xz] Review exported internal utilities (calculateChecksum, parseOctal, writeChecksum, createPaxData, parsePaxData, applyPaxAttributes) — 0 external consumers, consider making internal-only to reduce API surface — Priority: L (from astix audit)
-- [ ] 💡 [Pool] Inspect unreachable path in processQueue (3/4 paths reached) — dead guard condition or latent bug. Already has `v8 ignore` — Priority: L (from astix audit)
-- [ ] 💡 [tar-xz] Nettoyer types non-utilisés: TarEntryType (0 callers), TarEntryWithData (0 callers), CreateHeaderOptions (0 callers) — vérifier public API avant suppression — Priority: L (from code-health 2026-03-06)
+- [ ] 🔧 [API] Deprecate `messages` array in src/lzma.ts — marked @deprecated with @since 3.0.0, 0 callers. Remove in v4.0.0 — Priority: L (from astix audit)
 
 ## Completed
 
+- [x] ✅ [Refactor] processBuffer CC reduction: 54→8 (extract), 34→6 (list) via shared tar-parser.ts (2026-03-06)
+- [x] ✅ [CLI] nxz.ts CC reduction: 6 helpers extracted (createTarFile -49%, main -24%) (2026-03-06)
+- [x] ✅ [Pool] Remove dead guard in processQueue (unreachable if (!item) behind v8 ignore) (2026-03-06)
+- [x] ✅ [Coverage] Add 8 tests for partial branches (createPaxRecord boundary, needsPaxHeaders linkname, createHeader isDir+longName, collectFiles empty dir) (2026-03-06)
+- [x] ✅ [Docs] TSDoc for 22 LZMA_* constants, LZMAStatus members, LZMAFilter, XZFileIndex (2026-03-06)
 - [x] ✅ [Refactor] Code health cleanup: collectStream helper, error constants unification, stripPath shared util, shellcheck fixes (2026-03-06)
 - [x] ✅ [tar-xz] Remove dead `isUstarHeader` — deleted function, re-export, and tests (2026-03-01)
 - [x] ✅ [Test] Duplicate root-level test files — FALSE POSITIVE, migration was complete (2026-03-01)
@@ -41,11 +38,14 @@ _None_
 
 _None_
 
-## Reviewed / Skipped (code-health 2026-03-06)
+## Reviewed / Closed (code-health 2026-03-06)
 
-- [~] [WASM] flush/transform stream.ts — variance intentionnelle (Unxz track `finished` state), pas de dedup possible sans dégrader la lisibilité
-- [~] [Shared] formatBytes — implémentations différentes (nxz: KiB/MiB binaire vs demo: KB/MB log-based), pas de vrai doublon
-- [~] [tar-xz] _write base class — identique mais trivial (10 LOC), base class pour si peu n'est pas rentable
+- [~] [WASM] flush/transform stream.ts — variance intentionnelle (Unxz track `finished` state)
+- [~] [Shared] formatBytes — implémentations différentes (nxz: KiB/MiB vs demo: KB/MB)
+- [~] [tar-xz] _write base class — identique mais trivial (10 LOC), pas rentable
+- [~] [tar-xz] Types TarEntryType/TarEntryWithData/CreateHeaderOptions — dans l'API publique, pas unused
+- [~] [API] xzFile/unxzFile — exportés, testés dans file-helpers.test.ts, absents du browser build ✅
+- [~] [tar-xz] Internal utils (calculateChecksum, parseOctal, writeChecksum) — déjà internes, pas dans index.ts
 
 ---
 
@@ -54,8 +54,8 @@ _None_
 | Priority | Count | Status |
 |----------|-------|--------|
 | HIGH | 0 | Cleared |
-| MEDIUM | 2 | exactOptionalPropertyTypes, processBuffer CC reduction |
-| LOW | 8 | Nice to have |
+| MEDIUM | 1 | exactOptionalPropertyTypes (candidate skip) |
+| LOW | 1 | messages removal for v4.0.0 |
 
-**Last audit:** code-health full audit (2026-03-06)
-**Last story:** Code health cleanup — dedup, constants, shellcheck (2026-03-06)
+**Last audit:** code-health full audit + cleanup (2026-03-06)
+**Last story:** Code health cleanup — dedup, CC reduction, TSDoc, coverage (2026-03-06)
