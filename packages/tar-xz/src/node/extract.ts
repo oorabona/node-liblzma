@@ -7,34 +7,29 @@ import * as path from 'node:path';
 import { Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createUnxz } from 'node-liblzma';
-import {
-  applyPaxAttributes,
-  BLOCK_SIZE,
-  calculatePadding,
-  isEmptyBlock,
-  parseHeader,
-  parsePaxData,
-} from '../tar/index.js';
-import type { PaxAttributes } from '../tar/pax.js';
+import { calculatePadding } from '../tar/index.js';
 import { stripPath } from '../tar/utils.js';
 import { type ExtractOptions, type TarEntry, TarEntryType } from '../types.js';
+import { type HeaderParserState, parseNextHeader } from './tar-parser.js';
 
 /**
  * Transform stream that unpacks TAR format
  */
 class TarUnpack extends Writable {
-  private buffer: Buffer = Buffer.alloc(0);
+  private readonly state: HeaderParserState = {
+    buffer: Buffer.alloc(0),
+    paxAttrs: null,
+    emptyBlockCount: 0,
+  };
   private currentEntry: TarEntry | null = null;
   private bytesRemaining = 0;
   private paddingRemaining = 0;
   private contentChunks: Buffer[] = [];
-  private paxAttrs: PaxAttributes | null = null;
-  private emptyBlockCount = 0;
 
   public entries: Array<TarEntry & { content: Buffer }> = [];
 
   _write(chunk: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
+    this.state.buffer = Buffer.concat([this.state.buffer, chunk]);
 
     try {
       this.processBuffer();
@@ -44,125 +39,67 @@ class TarUnpack extends Writable {
     }
   }
 
+  /** Skip padding bytes that follow a file's content blocks. */
+  private skipPadding(): boolean {
+    if (this.paddingRemaining <= 0) {
+      return false;
+    }
+    const skip = Math.min(this.paddingRemaining, this.state.buffer.length);
+    this.state.buffer = this.state.buffer.subarray(skip);
+    this.paddingRemaining -= skip;
+    return true;
+  }
+
+  /** Read file content bytes into `contentChunks`; finalize entry when done. */
+  private readContent(): boolean {
+    if (this.bytesRemaining <= 0 || !this.currentEntry) {
+      return false;
+    }
+    const readSize = Math.min(this.bytesRemaining, this.state.buffer.length);
+    this.contentChunks.push(this.state.buffer.subarray(0, readSize));
+    this.state.buffer = this.state.buffer.subarray(readSize);
+    this.bytesRemaining -= readSize;
+
+    if (this.bytesRemaining === 0) {
+      const content = Buffer.concat(this.contentChunks);
+      this.entries.push({ ...this.currentEntry, content });
+      this.paddingRemaining = calculatePadding(this.currentEntry.size);
+      this.currentEntry = null;
+      this.contentChunks = [];
+    }
+    return true;
+  }
+
+  /** Push a no-content entry (directory, symlink, hardlink, empty file). */
+  private pushEmptyEntry(entry: TarEntry): void {
+    this.entries.push({ ...entry, content: Buffer.alloc(0) });
+  }
+
+  /** Dispatch a parsed entry: push immediately or prepare for content read. */
+  private handleEntry(entry: TarEntry): void {
+    if (
+      entry.type === TarEntryType.DIRECTORY ||
+      entry.type === TarEntryType.SYMLINK ||
+      entry.type === TarEntryType.HARDLINK ||
+      entry.size === 0
+    ) {
+      this.pushEmptyEntry(entry);
+      return;
+    }
+    this.currentEntry = entry;
+    this.bytesRemaining = entry.size;
+    this.contentChunks = [];
+  }
+
   private processBuffer(): void {
-    while (this.buffer.length > 0) {
-      // Handle padding
-      if (this.paddingRemaining > 0) {
-        const skip = Math.min(this.paddingRemaining, this.buffer.length);
-        this.buffer = this.buffer.subarray(skip);
-        this.paddingRemaining -= skip;
-        continue;
-      }
+    while (this.state.buffer.length > 0) {
+      if (this.skipPadding()) continue;
+      if (this.readContent()) continue;
 
-      // Handle file content
-      if (this.bytesRemaining > 0 && this.currentEntry) {
-        const readSize = Math.min(this.bytesRemaining, this.buffer.length);
-        this.contentChunks.push(this.buffer.subarray(0, readSize));
-        this.buffer = this.buffer.subarray(readSize);
-        this.bytesRemaining -= readSize;
-
-        // Entry complete
-        if (this.bytesRemaining === 0) {
-          const content = Buffer.concat(this.contentChunks);
-          this.entries.push({ ...this.currentEntry, content });
-
-          // Calculate padding
-          this.paddingRemaining = calculatePadding(this.currentEntry.size);
-          this.currentEntry = null;
-          this.contentChunks = [];
-        }
-        continue;
-      }
-
-      // Need a full block for header
-      /* v8 ignore start - streaming edge case: chunk boundary splits a 512-byte block */
-      if (this.buffer.length < BLOCK_SIZE) {
-        break;
-      }
-      /* v8 ignore stop */
-
-      const headerBlock = this.buffer.subarray(0, BLOCK_SIZE);
-      this.buffer = this.buffer.subarray(BLOCK_SIZE);
-
-      // Check for end-of-archive
-      if (isEmptyBlock(headerBlock)) {
-        this.emptyBlockCount++;
-        if (this.emptyBlockCount >= 2) {
-          // End of archive
-          break;
-        }
-        continue;
-      }
-
-      this.emptyBlockCount = 0;
-
-      // Parse header
-      let entry = parseHeader(headerBlock);
-      /* v8 ignore start - dead code: empty blocks filtered above, parseHeader only returns null for empty */
-      if (!entry) {
-        continue;
-      }
-      /* v8 ignore stop */
-
-      // Handle PAX headers
-      if (entry.type === TarEntryType.PAX_HEADER) {
-        // Read PAX data
-        const paxSize = entry.size;
-        const paxPadding = calculatePadding(paxSize);
-        const totalNeeded = paxSize + paxPadding;
-
-        /* v8 ignore start - streaming edge case: PAX data split across XZ chunks */
-        if (this.buffer.length < totalNeeded) {
-          this.buffer = Buffer.concat([headerBlock, this.buffer]);
-          break;
-        }
-        /* v8 ignore stop */
-
-        const paxData = this.buffer.subarray(0, paxSize);
-        this.buffer = this.buffer.subarray(paxSize + paxPadding);
-        this.paxAttrs = parsePaxData(paxData);
-        continue;
-      }
-
-      if (entry.type === TarEntryType.PAX_GLOBAL) {
-        // Skip global PAX headers (we don't support them yet)
-        const skipSize = entry.size + calculatePadding(entry.size);
-        /* v8 ignore start - streaming edge case: global PAX data split across XZ chunks */
-        if (this.buffer.length < skipSize) {
-          this.buffer = Buffer.concat([headerBlock, this.buffer]);
-          break;
-        }
-        /* v8 ignore stop */
-        this.buffer = this.buffer.subarray(skipSize);
-        continue;
-      }
-
-      // Apply PAX attributes if present
-      if (this.paxAttrs) {
-        entry = applyPaxAttributes(entry, this.paxAttrs);
-        this.paxAttrs = null;
-      }
-
-      // Handle directories (no content)
-      if (entry.type === TarEntryType.DIRECTORY) {
-        this.entries.push({ ...entry, content: Buffer.alloc(0) });
-        continue;
-      }
-
-      // Handle symlinks (no content)
-      if (entry.type === TarEntryType.SYMLINK || entry.type === TarEntryType.HARDLINK) {
-        this.entries.push({ ...entry, content: Buffer.alloc(0) });
-        continue;
-      }
-
-      // Regular file - prepare to read content
-      if (entry.size > 0) {
-        this.currentEntry = entry;
-        this.bytesRemaining = entry.size;
-        this.contentChunks = [];
-      } else {
-        this.entries.push({ ...entry, content: Buffer.alloc(0) });
-      }
+      const result = parseNextHeader(this.state);
+      if (result.action === 'need-more-data' || result.action === 'end-of-archive') break;
+      if (result.action === 'pax-consumed') continue;
+      this.handleEntry(result.entry);
     }
   }
 
