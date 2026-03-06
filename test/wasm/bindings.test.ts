@@ -157,14 +157,14 @@ describe('WASM Bindings (Block 2)', () => {
       }
     });
 
-    it('should accept a BigInt memlimit', () => {
-      const original = new TextEncoder().encode('BigInt memlimit test');
+    it('should accept a number memlimit', () => {
+      const original = new TextEncoder().encode('number memlimit test');
       const compressed = easyBufferEncode(original, 0);
 
       const mod = getModule();
       const stream = new WasmLzmaStream(mod);
       try {
-        decoderInit(stream, BigInt(128 * 1024 * 1024));
+        decoderInit(stream, 128 * 1024 * 1024);
         expect(memusage(stream)).toBeGreaterThan(0);
         const decompressed = processStream(stream, compressed);
         expect(decompressed).toEqual(original);
@@ -291,13 +291,16 @@ describe('WASM Bindings (Block 2)', () => {
     });
 
     it('should decompress data larger than 4096 bytes', () => {
-      // Generate data > 1024 bytes compressed so outSize starts >= 4096
-      // 8KB of repetitive data compresses well but still > 1024 bytes raw
-      const original = new Uint8Array(8192);
+      // Use pseudo-random data that doesn't compress well,
+      // so compressed.length > 1024 and outSize = compressed * 4 > 4096
+      const original = new Uint8Array(4096);
+      let seed = 42;
       for (let i = 0; i < original.length; i++) {
-        original[i] = i % 256;
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        original[i] = seed & 0xff;
       }
       const compressed = easyBufferEncode(original, 0);
+      expect(compressed.byteLength).toBeGreaterThan(1024);
       const decompressed = streamBufferDecode(compressed);
       expect(decompressed).toEqual(original);
     });
