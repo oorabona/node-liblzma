@@ -116,7 +116,6 @@ describe('Edge Cases and Filter Processing', () => {
       'Unxz',
       'XzStream',
       'hasThreads',
-      'messages',
       'check',
       'preset',
       'flag',

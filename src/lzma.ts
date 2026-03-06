@@ -911,20 +911,6 @@ export enum LZMAErrorMessage {
  * @since 3.0.0
  * @see {@link LZMAErrorMessage}
  */
-export const messages: readonly string[] = [
-  LZMAErrorMessage.SUCCESS,
-  LZMAErrorMessage.STREAM_END,
-  LZMAErrorMessage.NO_CHECK,
-  LZMAErrorMessage.UNSUPPORTED_CHECK,
-  LZMAErrorMessage.GET_CHECK,
-  LZMAErrorMessage.MEM_ERROR,
-  LZMAErrorMessage.MEMLIMIT_ERROR,
-  LZMAErrorMessage.FORMAT_ERROR,
-  LZMAErrorMessage.OPTIONS_ERROR,
-  LZMAErrorMessage.DATA_ERROR,
-  LZMAErrorMessage.BUF_ERROR,
-  LZMAErrorMessage.PROG_ERROR,
-];
 
 /**
  * Decompress a buffer asynchronously using callback.
@@ -1177,7 +1163,6 @@ export default {
   Unxz,
   XzStream,
   hasThreads,
-  messages,
   check,
   preset,
   flag,
