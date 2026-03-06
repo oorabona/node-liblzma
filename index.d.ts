@@ -215,9 +215,6 @@ export declare const filter: {
   readonly SPARC: number;
 };
 
-/** LZMA error messages by error code */
-export declare const messages: readonly string[];
-
 // LZMA action constants
 export declare const LZMA_RUN: number;
 export declare const LZMA_SYNC_FLUSH: number;

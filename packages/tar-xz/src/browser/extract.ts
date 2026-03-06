@@ -12,6 +12,7 @@ import {
   parsePaxData,
 } from '../tar/index.js';
 import type { PaxAttributes } from '../tar/pax.js';
+import { stripPath } from '../tar/utils.js';
 import {
   type BrowserExtractOptions,
   type ExtractedFile,
@@ -79,18 +80,6 @@ function parseTar(data: Uint8Array): Array<TarEntry & { data: Uint8Array }> {
   }
 
   return entries;
-}
-
-/**
- * Strip leading path components from a path
- */
-function stripPath(filePath: string, strip: number): string {
-  if (strip <= 0) {
-    return filePath;
-  }
-
-  const parts = filePath.split('/');
-  return parts.slice(strip).join('/');
 }
 
 /**

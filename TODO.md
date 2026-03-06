@@ -6,33 +6,48 @@ _None_
 
 ## Pending - HIGH
 
-- [ ] 🔧 [Test] Remove duplicate root-level test files (8 files) — old copies from pre-migration (commit 4169971) still exist alongside test/unit/, test/integration/ etc. Doubles test runs and inflates coverage — Priority: H (from astix audit)
-- [ ] 🐛 [tar-xz] Remove or wire `isUstarHeader` — exported from tar/format.ts but zero callers anywhere (source + tests). Either use in parseHeader or delete — Priority: H (from astix audit)
+_None_
 
 ## Pending - MEDIUM
 
-- [ ] 🔧 [Config] Activer exactOptionalPropertyTypes + noUncheckedIndexedAccess dans packages/nxz et packages/tar-xz tsconfig — Priority: M (from /review F-001)
-- [ ] 🔧 [Monorepo] Introduire catalog: dans pnpm-workspace.yaml pour les devDeps partagées (typescript, vitest, biome, @types/node) — Priority: M (from /review F-002)
-- [ ] 💡 [Test] Add dedicated test for src/lzma.inline.ts — inline WASM path (ensureInlineInit) has error recovery branch and double-init guard, both untested — Priority: M (from astix audit)
-- [ ] 💡 [WASM] Audit test coverage for processStream (128 paths) and streamBufferDecode (64 paths) in src/wasm/bindings.ts — highest complexity functions in TS layer — Priority: M (from astix audit)
+_None_
 
 ## Pending - LOW (Nice to Have)
 
-- [ ] 💡 [Docs] Vérifier complétude des TSDoc sur l'API publique (typedoc bump)
-- [ ] 💡 [Coverage] Investiguer les 5 branches partielles restantes (create.ts:2, format.ts:1, pax.ts:2)
-- [ ] 🔧 [CLI] Refactorer les 4 fonctions haute complexité cognitive dans nxz.ts (determineMode, listTarFile, createTarFile, main) — Priority: L (from /review F-004)
-- [ ] 🔧 [API] Deprecate `messages` array in src/lzma.ts:876 — marked @deprecated, 0 callers. Schedule removal for next major — Priority: L (from astix audit)
-- [ ] 🔧 [API] Verify xzFile/unxzFile appear in documented API surface and have explicit test coverage (0 internal callers, public API only) — Priority: L (from astix audit)
-- [ ] 💡 [tar-xz] Review exported internal utilities (calculateChecksum, parseOctal, writeChecksum, createPaxData, parsePaxData, applyPaxAttributes) — 0 external consumers, consider making internal-only to reduce API surface — Priority: L (from astix audit)
-- [ ] 💡 [Pool] Inspect unreachable path in processQueue (3/4 paths reached) — dead guard condition or latent bug — Priority: L (from astix audit)
+_None_
 
 ## Completed
 
-(Archived → docs/historic/done-2026-02.md)
+- [x] ✅ [API] Remove deprecated `messages` array — definition, default export, index.d.ts, and 4 test refs removed (2026-03-06)
+- [x] ✅ [Refactor] processBuffer CC reduction: 54→8 (extract), 34→6 (list) via shared tar-parser.ts (2026-03-06)
+- [x] ✅ [CLI] nxz.ts CC reduction: 6 helpers extracted (createTarFile -49%, main -24%) (2026-03-06)
+- [x] ✅ [Pool] Remove dead guard in processQueue (unreachable if (!item) behind v8 ignore) (2026-03-06)
+- [x] ✅ [Coverage] Add 8 tests for partial branches (createPaxRecord boundary, needsPaxHeaders linkname, createHeader isDir+longName, collectFiles empty dir) (2026-03-06)
+- [x] ✅ [Docs] TSDoc for 22 LZMA_* constants, LZMAStatus members, LZMAFilter, XZFileIndex (2026-03-06)
+- [x] ✅ [Refactor] Code health cleanup: collectStream helper, error constants unification, stripPath shared util, shellcheck fixes (2026-03-06)
+- [x] ✅ [tar-xz] Remove dead `isUstarHeader` — deleted function, re-export, and tests (2026-03-01)
+- [x] ✅ [Test] Duplicate root-level test files — FALSE POSITIVE, migration was complete (2026-03-01)
+- [x] ✅ [Config] Enable `noUncheckedIndexedAccess` in tar-xz and nxz tsconfig (2026-03-01)
+- [x] ✅ [Monorepo] Add `catalog:` in pnpm-workspace.yaml for shared devDeps (2026-03-01)
+- [x] ✅ [Test] Add dedicated test for src/lzma.inline.ts — ensureInlineInit (2026-03-01)
+- [x] ✅ [WASM] Audit test coverage for processStream (100%) and streamBufferDecode (70%→improved) (2026-03-01)
+- [x] ✅ [API] Improve deprecation JSDoc on `messages` array — added @since 3.0.0 and @see (2026-03-01)
+
+(Older completed → docs/historic/done-2026-02.md)
 
 ## Blocked / Deferred
 
 _None_
+
+## Reviewed / Closed (code-health 2026-03-06)
+
+- [~] [Config] exactOptionalPropertyTypes — abandonné: bénéfice marginal pour une lib (catch explicit undefined assignment), coût élevé (breakage callbacks, options API). Pas rentable.
+- [~] [WASM] flush/transform stream.ts — variance intentionnelle (Unxz track `finished` state)
+- [~] [Shared] formatBytes — implémentations différentes (nxz: KiB/MiB vs demo: KB/MB)
+- [~] [tar-xz] _write base class — identique mais trivial (10 LOC), pas rentable
+- [~] [tar-xz] Types TarEntryType/TarEntryWithData/CreateHeaderOptions — dans l'API publique, pas unused
+- [~] [API] xzFile/unxzFile — exportés, testés dans file-helpers.test.ts, absents du browser build
+- [~] [tar-xz] Internal utils (calculateChecksum, parseOctal, writeChecksum) — déjà internes, pas dans index.ts
 
 ---
 
@@ -40,9 +55,11 @@ _None_
 
 | Priority | Count | Status |
 |----------|-------|--------|
-| HIGH | 2 | From astix audit |
-| MEDIUM | 4 | Mixed sources |
-| LOW | 7 | Nice to have |
+| HIGH | 0 | Cleared |
+| MEDIUM | 0 | Cleared |
+| LOW | 0 | Cleared |
 
-**Last audit:** astix project analysis (2026-03-01)
-**Last story:** CI consolidation — release workflows + CHANGELOG backfill (2026-03-01)
+**Backlog vide.** Prochaine action : release v4.0.0 (breaking: `messages` removed).
+
+**Last audit:** code-health full audit + cleanup (2026-03-06)
+**Last story:** Code health cleanup — dedup, CC reduction, TSDoc, coverage, messages removal (2026-03-06)

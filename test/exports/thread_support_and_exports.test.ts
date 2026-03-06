@@ -49,10 +49,6 @@ describe('Thread Support and Exports', () => {
     expect(lzma.unxzSync).toBeDefined();
     expect(lzma.xzAsync).toBeDefined();
     expect(lzma.unxzAsync).toBeDefined();
-
-    // Test that messages array is exported
-    expect(lzma.messages).toBeDefined();
-    expect(Array.isArray(lzma.messages)).toBe(true);
   });
 
   it('should test comprehensive compression with buffer management', () => {

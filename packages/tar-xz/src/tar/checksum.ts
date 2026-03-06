@@ -29,7 +29,7 @@ export function calculateChecksum(header: Uint8Array): number {
     if (i >= CHECKSUM_OFFSET && i < CHECKSUM_OFFSET + CHECKSUM_LENGTH) {
       sum += 0x20;
     } else {
-      sum += header[i];
+      sum += header[i]!;
     }
   }
 
@@ -89,7 +89,7 @@ export function parseOctal(header: Uint8Array, offset: number, length: number): 
     if (byte === 0 || byte === 0x20) {
       break;
     }
-    str += String.fromCharCode(byte);
+    str += String.fromCharCode(byte!);
   }
 
   if (str.length === 0) {

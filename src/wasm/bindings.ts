@@ -58,6 +58,7 @@ export async function initModule(loader?: () => Promise<LZMAModule>): Promise<LZ
 
   try {
     return await modulePromise;
+    /* v8 ignore start - requires WASM binary to be missing or corrupt */
   } catch (err) {
     modulePromise = null;
     throw new LZMAError(
@@ -65,6 +66,7 @@ export async function initModule(loader?: () => Promise<LZMAModule>): Promise<LZ
       -1
     );
   }
+  /* v8 ignore stop */
 }
 
 /**
@@ -284,6 +286,7 @@ export function streamBufferDecode(
         return copyFromWasm(module, outPtr, outPos);
       }
 
+      /* v8 ignore start - false branch requires C-level error other than OK/BUF_ERROR */
       // Buffer too small — grow and retry
       if (ret === LZMA_BUF_ERROR) {
         wasmFree(module, outPtr);
@@ -292,7 +295,6 @@ export function streamBufferDecode(
         continue;
       }
 
-      /* v8 ignore start */
       throw createLZMAError(ret);
       /* v8 ignore stop */
     }

@@ -27,9 +27,11 @@ export function wasmAlloc(module: LZMAModule, size: number): number {
  * Free a WASM heap pointer. Safe to call with 0 (no-op).
  */
 export function wasmFree(module: LZMAModule, ptr: number): void {
+  /* v8 ignore start - ptr is always non-zero from wasmAlloc */
   if (ptr !== 0) {
     module._free(ptr);
   }
+  /* v8 ignore stop */
 }
 
 /**

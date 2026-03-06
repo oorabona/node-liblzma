@@ -72,18 +72,20 @@ export interface LZMAModule {
 
 // --- LZMA Return Codes ---
 
-export const LZMA_OK = 0;
-export const LZMA_STREAM_END = 1;
-export const LZMA_NO_CHECK = 2;
-export const LZMA_UNSUPPORTED_CHECK = 3;
-export const LZMA_GET_CHECK = 4;
-export const LZMA_MEM_ERROR = 5;
-export const LZMA_MEMLIMIT_ERROR = 6;
-export const LZMA_FORMAT_ERROR = 7;
-export const LZMA_OPTIONS_ERROR = 8;
-export const LZMA_DATA_ERROR = 9;
-export const LZMA_BUF_ERROR = 10;
-export const LZMA_PROG_ERROR = 11;
+export {
+  LZMA_BUF_ERROR,
+  LZMA_DATA_ERROR,
+  LZMA_FORMAT_ERROR,
+  LZMA_GET_CHECK,
+  LZMA_MEM_ERROR,
+  LZMA_MEMLIMIT_ERROR,
+  LZMA_NO_CHECK,
+  LZMA_OK,
+  LZMA_OPTIONS_ERROR,
+  LZMA_PROG_ERROR,
+  LZMA_STREAM_END,
+  LZMA_UNSUPPORTED_CHECK,
+} from '../errors.js';
 
 // --- LZMA Actions ---
 

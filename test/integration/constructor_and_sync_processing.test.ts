@@ -173,7 +173,6 @@ describe('Constructor and Sync Processing', () => {
     expect(defaultExport.Xz).toBe(lzma.Xz);
     expect(defaultExport.Unxz).toBe(lzma.Unxz);
     expect(defaultExport.hasThreads).toBe(lzma.hasThreads);
-    expect(defaultExport.messages).toBe(lzma.messages);
     expect(defaultExport.check).toBe(lzma.check);
     expect(defaultExport.preset).toBe(lzma.preset);
     expect(defaultExport.filter).toBe(lzma.filter);

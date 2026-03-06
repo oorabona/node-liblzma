@@ -156,6 +156,24 @@ describe('WASM Bindings (Block 2)', () => {
         stream.free();
       }
     });
+
+    it('should accept a number memlimit', () => {
+      const original = new TextEncoder().encode('number memlimit test');
+      const compressed = easyBufferEncode(original, 0);
+
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      try {
+        decoderInit(stream, 128 * 1024 * 1024);
+        expect(memusage(stream)).toBeGreaterThan(0);
+        const decompressed = processStream(stream, compressed);
+        expect(decompressed).toEqual(original);
+      } catch (e) {
+        end(stream);
+        stream.free();
+        throw e;
+      }
+    });
   });
 
   describe('Auto decoder initialization', () => {
@@ -185,6 +203,24 @@ describe('WASM Bindings (Block 2)', () => {
       } finally {
         end(stream);
         stream.free();
+      }
+    });
+
+    it('should accept a BigInt memlimit', () => {
+      const original = new TextEncoder().encode('BigInt auto decoder test');
+      const compressed = easyBufferEncode(original, 0);
+
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      try {
+        autoDecoderInit(stream, BigInt(128 * 1024 * 1024));
+        expect(memusage(stream)).toBeGreaterThan(0);
+        const decompressed = processStream(stream, compressed);
+        expect(decompressed).toEqual(original);
+      } catch (e) {
+        end(stream);
+        stream.free();
+        throw e;
       }
     });
   });
@@ -238,6 +274,35 @@ describe('WASM Bindings (Block 2)', () => {
     it('should throw on invalid XZ data', () => {
       const garbage = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
       expect(() => streamBufferDecode(garbage)).toThrow();
+    });
+
+    it('should accept a number memlimit', () => {
+      const original = new TextEncoder().encode('memlimit number test');
+      const compressed = easyBufferEncode(original, 0);
+      const decompressed = streamBufferDecode(compressed, 128 * 1024 * 1024);
+      expect(decompressed).toEqual(original);
+    });
+
+    it('should accept a BigInt memlimit', () => {
+      const original = new TextEncoder().encode('BigInt memlimit test');
+      const compressed = easyBufferEncode(original, 0);
+      const decompressed = streamBufferDecode(compressed, BigInt(128 * 1024 * 1024));
+      expect(decompressed).toEqual(original);
+    });
+
+    it('should decompress data larger than 4096 bytes', () => {
+      // Use pseudo-random data that doesn't compress well,
+      // so compressed.length > 1024 and outSize = compressed * 4 > 4096
+      const original = new Uint8Array(4096);
+      let seed = 42;
+      for (let i = 0; i < original.length; i++) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        original[i] = seed & 0xff;
+      }
+      const compressed = easyBufferEncode(original, 0);
+      expect(compressed.byteLength).toBeGreaterThan(1024);
+      const decompressed = streamBufferDecode(compressed);
+      expect(decompressed).toEqual(original);
     });
   });
 

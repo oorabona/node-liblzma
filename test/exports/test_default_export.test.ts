@@ -39,10 +39,6 @@ describe('Default Export Tests', () => {
       expect(lzma.default.filter).toBeDefined();
       expect(lzma.default.mode).toBeDefined();
 
-      // Messages
-      expect(lzma.default.messages).toBeDefined();
-      expect(Array.isArray(lzma.default.messages)).toBe(true);
-
       // Action constants
       expect(lzma.default.LZMA_RUN).toBeDefined();
       expect(lzma.default.LZMA_SYNC_FLUSH).toBeDefined();

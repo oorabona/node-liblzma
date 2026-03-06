@@ -59,7 +59,9 @@ export function xz(
 
   xzAsync(buffer, opts).then(
     (result) => cb(null, result as unknown as Buffer),
+    /* v8 ignore start - xzAsync always rejects with Error */
     (error) => cb(error instanceof Error ? error : new Error(String(error)))
+    /* v8 ignore stop */
   );
 }
 

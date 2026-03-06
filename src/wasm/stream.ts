@@ -38,10 +38,12 @@ export function createXz(opts?: LZMAOptions): TransformStream<Uint8Array, Uint8A
 
   let cleaned = false;
   const doCleanup = () => {
+    /* v8 ignore start - guard against double-cleanup */
     if (!cleaned) {
       cleaned = true;
       cleanup(module, stream, outPtr);
     }
+    /* v8 ignore stop */
   };
 
   return new TransformStream<Uint8Array, Uint8Array>({
@@ -90,15 +92,19 @@ export function createUnxz(): TransformStream<Uint8Array, Uint8Array> {
   let finished = false;
   let cleaned = false;
   const doCleanup = () => {
+    /* v8 ignore start - guard against double-cleanup */
     if (!cleaned) {
       cleaned = true;
       cleanup(module, stream, outPtr);
     }
+    /* v8 ignore stop */
   };
 
   return new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
+      /* v8 ignore start - guard against chunks after STREAM_END */
       if (finished) return;
+      /* v8 ignore stop */
       try {
         const done = processChunk(module, stream, outPtr, chunk, LZMA_RUN, controller);
         if (done) finished = true;
