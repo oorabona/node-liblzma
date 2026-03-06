@@ -156,6 +156,24 @@ describe('WASM Bindings (Block 2)', () => {
         stream.free();
       }
     });
+
+    it('should accept a BigInt memlimit', () => {
+      const original = new TextEncoder().encode('BigInt memlimit test');
+      const compressed = easyBufferEncode(original, 0);
+
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      try {
+        decoderInit(stream, BigInt(128 * 1024 * 1024));
+        expect(memusage(stream)).toBeGreaterThan(0);
+        const decompressed = processStream(stream, compressed);
+        expect(decompressed).toEqual(original);
+      } catch (e) {
+        end(stream);
+        stream.free();
+        throw e;
+      }
+    });
   });
 
   describe('Auto decoder initialization', () => {
@@ -185,6 +203,24 @@ describe('WASM Bindings (Block 2)', () => {
       } finally {
         end(stream);
         stream.free();
+      }
+    });
+
+    it('should accept a BigInt memlimit', () => {
+      const original = new TextEncoder().encode('BigInt auto decoder test');
+      const compressed = easyBufferEncode(original, 0);
+
+      const mod = getModule();
+      const stream = new WasmLzmaStream(mod);
+      try {
+        autoDecoderInit(stream, BigInt(128 * 1024 * 1024));
+        expect(memusage(stream)).toBeGreaterThan(0);
+        const decompressed = processStream(stream, compressed);
+        expect(decompressed).toEqual(original);
+      } catch (e) {
+        end(stream);
+        stream.free();
+        throw e;
       }
     });
   });
@@ -244,6 +280,13 @@ describe('WASM Bindings (Block 2)', () => {
       const original = new TextEncoder().encode('memlimit number test');
       const compressed = easyBufferEncode(original, 0);
       const decompressed = streamBufferDecode(compressed, 128 * 1024 * 1024);
+      expect(decompressed).toEqual(original);
+    });
+
+    it('should accept a BigInt memlimit', () => {
+      const original = new TextEncoder().encode('BigInt memlimit test');
+      const compressed = easyBufferEncode(original, 0);
+      const decompressed = streamBufferDecode(compressed, BigInt(128 * 1024 * 1024));
       expect(decompressed).toEqual(original);
     });
 
