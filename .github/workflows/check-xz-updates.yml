@@ -111,7 +111,7 @@ jobs:
 
       - name: Import GPG key
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@v7
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           git_user_signingkey: true
