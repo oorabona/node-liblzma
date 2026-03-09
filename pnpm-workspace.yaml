@@ -2,8 +2,8 @@ packages:
   - "packages/*"
 
 catalog:
-  "@biomejs/biome": ^2.4.4
-  "@types/node": ^25.3.2
+  "@biomejs/biome": ^2.4.6
+  "@types/node": ^25.3.5
   "@vitest/coverage-v8": ^4.0.18
   typescript: ^5.9.3
   vitest: ^4.0.18
