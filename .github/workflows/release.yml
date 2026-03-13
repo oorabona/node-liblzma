@@ -61,8 +61,11 @@ jobs:
           git_commit_gpgsign: true
           git_tag_gpgsign: true
           git_config_global: true
-          git_committer_name: Olivier ORABONA
-          git_committer_email: oorabona@users.noreply.github.com
+
+      - name: Set git committer identity
+        run: |
+          git config --global user.name "Olivier ORABONA"
+          git config --global user.email "oorabona@users.noreply.github.com"
 
       - name: Bump version and update CHANGELOG
         env:
