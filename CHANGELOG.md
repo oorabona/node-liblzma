@@ -7,16 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- consolidate release.yml into single end-to-end workflow (bump → changelog → tag → build → publish) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
-- align git committer identity across all workflows to real identity (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+## [4.0.0] - 2026-03-13
 
-### Removed
-- delete on-release-merged.yml (dead workflow, GITHUB_TOKEN merges never triggered it) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
-- delete test-with-artifacts.yml (dead workflow, never called) (ci) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+### ⚠️ BREAKING CHANGES
+- remove deprecated default export and legacy string types ([5c958b6](https://github.com/oorabona/node-liblzma/commit/5c958b6))
+- remove deprecated messages array (BREAKING) ([71a8f7e](https://github.com/oorabona/node-liblzma/commit/71a8f7e))
+
+### Added
+- remove deprecated default export and legacy string types ⚠️ BREAKING ([5c958b6](https://github.com/oorabona/node-liblzma/commit/5c958b6))
+- remove deprecated messages array (BREAKING) ⚠️ BREAKING ([71a8f7e](https://github.com/oorabona/node-liblzma/commit/71a8f7e))
 
 ### Fixed
-- backfill CHANGELOG.md for v3.1.1, v3.1.2, v3.2.0 (missed during manual releases) ([eb8be23](https://github.com/oorabona/node-liblzma/commit/eb8be23))
+- use RELEASE_PAT to bypass ruleset for version bump push (ci) ([56164ee](https://github.com/oorabona/node-liblzma/commit/56164ee))
+- split GPG import and committer identity for ghaction-import-gpg v7 (ci) ([d348972](https://github.com/oorabona/node-liblzma/commit/d348972))
+- sync pnpm-lock.yaml with catalog specifiers (lockfile) ([d4073a9](https://github.com/oorabona/node-liblzma/commit/d4073a9))
+- set macos matrix target to universal prebuild name (workflows) ([9f313dd](https://github.com/oorabona/node-liblzma/commit/9f313dd))
+- set macos matrix target to universal prebuild name (workflows) ([f34682b](https://github.com/oorabona/node-liblzma/commit/f34682b))
+- add non-null assertion for noUncheckedIndexedAccess compat (errors) ([6b4664c](https://github.com/oorabona/node-liblzma/commit/6b4664c))
+- remove dead isUstarHeader export (tar-xz) ([5253776](https://github.com/oorabona/node-liblzma/commit/5253776))
+- trigger publish.yml via workflow_dispatch instead of workflow_call (ci) ([98ae6dc](https://github.com/oorabona/node-liblzma/commit/98ae6dc))
+
+### Changed
+- add v4.0.0 release notes and migration guide ([eddce00](https://github.com/oorabona/node-liblzma/commit/eddce00))
+- deduplicate types between index.d.ts and src/types.ts ([8683aaf](https://github.com/oorabona/node-liblzma/commit/8683aaf))
+- extract createInputStream helper to shared utils (test) ([842ff6a](https://github.com/oorabona/node-liblzma/commit/842ff6a))
+- default export removed — use named imports instead ([5c958b6](https://github.com/oorabona/node-liblzma/commit/5c958b6))
+- legacy string types (CheckType, PresetType, FilterType, ModeType, FlagType) removed from index.d.ts — use numeric types ([5c958b6](https://github.com/oorabona/node-liblzma/commit/5c958b6))
+- bump the production-dependencies group with 3 updates (deps) ([da198fb](https://github.com/oorabona/node-liblzma/commit/da198fb))
+- bump the production-dependencies group with 3 updates (deps) ([f4002bf](https://github.com/oorabona/node-liblzma/commit/f4002bf))
+- code health cleanup — dedup, CC reduction, TSDoc, coverage ([fed2915](https://github.com/oorabona/node-liblzma/commit/fed2915))
+- achieve 100% branch coverage with v8 ignore start/stop (wasm) ([5455037](https://github.com/oorabona/node-liblzma/commit/5455037))
+- improve streamBufferDecode branch coverage (wasm) ([3d22ba2](https://github.com/oorabona/node-liblzma/commit/3d22ba2))
+- finalize backlog after full code health cleanup (todo) ([f0d1c62](https://github.com/oorabona/node-liblzma/commit/f0d1c62))
+- reduce cognitive complexity in processBuffer and nxz CLI ([088a059](https://github.com/oorabona/node-liblzma/commit/088a059))
+- remove dead guard, add coverage tests, improve TSDoc ([199eb5f](https://github.com/oorabona/node-liblzma/commit/199eb5f))
+- update backlog after code health cleanup (todo) ([ea92228](https://github.com/oorabona/node-liblzma/commit/ea92228))
+- code health cleanup — deduplicate, unify constants, fix shellcheck ([442e2a6](https://github.com/oorabona/node-liblzma/commit/442e2a6))
+- update backlog after audit cleanup (todo) ([141769f](https://github.com/oorabona/node-liblzma/commit/141769f))
+- improve streamBufferDecode branch coverage (wasm) ([b835b60](https://github.com/oorabona/node-liblzma/commit/b835b60))
+- add inline WASM initialization tests (wasm) ([a826370](https://github.com/oorabona/node-liblzma/commit/a826370))
+- enable noUncheckedIndexedAccess in tar-xz and nxz (packages) ([f96a080](https://github.com/oorabona/node-liblzma/commit/f96a080))
+- add pnpm catalog for shared devDependencies (monorepo) ([f4c409e](https://github.com/oorabona/node-liblzma/commit/f4c409e))
+- improve deprecation notice on messages array ([1fd62e3](https://github.com/oorabona/node-liblzma/commit/1fd62e3))
+- bump node-addon-api from 8.5.0 to 8.6.0 in the production-dependencies group (deps) ([324da72](https://github.com/oorabona/node-liblzma/commit/324da72))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([cc874f1](https://github.com/oorabona/node-liblzma/commit/cc874f1))
+- bump node-addon-api in the production-dependencies group (deps) ([5ad0b30](https://github.com/oorabona/node-liblzma/commit/5ad0b30))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([dedc3ed](https://github.com/oorabona/node-liblzma/commit/dedc3ed))
+- add findings from astix project audit (todo) ([9078e5b](https://github.com/oorabona/node-liblzma/commit/9078e5b))
+- remove obsolete root RELEASING.md (superseded by docs/RELEASING.md) ([b1490a2](https://github.com/oorabona/node-liblzma/commit/b1490a2))
+- add native binding migration research (cmake-js, napi-rs) ([b79a056](https://github.com/oorabona/node-liblzma/commit/b79a056))
+- remove downstream references from RELEASING.md ([d6d0518](https://github.com/oorabona/node-liblzma/commit/d6d0518))
+- remove notify-downstream job, add Mermaid diagrams to RELEASING.md (ci) ([ec7f69d](https://github.com/oorabona/node-liblzma/commit/ec7f69d))
+- add release process link, fix outdated test count and Node version (readme) ([fb6e0ff](https://github.com/oorabona/node-liblzma/commit/fb6e0ff))
+- add release process documentation and fix pre-release Node matrix ([639e9c8](https://github.com/oorabona/node-liblzma/commit/639e9c8))
+- update CHANGELOG, TODO, and memory for CI consolidation ([13dd7dc](https://github.com/oorabona/node-liblzma/commit/13dd7dc))
 
 ## [3.2.0] - 2026-02-28
 
@@ -396,7 +440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v4.0.0...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -409,3 +453,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.1.9]: https://github.com/oorabona/node-liblzma/releases/tag/v1.1.9
 [2.1.0]: https://github.com/oorabona/node-liblzma/compare/v2.0.3...v2.1.0
 [2.2.0]: https://github.com/oorabona/node-liblzma/compare/v2.1.0...v2.2.0
+[v4.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.0
+[4.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.0
