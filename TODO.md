@@ -59,7 +59,8 @@ _None_
 | MEDIUM | 0 | Cleared |
 | LOW | 0 | Cleared |
 
-**Backlog vide.** Prochaine action : release v4.0.0 (breaking: `messages` removed).
+**Backlog vide.**
 
+**Last release:** v4.0.1 + v3.2.1 (2026-03-13) — macOS ARM64 native prebuilds, type dedup, API cleanup
 **Last audit:** code-health full audit + cleanup (2026-03-06)
-**Last story:** Code health cleanup — dedup, CC reduction, TSDoc, coverage, messages removal (2026-03-06)
+**Last story:** v4.0.0 release — breaking: `messages` removed, types consolidated, macOS ARM64 prebuilds (2026-03-13)
