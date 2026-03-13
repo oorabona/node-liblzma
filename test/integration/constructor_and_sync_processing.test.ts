@@ -166,20 +166,6 @@ describe('Constructor and Sync Processing', () => {
     });
   });
 
-  it('should provide complete default export structure', () => {
-    // Access the default export to ensure it's covered
-    const defaultExport = lzma.default;
-    expect(defaultExport).toBeDefined();
-    expect(defaultExport.Xz).toBe(lzma.Xz);
-    expect(defaultExport.Unxz).toBe(lzma.Unxz);
-    expect(defaultExport.hasThreads).toBe(lzma.hasThreads);
-    expect(defaultExport.check).toBe(lzma.check);
-    expect(defaultExport.preset).toBe(lzma.preset);
-    expect(defaultExport.filter).toBe(lzma.filter);
-    expect(defaultExport.createXz).toBe(lzma.createXz);
-    expect(defaultExport.createUnxz).toBe(lzma.createUnxz);
-  });
-
   it('should test comprehensive edge cases for remaining coverage', () => {
     // Test multiple scenarios in one test to catch any remaining gaps
 

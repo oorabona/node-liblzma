@@ -58,13 +58,6 @@ export interface StreamOptions extends TransformOptions {
   lzma?: LZMAOptions;
 }
 
-// Legacy string types for backward compatibility (deprecated)
-export type CheckType = 'NONE' | 'CRC32' | 'CRC64' | 'SHA256';
-export type PresetType = 'DEFAULT' | 'EXTREME';
-export type FilterType = 'LZMA2' | 'X86' | 'POWERPC' | 'IA64' | 'ARM' | 'ARMTHUMB' | 'SPARC';
-export type ModeType = 'FAST' | 'NORMAL';
-export type FlagType = 'TELL_NO_CHECK' | 'TELL_UNSUPPORTED_CHECK' | 'TELL_ANY_CHECK' | 'CONCATENATED';
-
 export type CompressionCallback = (error: Error | null, result?: Buffer) => void;
 
 /**

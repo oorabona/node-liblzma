@@ -106,42 +106,6 @@ describe('Edge Cases and Filter Processing', () => {
     xz.close();
   });
 
-  it('should provide complete default export object', () => {
-    // Access all properties of default export to ensure it's fully covered
-    const def = lzma.default;
-
-    // Test core properties that should exist in default export
-    const coreProperties = [
-      'Xz',
-      'Unxz',
-      'XzStream',
-      'hasThreads',
-      'check',
-      'preset',
-      'flag',
-      'filter',
-      'mode',
-      'createXz',
-      'createUnxz',
-      'xz',
-      'unxz',
-      'xzSync',
-      'unxzSync',
-      'xzAsync',
-      'unxzAsync',
-    ];
-
-    coreProperties.forEach((prop) => {
-      expect(def[prop]).toBeDefined();
-      /* biome-ignore lint/suspicious/noExplicitAny: Accessing dynamic property from import to verify export parity */
-      expect(def[prop]).toBe((lzma as any)[prop]);
-    });
-
-    // Test constants that might be in default export
-    if (def.LZMAAction) expect(def.LZMAAction).toBe(lzma.LZMAAction);
-    if (def.LZMAStatus) expect(def.LZMAStatus).toBe(lzma.LZMAStatus);
-  });
-
   it('should complete constructor initialization with various options', () => {
     // Test different constructor paths with various configuration options
     const configs = [

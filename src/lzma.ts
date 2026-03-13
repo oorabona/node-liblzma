@@ -906,13 +906,6 @@ export enum LZMAErrorMessage {
 }
 
 /**
- * Array of error messages indexed by LZMA status code.
- * @deprecated Use {@link LZMAErrorMessage} enum instead
- * @since 3.0.0
- * @see {@link LZMAErrorMessage}
- */
-
-/**
  * Decompress a buffer asynchronously using callback.
  * @param buffer - Compressed data to decompress
  * @param callback - Callback with error or decompressed data
@@ -1154,49 +1147,3 @@ export async function unxzFile(
 
   await pipeline(input, decompressor, output);
 }
-
-// F-014: Default export for CommonJS compatibility
-// @deprecated Use named exports instead for better tree-shaking. Will be removed in v3.0.
-// eslint-disable-next-line import/no-default-export
-export default {
-  Xz,
-  Unxz,
-  XzStream,
-  hasThreads,
-  check,
-  preset,
-  flag,
-  filter,
-  mode,
-  createXz,
-  createUnxz,
-  unxz,
-  unxzSync,
-  xz,
-  xzSync,
-  xzAsync,
-  unxzAsync,
-  // Reference individual exports to avoid duplication
-  LZMA_RUN,
-  LZMA_SYNC_FLUSH,
-  LZMA_FULL_FLUSH,
-  LZMA_FINISH,
-  LZMA_OK,
-  LZMA_STREAM_END,
-  LZMA_NO_CHECK,
-  LZMA_UNSUPPORTED_CHECK,
-  LZMA_GET_CHECK,
-  LZMA_MEM_ERROR,
-  LZMA_MEMLIMIT_ERROR,
-  LZMA_FORMAT_ERROR,
-  LZMA_OPTIONS_ERROR,
-  LZMA_DATA_ERROR,
-  LZMA_BUF_ERROR,
-  LZMA_PROG_ERROR,
-  LZMA_FILTER_X86,
-  LZMA_FILTER_POWERPC,
-  LZMA_FILTER_IA64,
-  LZMA_FILTER_ARM,
-  LZMA_FILTER_ARMTHUMB,
-  LZMA_FILTERS_MAX,
-};
