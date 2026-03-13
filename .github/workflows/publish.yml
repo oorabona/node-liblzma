@@ -11,6 +11,10 @@ on:
         description: 'Skip npm publish'
         type: boolean
         default: false
+      npm_tag:
+        description: 'npm dist-tag (e.g. "v3", "legacy"). Auto-detected if omitted.'
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       tag:
@@ -21,6 +25,10 @@ on:
         description: 'Skip npm publish (for testing)'
         type: boolean
         default: false
+      npm_tag:
+        description: 'npm dist-tag (e.g. "v3", "legacy"). Auto-detected if omitted.'
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -118,18 +126,43 @@ jobs:
       - name: Build TypeScript
         run: pnpm build && pnpm -r --filter './packages/*' run build
 
+      - name: Determine npm dist-tag
+        id: npm-tag
+        env:
+          INPUT_TAG: ${{ inputs.npm_tag }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -n "$INPUT_TAG" ]; then
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "📌 Using explicit npm tag: $INPUT_TAG"
+          else
+            LATEST=$(npm view node-liblzma version 2>/dev/null || echo "0.0.0")
+            if npx semver "$VERSION" -r ">$LATEST" >/dev/null 2>&1; then
+              echo "tag=latest" >> "$GITHUB_OUTPUT"
+              echo "📌 Version $VERSION > $LATEST, using tag: latest"
+            else
+              MAJOR=$(echo "$VERSION" | cut -d. -f1)
+              echo "tag=v${MAJOR}" >> "$GITHUB_OUTPUT"
+              echo "📌 Version $VERSION <= $LATEST, using tag: v${MAJOR}"
+            fi
+          fi
+
       - name: Publish node-liblzma to npm with provenance
         if: ${{ inputs.skip_npm != true }}
+        env:
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if npm view "node-liblzma@${VERSION}" version 2>/dev/null; then
             echo "⏭️ node-liblzma@${VERSION} already published, skipping"
           else
-            npm publish --provenance --access public
+            npm publish --provenance --access public --tag "$NPM_TAG"
           fi
 
       - name: Publish workspace packages
         if: ${{ inputs.skip_npm != true }}
+        env:
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
         run: |
           # Publish workspace packages (pure JS, no prebuilds needed)
           # Use pnpm pack (resolves workspace:^ protocols) + npm publish (OIDC-compatible)
@@ -147,7 +180,7 @@ jobs:
               TARBALL_PATH=$(cd "$pkg" && pnpm pack --pack-destination /tmp 2>/dev/null | tail -1)
               echo "  Tarball: ${TARBALL_PATH}"
               # npm publish handles OIDC token exchange correctly
-              npm publish "${TARBALL_PATH}" --provenance --access public
+              npm publish "${TARBALL_PATH}" --provenance --access public --tag "$NPM_TAG"
             fi
           done
 
