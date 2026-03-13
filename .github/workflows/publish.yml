@@ -141,9 +141,8 @@ jobs:
               echo "tag=latest" >> "$GITHUB_OUTPUT"
               echo "📌 Version $VERSION > $LATEST, using tag: latest"
             else
-              MAJOR=$(echo "$VERSION" | cut -d. -f1)
-              echo "tag=v${MAJOR}" >> "$GITHUB_OUTPUT"
-              echo "📌 Version $VERSION <= $LATEST, using tag: v${MAJOR}"
+              echo "tag=legacy" >> "$GITHUB_OUTPUT"
+              echo "📌 Version $VERSION <= $LATEST, using tag: legacy"
             fi
           fi
 
