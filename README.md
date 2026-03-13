@@ -18,6 +18,7 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
 
 - [Quick Start](#quick-start)
 - [What's New](#whats-new)
+  - [v4.0.0 — API Cleanup](#v400--api-cleanup)
   - [v3.0.0 — Browser & WASM Support](#v300--browser--wasm-support)
   - [v2.0.0 — TypeScript Modernization](#v200--typescript-modernization)
 - [Browser Usage](#browser-usage)
@@ -37,7 +38,9 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
 - [Benchmark](#benchmark)
 - [Installation](#installation)
 - [Testing](#testing)
-- [Migration Guide (v1 → v2)](#migration-guide)
+- [Migration Guide](#migration-guide)
+  - [v3.x → v4.0](#v3x--v40)
+  - [v1.x → v2.0](#v1x--v20)
 - [Contributing](#contributing)
   - [Releasing](#releasing)
 - [Troubleshooting](#troubleshooting)
@@ -120,6 +123,13 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 📖 **Full API documentation**: [oorabona.github.io/node-liblzma](https://oorabona.github.io/node-liblzma/)
 
 ## What's New
+
+### v4.0.0 — API Cleanup
+
+- **Default export removed** — Use named imports instead (see [migration guide](#v3x--v40))
+- **Type definitions consolidated** — All types now live in `src/types.ts` as single source of truth; `index.d.ts` re-exports from compiled output instead of duplicating definitions
+- **`PresetType` broadened** — Was `6 | 9`, now `number` (accepts all valid preset values 0-9 + extreme flag)
+- **Internal cleanup** — Orphaned JSDoc removed, test helpers deduplicated, code health verified across all packages
 
 ### v3.0.0 — Browser & WASM Support
 
@@ -665,6 +675,37 @@ pnpm type-check        # TypeScript type checking
 Tests use [Vitest](https://vitest.dev/) with 100% code coverage across statements, branches, functions, and lines.
 
 ## Migration Guide
+
+### v3.x → v4.0
+
+#### Breaking Changes
+
+1. **Default export removed** — The deprecated CommonJS compatibility export is gone
+
+```typescript
+// v3.x (deprecated, now removed)
+import lzma from 'node-liblzma';
+
+// v4.x (use named imports)
+import * as lzma from 'node-liblzma';
+// or import individual functions
+import { xzAsync, unxzAsync, createXz } from 'node-liblzma';
+```
+
+2. **`FlagType` removed** — Use `number` directly for stream flags
+
+```typescript
+// v3.x
+const flags: FlagType = ...;
+
+// v4.x
+const flags: number = ...;
+```
+
+#### Non-Breaking Improvements
+
+- Types (`LZMAOptions`, `ProgressInfo`, `XZFileIndex`, etc.) are now re-exported from `src/types.ts` — import paths unchanged
+- `PresetType` accepts all preset values (was restricted to `6 | 9`)
 
 ### v1.x → v2.0
 
