@@ -10,24 +10,8 @@ import * as native from '../../src/lzma.js';
 import { xzAsync as wasmXzAsync } from '../../src/wasm/compress.js';
 import { unxzAsync as wasmUnxzAsync } from '../../src/wasm/decompress.js';
 import { createUnxz, createXz } from '../../src/wasm/stream.js';
-import { collectStream } from './helpers.utils.js';
+import { collectStream, createInputStream } from './helpers.utils.js';
 import { loadWasmModule, unloadWasmModule } from './wasm-helpers.utils.js';
-
-/** Create a ReadableStream from a Uint8Array, splitting into chunks */
-function toChunkedStream(data: Uint8Array, chunkSize: number): ReadableStream<Uint8Array> {
-  let offset = 0;
-  return new ReadableStream({
-    pull(controller) {
-      if (offset >= data.byteLength) {
-        controller.close();
-        return;
-      }
-      const end = Math.min(offset + chunkSize, data.byteLength);
-      controller.enqueue(data.slice(offset, end));
-      offset = end;
-    },
-  });
-}
 
 describe('WASM Compatibility (Block 7)', () => {
   beforeAll(async () => {
@@ -169,11 +153,11 @@ describe('WASM Compatibility (Block 7)', () => {
       for (let i = 0; i < input.length; i++) input[i] = i % 256;
 
       const compressed = await collectStream(
-        toChunkedStream(input, 16384).pipeThrough(createXz({ preset: 1 }))
+        createInputStream(input, 16384).pipeThrough(createXz({ preset: 1 }))
       );
 
       const decompressed = await collectStream(
-        toChunkedStream(compressed, 8192).pipeThrough(createUnxz())
+        createInputStream(compressed, 8192).pipeThrough(createUnxz())
       );
 
       expect(decompressed).toEqual(input);

@@ -5,25 +5,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createUnxz, createXz } from '../../src/wasm/stream.js';
-import { collectStream } from './helpers.utils.js';
+import { collectStream, createInputStream } from './helpers.utils.js';
 import { loadWasmModule, unloadWasmModule } from './wasm-helpers.utils.js';
-
-/** Create a ReadableStream from a Uint8Array, optionally splitting into chunks */
-function createInputStream(data: Uint8Array, chunkSize?: number): ReadableStream<Uint8Array> {
-  const size = chunkSize ?? data.byteLength;
-  let offset = 0;
-  return new ReadableStream({
-    pull(controller) {
-      if (offset >= data.byteLength) {
-        controller.close();
-        return;
-      }
-      const end = Math.min(offset + size, data.byteLength);
-      controller.enqueue(data.slice(offset, end));
-      offset = end;
-    },
-  });
-}
 
 describe('WASM Streaming (Block 4)', () => {
   beforeAll(async () => {
