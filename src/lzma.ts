@@ -22,7 +22,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Transform, type TransformCallback, type TransformOptions } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import type { NativeLZMA } from '../index.js';
 import {
   createLZMAError,
   LZMABufferError,
@@ -42,8 +41,10 @@ import type {
   LZMAOptions,
   LZMAStatusType,
   ModeType,
+  NativeLZMA,
   PresetType,
   ProgressInfo,
+  XZFileIndex,
 } from './types.js';
 
 // Re-export error classes for public API
@@ -849,23 +850,7 @@ export function easyDecoderMemusage(): number {
   return liblzma.easyDecoderMemusage();
 }
 
-/**
- * Metadata extracted from an XZ file index.
- */
-export interface XZFileIndex {
-  /** Uncompressed size in bytes */
-  uncompressedSize: number;
-  /** Compressed size in bytes (excluding headers) */
-  compressedSize: number;
-  /** Number of streams in the file */
-  streamCount: number;
-  /** Number of blocks in the file */
-  blockCount: number;
-  /** Integrity check type (see check.CRC32, check.CRC64, etc.) */
-  check: number;
-  /** Memory usage of the index structure */
-  memoryUsage: number;
-}
+export type { XZFileIndex } from './types.js';
 
 /**
  * Parse the index from a complete XZ file buffer to get metadata.

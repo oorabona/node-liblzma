@@ -4,71 +4,25 @@
  */
 
 import { Transform, TransformOptions } from 'node:stream';
+import type {
+  CompressionCallback,
+  LZMAOptions,
+  NativeLZMA,
+  NativeLZMACallback,
+  ProgressInfo,
+  StreamOptions,
+  XZFileIndex,
+} from './lib/types.js';
 
-/** Internal callback for native LZMA operations */
-export type NativeLZMACallback = (errno: number, availInAfter: number, availOutAfter: number) => boolean;
-
-/** Interface for the native LZMA object */
-export interface NativeLZMA {
-  /** Synchronous compression/decompression */
-  codeSync(
-    flushFlag: number,
-    chunk: Buffer | null,
-    inOff: number,
-    availInBefore: number | undefined,
-    buffer: Buffer,
-    offset: number
-  ): [number, number, number];
-  
-  /** Asynchronous compression/decompression */  
-  code(
-    flushFlag: number,
-    chunk: Buffer | null,
-    inOff: number,
-    availInBefore: number | undefined,
-    buffer: Buffer,
-    offset: number,
-    callback: NativeLZMACallback
-  ): void;
-  
-  /** Close the LZMA stream */
-  close(): void;
-}
-
-
-export interface LZMAOptions {
-  /** Integrity check type */
-  check?: number;
-  /** Compression preset level */
-  preset?: number;
-  /** Array of filters to use */
-  filters?: number[];
-  /** Compression mode */
-  mode?: number;
-  /** Number of threads for compression (encoding only) */
-  threads?: number;
-  /** Chunk size for processing */
-  chunkSize?: number;
-  /** Flush flag to use */
-  flushFlag?: number;
-}
-
-export interface StreamOptions extends TransformOptions {
-  /** LZMA-specific options */
-  lzma?: LZMAOptions;
-}
-
-export type CompressionCallback = (error: Error | null, result?: Buffer) => void;
-
-/**
- * Progress event data emitted during compression/decompression
- */
-export interface ProgressInfo {
-  /** Total bytes read from input so far */
-  bytesRead: number;
-  /** Total bytes written to output so far */
-  bytesWritten: number;
-}
+export type {
+  CompressionCallback,
+  LZMAOptions,
+  NativeLZMA,
+  NativeLZMACallback,
+  ProgressInfo,
+  StreamOptions,
+  XZFileIndex,
+};
 
 export declare abstract class XzStream extends Transform {
   constructor(streamMode: number, opts?: LZMAOptions, options?: TransformOptions);
@@ -123,22 +77,6 @@ export declare function easyEncoderMemusage(presetLevel: number): number;
 
 /** Get memory usage estimate for decoding */
 export declare function easyDecoderMemusage(): number;
-
-/** Metadata extracted from an XZ file index */
-export interface XZFileIndex {
-  /** Uncompressed size in bytes */
-  uncompressedSize: number;
-  /** Compressed size in bytes (excluding headers) */
-  compressedSize: number;
-  /** Number of streams in the file */
-  streamCount: number;
-  /** Number of blocks in the file */
-  blockCount: number;
-  /** Integrity check type */
-  check: number;
-  /** Memory usage of the index structure */
-  memoryUsage: number;
-}
 
 /** Parse the index from a complete XZ file to get metadata */
 export declare function parseFileIndex(buffer: Buffer): XZFileIndex;
@@ -275,27 +213,6 @@ export declare const LZMAFilter: {
   readonly FILTERS_MAX: number;
 };
 
-// Error messages enum
-export declare enum LZMAErrorMessage {
-  SUCCESS = 'Operation completed successfully',
-  STREAM_END = 'End of stream was reached',
-  NO_CHECK = 'Input stream has no integrity check',
-  UNSUPPORTED_CHECK = 'Cannot calculate the integrity check',
-  GET_CHECK = 'Integrity check type is not available',
-  MEM_ERROR = 'Cannot allocate memory',
-  MEMLIMIT_ERROR = 'Memory usage limit was reached',
-  FORMAT_ERROR = 'File format not recognized',
-  OPTIONS_ERROR = 'Invalid or unsupported options',
-  DATA_ERROR = 'Data is corrupt',
-  BUF_ERROR = 'No progress is possible',
-  PROG_ERROR = 'Programming error',
-}
-
-// Union types for better type safety
-export type LZMAActionType = 0 | 1 | 2 | 3;
-export type LZMAStatusType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
-export type CheckType = 0 | 1 | 4 | 10;
-export type PresetType = 6 | 9;
-export type FilterType = 0x21 | 0x03 | 0x04 | 0x06 | 0x07 | 0x08 | 0x09;
-export type ModeType = 1 | 2;
+export { LZMAErrorMessage } from './lib/lzma.js';
+export type { CheckType, FilterType, LZMAActionType, LZMAStatusType, ModeType, PresetType } from './lib/types.js';
 

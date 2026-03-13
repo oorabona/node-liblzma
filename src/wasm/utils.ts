@@ -5,6 +5,7 @@
  * matching the Node.js API signatures.
  */
 
+import type { XZFileIndex } from '../types.js';
 import { checkIsSupported, versionString as wasmVersionString } from './bindings.js';
 
 /** XZ magic bytes: 0xFD + "7zXZ" + 0x00 */
@@ -80,21 +81,7 @@ export function easyDecoderMemusage(): number {
   return 67108864; // ~64 MB (worst case for preset 9)
 }
 
-/** XZ file index information */
-export interface XZFileIndex {
-  /** Uncompressed size in bytes */
-  uncompressedSize: number;
-  /** Compressed size in bytes (total file size including headers) */
-  compressedSize: number;
-  /** Number of streams in the file */
-  streamCount: number;
-  /** Number of blocks in the file */
-  blockCount: number;
-  /** Integrity check type */
-  check: number;
-  /** Memory usage of the index structure */
-  memoryUsage: number;
-}
+export type { XZFileIndex } from '../types.js';
 
 /**
  * Read a Variable-Length Integer (VLI) from XZ data.

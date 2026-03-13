@@ -2,6 +2,42 @@
  * Shared TypeScript types for node-liblzma
  */
 
+import type { TransformOptions } from 'node:stream';
+
+/** Internal callback for native LZMA operations */
+export type NativeLZMACallback = (
+  errno: number,
+  availInAfter: number,
+  availOutAfter: number
+) => boolean;
+
+/** Interface for the native LZMA object */
+export interface NativeLZMA {
+  /** Synchronous compression/decompression */
+  codeSync(
+    flushFlag: number,
+    chunk: Buffer | null,
+    inOff: number,
+    availInBefore: number | undefined,
+    buffer: Buffer,
+    offset: number
+  ): [number, number, number];
+
+  /** Asynchronous compression/decompression */
+  code(
+    flushFlag: number,
+    chunk: Buffer | null,
+    inOff: number,
+    availInBefore: number | undefined,
+    buffer: Buffer,
+    offset: number,
+    callback: NativeLZMACallback
+  ): void;
+
+  /** Close the LZMA stream */
+  close(): void;
+}
+
 export interface LZMAOptions {
   /** Integrity check type */
   check?: number;
@@ -99,4 +135,27 @@ export interface ProgressInfo {
   bytesRead: number;
   /** Total bytes written to output so far */
   bytesWritten: number;
+}
+
+export interface StreamOptions extends TransformOptions {
+  /** LZMA-specific options */
+  lzma?: LZMAOptions;
+}
+
+/**
+ * Metadata extracted from an XZ file index.
+ */
+export interface XZFileIndex {
+  /** Uncompressed size in bytes */
+  uncompressedSize: number;
+  /** Compressed size in bytes */
+  compressedSize: number;
+  /** Number of streams in the file */
+  streamCount: number;
+  /** Number of blocks in the file */
+  blockCount: number;
+  /** Integrity check type (see check.CRC32, check.CRC64, etc.) */
+  check: number;
+  /** Memory usage of the index structure */
+  memoryUsage: number;
 }
