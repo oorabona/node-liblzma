@@ -42,10 +42,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: linux-x64
+            arch: x64
           - os: macos-latest
+            target: darwin-arm64
+            arch: arm64
+          - os: macos-13
             target: darwin-x64
+            arch: x64
           - os: windows-latest
             target: win32-x64
+            arch: x64
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.target }}
     steps:
@@ -60,14 +66,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20
-          architecture: x64
+          architecture: ${{ matrix.arch }}
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Setup ccache (Linux/macOS)
         if: ${{ runner.os != 'Windows' }}
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: build-${{ runner.os }}-ccache
+          key: build-${{ matrix.target }}-ccache
           max-size: 500M
       - name: Setup pnpm store cache
         uses: actions/cache@v5
@@ -76,9 +82,9 @@ jobs:
             ~/.local/share/pnpm/store
             ~/Library/pnpm/store
             ~\AppData\Local\pnpm\store
-          key: build-${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          key: build-${{ matrix.target }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            build-${{ runner.os }}-pnpm-store-
+            build-${{ matrix.target }}-pnpm-store-
       - name: Setup xz deps cache
         uses: actions/cache@v5
         id: xz-cache
@@ -87,9 +93,9 @@ jobs:
             deps/xz
             deps/xz.tar.gz
             build/liblzma
-          key: build-${{ runner.os }}-xz-default-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
+          key: build-${{ matrix.target }}-xz-default-${{ hashFiles('scripts/download_xz_from_github.py', 'xz-version.json') }}
           restore-keys: |
-            build-${{ runner.os }}-xz-
+            build-${{ matrix.target }}-xz-
 
       - name: Download XZ from artifact or fallback
         if: steps.xz-cache.outputs.cache-hit != 'true'
