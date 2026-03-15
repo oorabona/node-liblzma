@@ -1,8 +1,8 @@
 name: Check XZ Updates
 on:
   schedule:
-    # Every Monday at 3 AM UTC (checks for updates + refreshes artifact)
-    - cron: '0 3 * * 1'
+    # Daily at 3 AM UTC (checks for new XZ releases)
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       create_pr:
