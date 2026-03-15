@@ -59,10 +59,6 @@ on:
         required: false
         default: false
         type: boolean
-  schedule:
-    # Nightly full CI run
-    - cron: '0 2 * * *'
-
 permissions:
   contents: read
 
@@ -101,9 +97,6 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             RUN_SMOKE_ONLY="${{ github.event.inputs.run_full_matrix == 'false' }}"
             RUN_FULL_MATRIX="${{ github.event.inputs.run_full_matrix }}"
-          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
-            RUN_SMOKE_ONLY="false"
-            RUN_FULL_MATRIX="true"
           else
             # Push to main branches - check if changes are minimal
             CHANGED_FILES=$(git diff --name-only HEAD^ HEAD || echo "")
@@ -425,14 +418,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # Node versions: Latest only for regular runs, LTS range for scheduled
-        node: ${{ github.event_name == 'schedule' && fromJSON('["20", "22"]') || fromJSON('["22"]') }}
-        # Configuration combinations: Reduced from 6 to 3 core combinations
-        # This provides 90%+ coverage with 50% fewer jobs
-        config: >-
-          ${{ github.event_name == 'schedule' &&
-          fromJSON('[{"runtime_link": "static", "use_global_liblzma": false, "enable_threads": "no"}, {"runtime_link": "shared", "use_global_liblzma": false, "enable_threads": "no"}, {"runtime_link": "static", "use_global_liblzma": true, "enable_threads": "no"}]') ||
-          fromJSON('[{"runtime_link": "static", "use_global_liblzma": false, "enable_threads": "no"}]') }}
+        node: ['20', '22']
+        config:
+          - {runtime_link: 'static', use_global_liblzma: false, enable_threads: 'no'}
+          - {runtime_link: 'shared', use_global_liblzma: false, enable_threads: 'no'}
+          - {runtime_link: 'static', use_global_liblzma: true, enable_threads: 'no'}
         exclude:
           # Windows doesn't have system liblzma
           - os: windows-latest
