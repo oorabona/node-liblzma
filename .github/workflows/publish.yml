@@ -63,6 +63,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.normalize-tag.outputs.tag }}
+          submodules: recursive
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -123,8 +124,26 @@ jobs:
             fi
           done
 
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.51
+
+      - name: Build WASM bindings
+        run: pnpm build:wasm
+
       - name: Build TypeScript
         run: pnpm build && pnpm -r --filter './packages/*' run build
+
+      - name: Verify WASM artifacts in lib/
+        run: |
+          for f in lib/wasm/liblzma.js lib/wasm/liblzma.wasm; do
+            if [ ! -f "$f" ]; then
+              echo "❌ Missing: $f" >&2
+              exit 1
+            fi
+            echo "✅ $f ($(wc -c < "$f") bytes)"
+          done
 
       - name: Publish node-liblzma to npm with provenance
         if: ${{ inputs.skip_npm != true }}

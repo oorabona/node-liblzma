@@ -90,8 +90,6 @@
     "prebuilds/",
     "src/bindings/",
     "src/wasm/liblzma.d.ts",
-    "src/wasm/liblzma.js",
-    "src/wasm/liblzma.wasm",
     "scripts/build_xz_with_cmake.py",
     "scripts/download_xz_from_github.py",
     "scripts/copy_dll.py",
