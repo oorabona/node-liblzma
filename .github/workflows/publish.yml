@@ -63,7 +63,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.normalize-tag.outputs.tag }}
-          submodules: recursive
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -123,6 +122,16 @@ jobs:
               echo "  ⏭️ $pkg: already at $ROOT_VERSION"
             fi
           done
+
+      - name: Download XZ sources
+        run: |
+          set -e
+          VERSION=$(jq -r '.version' xz-version.json)
+          echo "🔍 XZ version needed: $VERSION"
+          python3 scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+          echo "✅ XZ $VERSION downloaded"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
