@@ -5,7 +5,6 @@
  * from package.json exports, routing to the WASM implementation.
  */
 
-// biome-ignore lint/correctness/noUnusedImports: resolved at runtime via Vite browser condition
 import {
   createUnxz,
   createXz,
