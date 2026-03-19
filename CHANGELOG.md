@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-03-19
+
+### Fixed
+- download XZ sources before WASM build in publish workflow (ci) ([3b02209](https://github.com/oorabona/node-liblzma/commit/3b02209))
+- include WASM artifacts in npm publish pipeline ([774d989](https://github.com/oorabona/node-liblzma/commit/774d989))
+- use lts-N dist-tag pattern for older major releases (ci) ([0753599](https://github.com/oorabona/node-liblzma/commit/0753599))
+- use 'legacy' dist-tag instead of 'vN' (npm rejects semver-like tags) (ci) ([350f727](https://github.com/oorabona/node-liblzma/commit/350f727))
+- auto-detect npm dist-tag for older major releases (ci) ([aa022d4](https://github.com/oorabona/node-liblzma/commit/aa022d4))
+- remove macos-13 runner (no longer available on GitHub Actions) (ci) ([baa222a](https://github.com/oorabona/node-liblzma/commit/baa222a))
+
+### Changed
+- remove nightly schedule from CI workflow (ci) ([5d5c2a3](https://github.com/oorabona/node-liblzma/commit/5d5c2a3))
+- update TODO.md with v4.0.1 release status ([b2d74eb](https://github.com/oorabona/node-liblzma/commit/b2d74eb))
+- simplify npm dist-tag handling (ci) ([c03823b](https://github.com/oorabona/node-liblzma/commit/c03823b))
+
 ## [4.0.1] - 2026-03-13
 
 ### Fixed
@@ -446,7 +461,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v4.0.2...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -463,3 +478,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [4.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.0
 [v4.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.1
 [4.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.1
+[v4.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.2
+[4.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.2
