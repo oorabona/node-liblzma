@@ -654,7 +654,9 @@ export abstract class XzStream extends Transform {
       /* v8 ignore start - async error path handling */
       // F-003: If LZMA engine returned an error, emit onerror event (matches sync path at line 438)
       if (errno !== liblzma.LZMA_OK && errno !== liblzma.LZMA_STREAM_END) {
-        this.emit('onerror', errno);
+        if (!this._closed) {
+          this.emit('onerror', errno);
+        }
         return false;
       }
       /* v8 ignore stop */
