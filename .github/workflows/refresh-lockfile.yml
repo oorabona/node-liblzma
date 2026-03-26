@@ -30,7 +30,7 @@ jobs:
       - name: Regenerate lockfile
         run: |
           rm pnpm-lock.yaml
-          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile --ignore-scripts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,22 +45,26 @@ jobs:
             echo "Lockfile has changes"
           fi
 
-      - name: Run tests
+      - name: Build TypeScript
         if: steps.diff.outputs.changed == 'true'
-        id: tests
+        id: build
         continue-on-error: true
-        run: pnpm test
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm build && pnpm -r --filter './packages/*' run build
 
       - name: Run lint
-        if: steps.diff.outputs.changed == 'true' && steps.tests.outcome == 'success'
+        if: steps.diff.outputs.changed == 'true' && steps.build.outcome == 'success'
         id: lint
         continue-on-error: true
         run: pnpm check
 
-      - name: Commit directly (tests passed)
-        if: steps.diff.outputs.changed == 'true' && steps.tests.outcome == 'success' && steps.lint.outcome == 'success'
+      - name: Type check
+        if: steps.diff.outputs.changed == 'true' && steps.lint.outcome == 'success'
+        id: typecheck
+        continue-on-error: true
+        run: pnpm type-check
+
+      - name: Commit directly (all checks passed)
+        if: steps.diff.outputs.changed == 'true' && steps.build.outcome == 'success' && steps.lint.outcome == 'success' && steps.typecheck.outcome == 'success'
         run: |
           git config user.name "Olivier ORABONA"
           git config user.email "oorabona@users.noreply.github.com"
@@ -68,35 +72,33 @@ jobs:
           git commit -m "chore(deps): refresh lockfile for latest transitive dependencies"
           git push
 
-      - name: Create PR (tests failed)
-        if: steps.diff.outputs.changed == 'true' && (steps.tests.outcome == 'failure' || steps.lint.outcome == 'failure')
+      - name: Create PR (checks failed)
+        if: steps.diff.outputs.changed == 'true' && (steps.build.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.typecheck.outcome == 'failure')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
           LINT_OUTCOME: ${{ steps.lint.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
           BRANCH="chore/refresh-lockfile-$(date +%Y%m%d)"
           git config user.name "Olivier ORABONA"
           git config user.email "oorabona@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add pnpm-lock.yaml
-          git commit -m "chore(deps): refresh lockfile (tests need review)"
+          git commit -m "chore(deps): refresh lockfile (checks need review)"
           git push -u origin "$BRANCH"
 
-          FAILED_STEP=""
-          if [ "$TESTS_OUTCOME" = "failure" ]; then
-            FAILED_STEP="tests"
-          else
-            FAILED_STEP="lint"
-          fi
+          FAILED=""
+          [ "$BUILD_OUTCOME" = "failure" ] && FAILED="build"
+          [ "$LINT_OUTCOME" = "failure" ] && FAILED="${FAILED:+$FAILED, }lint"
+          [ "$TYPECHECK_OUTCOME" = "failure" ] && FAILED="${FAILED:+$FAILED, }typecheck"
 
           gh pr create \
-            --title "chore(deps): refresh lockfile (${FAILED_STEP} failed)" \
+            --title "chore(deps): refresh lockfile (${FAILED} failed)" \
             --body "## Lockfile Refresh
 
-          The daily lockfile regeneration found updated transitive dependencies, but **${FAILED_STEP} failed**.
+          The daily lockfile regeneration found updated transitive dependencies, but **${FAILED}** failed.
 
           Please review the changes and fix any issues before merging.
 
-          This PR was created automatically by the \`refresh-lockfile\` workflow." \
-            --label "dependencies"
+          This PR was created automatically by the refresh-lockfile workflow."
