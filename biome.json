@@ -1,4 +1,5 @@
 {
+  "BREAK_ON_PURPOSE": true,
   "vcs": {
     "enabled": true,
     "clientKind": "git",
