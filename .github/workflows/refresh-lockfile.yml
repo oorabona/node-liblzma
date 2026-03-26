@@ -63,8 +63,22 @@ jobs:
         continue-on-error: true
         run: pnpm type-check
 
+      - name: Determine outcome
+        if: steps.diff.outputs.changed == 'true'
+        id: result
+        run: |
+          if [ "$BUILD" = "success" ] && [ "$LINT" = "success" ] && [ "$TYPECHECK" = "success" ]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          BUILD: ${{ steps.build.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+
       - name: Commit directly (all checks passed)
-        if: steps.diff.outputs.changed == 'true' && steps.build.outcome == 'success' && steps.lint.outcome == 'success' && steps.typecheck.outcome == 'success'
+        if: steps.diff.outputs.changed == 'true' && steps.result.outputs.passed == 'true'
         run: |
           git config user.name "Olivier ORABONA"
           git config user.email "oorabona@users.noreply.github.com"
@@ -73,7 +87,7 @@ jobs:
           git push
 
       - name: Create PR (checks failed)
-        if: steps.diff.outputs.changed == 'true' && (steps.build.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.typecheck.outcome == 'failure')
+        if: steps.diff.outputs.changed == 'true' && steps.result.outputs.passed == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
@@ -89,9 +103,10 @@ jobs:
           git push -u origin "$BRANCH"
 
           FAILED=""
-          [ "$BUILD_OUTCOME" = "failure" ] && FAILED="build"
-          [ "$LINT_OUTCOME" = "failure" ] && FAILED="${FAILED:+$FAILED, }lint"
-          [ "$TYPECHECK_OUTCOME" = "failure" ] && FAILED="${FAILED:+$FAILED, }typecheck"
+          [ "$BUILD_OUTCOME" != "success" ] && FAILED="build"
+          [ "$LINT_OUTCOME" != "success" ] && [ "$LINT_OUTCOME" != "skipped" ] && FAILED="${FAILED:+$FAILED, }lint"
+          [ "$TYPECHECK_OUTCOME" != "success" ] && [ "$TYPECHECK_OUTCOME" != "skipped" ] && FAILED="${FAILED:+$FAILED, }typecheck"
+          [ -z "$FAILED" ] && FAILED="unknown"
 
           gh pr create \
             --title "chore(deps): refresh lockfile (${FAILED} failed)" \
