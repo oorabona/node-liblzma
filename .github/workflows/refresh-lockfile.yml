@@ -1,0 +1,102 @@
+name: Refresh Lockfile
+
+on:
+  schedule:
+    # Daily at 4 AM UTC (after check-xz-updates at 3 AM)
+    - cron: '0 4 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Regenerate lockfile
+        run: |
+          rm pnpm-lock.yaml
+          pnpm install --no-frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet pnpm-lock.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Lockfile is up to date"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Lockfile has changes"
+          fi
+
+      - name: Run tests
+        if: steps.diff.outputs.changed == 'true'
+        id: tests
+        continue-on-error: true
+        run: pnpm test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run lint
+        if: steps.diff.outputs.changed == 'true' && steps.tests.outcome == 'success'
+        id: lint
+        continue-on-error: true
+        run: pnpm check
+
+      - name: Commit directly (tests passed)
+        if: steps.diff.outputs.changed == 'true' && steps.tests.outcome == 'success' && steps.lint.outcome == 'success'
+        run: |
+          git config user.name "Olivier ORABONA"
+          git config user.email "oorabona@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore(deps): refresh lockfile for latest transitive dependencies"
+          git push
+
+      - name: Create PR (tests failed)
+        if: steps.diff.outputs.changed == 'true' && (steps.tests.outcome == 'failure' || steps.lint.outcome == 'failure')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+        run: |
+          BRANCH="chore/refresh-lockfile-$(date +%Y%m%d)"
+          git config user.name "Olivier ORABONA"
+          git config user.email "oorabona@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add pnpm-lock.yaml
+          git commit -m "chore(deps): refresh lockfile (tests need review)"
+          git push -u origin "$BRANCH"
+
+          FAILED_STEP=""
+          if [ "$TESTS_OUTCOME" = "failure" ]; then
+            FAILED_STEP="tests"
+          else
+            FAILED_STEP="lint"
+          fi
+
+          gh pr create \
+            --title "chore(deps): refresh lockfile (${FAILED_STEP} failed)" \
+            --body "## Lockfile Refresh
+
+          The daily lockfile regeneration found updated transitive dependencies, but **${FAILED_STEP} failed**.
+
+          Please review the changes and fix any issues before merging.
+
+          This PR was created automatically by the \`refresh-lockfile\` workflow." \
+            --label "dependencies"
