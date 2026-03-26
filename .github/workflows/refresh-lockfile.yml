@@ -4,7 +4,12 @@ on:
   schedule:
     # Daily at 4 AM UTC (after check-xz-updates at 3 AM)
     - cron: '0 4 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_change:
+        description: 'Force "changed" state for testing the PR creation path'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -36,8 +41,14 @@ jobs:
 
       - name: Check for changes
         id: diff
+        env:
+          FORCE: ${{ inputs.force_change }}
         run: |
-          if git diff --quiet pnpm-lock.yaml; then
+          if [ "$FORCE" = "true" ]; then
+            echo "# force-test $(date -Iseconds)" >> pnpm-lock.yaml
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Forced change for testing"
+          elif git diff --quiet pnpm-lock.yaml; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "Lockfile is up to date"
           else
