@@ -36,14 +36,24 @@ jobs:
 
       - name: Check for new XZ version
         id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get current version from config
           CURRENT=$(jq -r '.version' xz-version.json)
           echo "Current XZ version: $CURRENT"
 
-          # Get latest version from GitHub API
-          LATEST=$(curl -s https://api.github.com/repos/tukaani-project/xz/releases/latest | jq -r '.tag_name')
+          # Get latest version from GitHub API (authenticated to avoid rate limits)
+          LATEST=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/repos/tukaani-project/xz/releases/latest | jq -r '.tag_name')
           echo "Latest XZ version: $LATEST"
+
+          # Guard against null/empty responses (API rate limit, draft-only releases)
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "⚠️ Could not determine latest XZ version (API returned: $LATEST)"
+            echo "new_version=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           # Set outputs
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
