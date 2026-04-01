@@ -89,8 +89,8 @@ jobs:
           # Run build and tests
           pnpm run build && pnpm -r --filter './packages/*' run build
           pnpm run type-check
-          # Skip WASM tests — no Emscripten in this runner; we're testing native XZ compatibility
-          pnpm exec vitest run --exclude 'test/wasm/**' && pnpm -r --filter './packages/*' test
+          # Only run root tests (no WASM, no workspace packages) — testing native XZ compatibility
+          pnpm exec vitest run --exclude 'test/wasm/**'
 
           echo "✅ Tests passed with XZ $XZ_VERSION"
           echo "test_passed=true" >> $GITHUB_OUTPUT
