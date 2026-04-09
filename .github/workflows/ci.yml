@@ -337,7 +337,7 @@ jobs:
       fail-fast: true  # Fail fast on smoke tests to save CI minutes
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: [20]
+        node: [22]
         runtime_link: [static]
         use_global_liblzma: [false]
         enable_threads: [no]
@@ -418,7 +418,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: ['20', '22']
+        node: ['22', '24']
         config:
           - {runtime_link: 'static', use_global_liblzma: false, enable_threads: 'no'}
           - {runtime_link: 'shared', use_global_liblzma: false, enable_threads: 'no'}
