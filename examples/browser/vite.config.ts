@@ -4,8 +4,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   resolve: {
     alias: {
-      // Point to the built library so Vite resolves the browser condition
-      'node-liblzma': resolve(__dirname, '../../'),
+      // Point to the browser entry directly (alias bypasses package.json export conditions)
+      'node-liblzma': resolve(__dirname, '../../lib/lzma.browser.js'),
     },
   },
   base: '/node-liblzma/demo/',
