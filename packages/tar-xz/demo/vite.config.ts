@@ -11,7 +11,8 @@ export default defineConfig(({ command }) => ({
   },
   resolve: {
     alias: {
-      'node-liblzma': resolve(__dirname, '../../..'),
+      // Point to the browser entry directly (alias bypasses package.json export conditions)
+      'node-liblzma': resolve(__dirname, '../../../lib/lzma.browser.js'),
     },
   },
   optimizeDeps: {
