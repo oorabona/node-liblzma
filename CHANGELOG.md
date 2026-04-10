@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-04-10
+
+### ⚠️ BREAKING CHANGES
+- drop Node.js 20 support, require >= 22 (Node 20 EOL April 2026) ([3cc4b14](https://github.com/oorabona/node-liblzma/commit/3cc4b14))
+
+### Added
+- drop Node.js 20 support, require >= 22 (Node 20 EOL April 2026) ⚠️ BREAKING ([3cc4b14](https://github.com/oorabona/node-liblzma/commit/3cc4b14))
+- update XZ to v5.8.3 ([95cb868](https://github.com/oorabona/node-liblzma/commit/95cb868))
+
+### Fixed
+- add explicit types declaration for TypeScript 6 compatibility ([807f091](https://github.com/oorabona/node-liblzma/commit/807f091))
+- remove GPG signing from XZ update checker (key mismatch) (ci) ([d9e2135](https://github.com/oorabona/node-liblzma/commit/d9e2135))
+- also skip workspace package tests in XZ update checker (ci) ([9609ce4](https://github.com/oorabona/node-liblzma/commit/9609ce4))
+- exclude WASM tests from XZ update checker workflow (ci) ([6bd6280](https://github.com/oorabona/node-liblzma/commit/6bd6280))
+- authenticate GitHub API call and guard against null XZ version (ci) ([01bb0f4](https://github.com/oorabona/node-liblzma/commit/01bb0f4))
+- correct failure detection logic in lockfile refresh workflow (ci) ([ff04cf8](https://github.com/oorabona/node-liblzma/commit/ff04cf8))
+- use --ignore-scripts and replace tests with build+lint+typecheck (ci) ([df5df18](https://github.com/oorabona/node-liblzma/commit/df5df18))
+- guard async onerror emission after stream close ([bf0ceaf](https://github.com/oorabona/node-liblzma/commit/bf0ceaf))
+- update biome schema to 2.4.7 and remove obsolete biome-ignore ([ff74af0](https://github.com/oorabona/node-liblzma/commit/ff74af0))
+- regenerate lockfile to resolve catalog: specifier mismatch ([444d2f0](https://github.com/oorabona/node-liblzma/commit/444d2f0))
+
+### Changed
+- update README for v5.0.0 (TS 6, Node 22, usage feedback section) ([4f788ea](https://github.com/oorabona/node-liblzma/commit/4f788ea))
+- bump typescript from 5.9.3 to 6.0.2 (deps) ([499e00a](https://github.com/oorabona/node-liblzma/commit/499e00a))
+- refresh lockfile for latest transitive dependencies (deps) ([791e802](https://github.com/oorabona/node-liblzma/commit/791e802))
+- refresh lockfile for latest transitive dependencies (deps) ([2dcca0f](https://github.com/oorabona/node-liblzma/commit/2dcca0f))
+- bump typescript from 5.9.3 to 6.0.2 (deps) ([b60c654](https://github.com/oorabona/node-liblzma/commit/b60c654))
+- refresh lockfile for latest transitive dependencies (deps) ([4986854](https://github.com/oorabona/node-liblzma/commit/4986854))
+- refresh lockfile for latest transitive dependencies (deps) ([d7acd12](https://github.com/oorabona/node-liblzma/commit/d7acd12))
+- refresh lockfile for latest transitive dependencies (deps) ([6adcca0](https://github.com/oorabona/node-liblzma/commit/6adcca0))
+- refresh lockfile for latest transitive dependencies (deps) ([39f2897](https://github.com/oorabona/node-liblzma/commit/39f2897))
+- refresh lockfile for latest transitive dependencies (deps) ([0a64d7b](https://github.com/oorabona/node-liblzma/commit/0a64d7b))
+- refresh lockfile for latest transitive dependencies (deps) ([6d88e20](https://github.com/oorabona/node-liblzma/commit/6d88e20))
+- Merge pull request #91 from oorabona/update-xz-v5.8.3 ([b28cb65](https://github.com/oorabona/node-liblzma/commit/b28cb65))
+- refresh lockfile for latest transitive dependencies (deps) ([fe8d366](https://github.com/oorabona/node-liblzma/commit/fe8d366))
+- bump @vitest/ui from 4.1.0 to 4.1.2 in the dev-dependencies group (deps-dev) ([0b7d931](https://github.com/oorabona/node-liblzma/commit/0b7d931))
+- refresh lockfile for latest transitive dependencies (deps) ([f6fc183](https://github.com/oorabona/node-liblzma/commit/f6fc183))
+- refresh lockfile for latest transitive dependencies (deps) ([2103e1b](https://github.com/oorabona/node-liblzma/commit/2103e1b))
+- refresh lockfile for latest transitive dependencies (deps) ([be8220a](https://github.com/oorabona/node-liblzma/commit/be8220a))
+- bump @vitest/ui in the dev-dependencies group (deps-dev) ([c4a4f00](https://github.com/oorabona/node-liblzma/commit/c4a4f00))
+- refresh lockfile for latest transitive dependencies (deps) ([ea7e065](https://github.com/oorabona/node-liblzma/commit/ea7e065))
+- use gh CLI instead of curl for XZ version check (ci) ([8e78f4c](https://github.com/oorabona/node-liblzma/commit/8e78f4c))
+- refresh lockfile for latest transitive dependencies (deps) ([85a6aba](https://github.com/oorabona/node-liblzma/commit/85a6aba))
+- refresh lockfile for latest transitive dependencies (deps) ([71449c4](https://github.com/oorabona/node-liblzma/commit/71449c4))
+- restore biome.json after PR creation path test ([7399457](https://github.com/oorabona/node-liblzma/commit/7399457))
+- add force_change input and break biome to test PR creation path ([66f5745](https://github.com/oorabona/node-liblzma/commit/66f5745))
+- temporarily break biome config to test refresh-lockfile PR path ([6638083](https://github.com/oorabona/node-liblzma/commit/6638083))
+- refresh lockfile for latest transitive dependencies (deps) ([75d0c12](https://github.com/oorabona/node-liblzma/commit/75d0c12))
+- bump the production-dependencies group with 4 updates (deps) ([aec594d](https://github.com/oorabona/node-liblzma/commit/aec594d))
+- bump the production-dependencies group with 4 updates (deps) ([efd3121](https://github.com/oorabona/node-liblzma/commit/efd3121))
+- bump vite from 7.3.1 to 8.0.0 (deps-dev) ([77174e6](https://github.com/oorabona/node-liblzma/commit/77174e6))
+- bump vite from 7.3.1 to 8.0.0 (deps-dev) ([f9f323e](https://github.com/oorabona/node-liblzma/commit/f9f323e))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([3d4ea55](https://github.com/oorabona/node-liblzma/commit/3d4ea55))
+- bump the dev-dependencies group with 2 updates (deps-dev) ([aea8e7e](https://github.com/oorabona/node-liblzma/commit/aea8e7e))
+
 ## [4.0.2] - 2026-03-19
 
 ### Fixed
@@ -461,7 +516,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v4.0.2...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.0...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -480,3 +535,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [4.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.1
 [v4.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.2
 [4.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.2
+[v5.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.0
+[5.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.0
