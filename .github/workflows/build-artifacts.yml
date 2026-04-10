@@ -59,10 +59,10 @@ jobs:
           submodules: recursive
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
-      - name: Use node 20
+      - name: Use node 22
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           architecture: ${{ matrix.arch }}
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
