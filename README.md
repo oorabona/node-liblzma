@@ -7,7 +7,7 @@ Node-liblzma
 [![Documentation](https://img.shields.io/badge/docs-TypeDoc-blue.svg)](https://oorabona.github.io/node-liblzma/)
 [![License](https://img.shields.io/npm/l/node-liblzma.svg)](https://github.com/oorabona/node-liblzma/blob/master/LICENSE)
 [![Node Version](https://img.shields.io/node/v/node-liblzma.svg)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-blue.svg)](https://www.typescriptlang.org/)
 [![npm provenance](https://img.shields.io/badge/npm-provenance-green.svg)](https://docs.npmjs.com/generating-provenance-statements)
 [![codecov](https://codecov.io/gh/oorabona/node-liblzma/graph/badge.svg)](https://codecov.io/gh/oorabona/node-liblzma)
 [![code style: biome](https://img.shields.io/badge/code_style-biome-60a5fa.svg)](https://biomejs.dev)
@@ -18,6 +18,7 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
 
 - [Quick Start](#quick-start)
 - [What's New](#whats-new)
+  - [v5.0.0 — TypeScript 6 & Node 22](#v500--typescript-6--node-22)
   - [v4.0.0 — API Cleanup](#v400--api-cleanup)
   - [v3.0.0 — Browser & WASM Support](#v300--browser--wasm-support)
   - [v2.0.0 — TypeScript Modernization](#v200--typescript-modernization)
@@ -39,11 +40,13 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
 - [Installation](#installation)
 - [Testing](#testing)
 - [Migration Guide](#migration-guide)
+  - [v4.x → v5.0](#v4x--v50)
   - [v3.x → v4.0](#v3x--v40)
   - [v1.x → v2.0](#v1x--v20)
 - [Contributing](#contributing)
   - [Releasing](#releasing)
 - [Troubleshooting](#troubleshooting)
+- [Using node-liblzma?](#using-node-liblzma)
 - [Bugs](#bugs)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
@@ -124,6 +127,13 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 
 ## What's New
 
+### v5.0.0 — TypeScript 6 & Node 22
+
+- **Node.js >= 22 required** — Node 20 reached EOL in April 2026
+- **TypeScript 6** — Upgraded from TS 5.x; explicit `types` declarations in workspace tsconfigs
+- **CI matrix updated** — Tests now run on Node 22 + 24 (was 20 + 22)
+- **XZ Utils 5.8.3** — Updated from 5.8.2
+
 ### v4.0.0 — API Cleanup
 
 - **Default export removed** — Use named imports instead (see [migration guide](#v3x--v40))
@@ -155,7 +165,7 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 - **Full TypeScript migration**: Complete rewrite from CoffeeScript
 - **Promise-based APIs**: `xzAsync()` and `unxzAsync()`
 - **Modern tooling**: Vitest, Biome, pnpm, pre-commit hooks
-- **Node.js >= 16** required (updated from >= 12; bumped to >= 20 in v3.2.0)
+- **Node.js >= 16** required (updated from >= 12; bumped to >= 20 in v3.2.0, >= 22 in v5.0.0)
 
 <details>
 <summary><strong>Legacy (N-API migration)</strong></summary>
@@ -676,6 +686,18 @@ Tests use [Vitest](https://vitest.dev/) with 100% code coverage across statement
 
 ## Migration Guide
 
+### v4.x → v5.0
+
+#### Breaking Changes
+
+1. **Node.js >= 22 required** — Node 20 reached end-of-life in April 2026. If you must support Node 20, stay on v4.x.
+
+2. **TypeScript 6** — If your project uses TypeScript, you'll need TS 6.x to compile with this version's type definitions.
+
+#### No API Changes
+
+The JavaScript/TypeScript API is identical to v4.x — `xzAsync`, `unxzAsync`, `createXz`, `createUnxz`, and all other functions work the same way. This is a toolchain-only breaking change.
+
 ### v3.x → v4.0
 
 #### Breaking Changes
@@ -849,6 +871,10 @@ npm config set python python3
 - [lzma-purejs](https://github.com/cscott/lzma-purejs) — Pure JavaScript LZMA implementation
 - [node-xz](https://github.com/robey/node-xz) — Node binding of XZ library
 - [lzma-native](https://github.com/addaleax/lzma-native) — Complete XZ library bindings
+
+## Using node-liblzma?
+
+We'd love to hear from you! If you're using node-liblzma in production, a side project, or an interesting use case, feel free to [open a discussion](https://github.com/oorabona/node-liblzma/discussions) or drop a comment on [this thread](https://github.com/oorabona/node-liblzma/issues/94). It helps us understand how the library is used and prioritize features.
 
 ## Bugs
 
