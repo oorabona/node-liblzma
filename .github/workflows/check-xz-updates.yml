@@ -177,7 +177,7 @@ jobs:
 
       - name: Create issue on test failure
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             github.rest.issues.create({
