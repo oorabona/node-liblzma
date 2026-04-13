@@ -183,7 +183,7 @@ jobs:
           ls -lh release-assets/
 
       - name: Upload prebuilds to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: release-assets/*.tar.gz
           tag_name: ${{ needs.normalize-tag.outputs.tag }}
