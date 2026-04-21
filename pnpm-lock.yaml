@@ -1532,8 +1532,8 @@ packages:
   mkdirp-classic@0.5.3:
     resolution: {integrity: sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==}
 
-  monocart-coverage-reports@2.12.10:
-    resolution: {integrity: sha512-veL2la1QlqS4aPn1m5X+AjPtyK5SP72p/mypf7qRC2Yy0E/ba3gzOFYFMAcAp5Y5pgmSlkTa2SCfrOgUqPmc7g==}
+  monocart-coverage-reports@2.12.11:
+    resolution: {integrity: sha512-yo4/FdUdFIWoc9OjhBZCNXM95tYHS4e8nov9Q3AGbpvteT/W5aQSc4B+Q0nhmedZFvjvm3BUH/Xu9GT2n/0wkw==}
     hasBin: true
 
   monocart-locator@1.0.3:
@@ -2606,7 +2606,7 @@ snapshots:
 
   '@oorabona/vitest-monocart-coverage@2.0.1(vitest@4.1.4)':
     dependencies:
-      monocart-coverage-reports: 2.12.10
+      monocart-coverage-reports: 2.12.11
       picomatch: 4.0.4
       vitest: 4.1.4(@types/node@25.6.0)(@vitest/coverage-istanbul@4.1.4)(@vitest/coverage-v8@4.1.4)(@vitest/ui@4.1.4)(vite@8.0.9(@types/node@25.6.0)(jiti@2.6.1)(yaml@2.8.3))
       zod: 4.3.6
@@ -3514,7 +3514,7 @@ snapshots:
 
   mkdirp-classic@0.5.3: {}
 
-  monocart-coverage-reports@2.12.10:
+  monocart-coverage-reports@2.12.11:
     dependencies:
       acorn: 8.16.0
       acorn-loose: 8.5.2
