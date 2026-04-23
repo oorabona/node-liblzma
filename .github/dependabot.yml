@@ -45,8 +45,3 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
-    ignore:
-      # pnpm/action-setup v6 corrupts pnpm-lock.yaml (produces a 2-document YAML)
-      # when regenerating the lockfile in refresh-lockfile.yml. Pinned to v5 until fixed upstream.
-      - dependency-name: "pnpm/action-setup"
-        versions: [">=6"]
