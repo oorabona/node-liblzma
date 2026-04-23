@@ -25,9 +25,9 @@ jobs:
           token: ${{ secrets.RELEASE_PAT }}
 
       - name: Setup pnpm
-        # Pinned to v5: v6 produces a broken 2-document YAML lockfile when regenerating
-        # (https://github.com/pnpm/action-setup/issues related to packageManagerDependency tracking)
-        uses: pnpm/action-setup@v5
+        # v6.0.0 produced a broken 2-document YAML lockfile (issue #228).
+        # Fixed in v6.0.1 (2026-04-17): two-document only when using devEngines.packageManager.
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
