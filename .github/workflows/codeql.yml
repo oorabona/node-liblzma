@@ -36,9 +36,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # c-cpp excluded: requires XZ sources download + node-gyp build, adds significant complexity.
+        # The native binding (src/bindings/*.cpp, ~1200 LOC) is reviewed manually on PR.
         language:
           - actions
-          - c-cpp
           - javascript-typescript
           - python
 
@@ -47,28 +48,24 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup pnpm
-        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
+        if: matrix.language == 'javascript-typescript'
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
+        if: matrix.language == 'javascript-typescript'
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
 
       - name: Install dependencies (skip scripts)
-        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
+        if: matrix.language == 'javascript-typescript'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-
-      - name: Autobuild (c-cpp)
-        if: matrix.language == 'c-cpp'
-        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
