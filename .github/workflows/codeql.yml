@@ -86,10 +86,14 @@ jobs:
       - name: Build native binding (c-cpp)
         # CodeQL wraps the compiler: install must happen between init and analyze.
         # `pnpm install` triggers postinstall → node-gyp-build → node-gyp rebuild (compiles from source).
+        # USE_GLOBAL=false forces use of bundled XZ sources (downloaded above) instead of system pkg-config.
         if: matrix.language == 'c-cpp'
         run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USE_GLOBAL: 'false'
+          RUNTIME_LINK: static
+          ENABLE_THREAD_SUPPORT: yes
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
