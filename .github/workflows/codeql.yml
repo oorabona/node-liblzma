@@ -78,6 +78,11 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      - name: Install node-gyp globally (c-cpp)
+        # pnpm doesn't bundle node-gyp; install it so the `gypfile: true` auto-rebuild works.
+        if: matrix.language == 'c-cpp'
+        run: npm install -g node-gyp
+
       - name: Build native binding (c-cpp)
         # CodeQL wraps the compiler: install must happen between init and analyze.
         # `pnpm install` triggers postinstall → node-gyp-build → node-gyp rebuild (compiles from source).
