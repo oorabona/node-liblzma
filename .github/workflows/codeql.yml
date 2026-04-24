@@ -36,10 +36,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # c-cpp excluded: requires XZ sources download + node-gyp build, adds significant complexity.
-        # The native binding (src/bindings/*.cpp, ~1200 LOC) is reviewed manually on PR.
         language:
           - actions
+          - c-cpp
           - javascript-typescript
           - python
 
@@ -48,15 +47,27 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup pnpm
-        if: matrix.language == 'javascript-typescript'
+        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        if: matrix.language == 'javascript-typescript'
+        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Setup Python (for XZ download)
+        if: matrix.language == 'c-cpp'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Download XZ sources
+        if: matrix.language == 'c-cpp'
+        run: python scripts/download_xz_from_github.py deps/xz.tar.gz deps/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies (skip scripts)
         if: matrix.language == 'javascript-typescript'
@@ -66,6 +77,14 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+
+      - name: Build native binding (c-cpp)
+        # CodeQL wraps the compiler: install must happen between init and analyze.
+        # `pnpm install` triggers postinstall → node-gyp-build → node-gyp rebuild (compiles from source).
+        if: matrix.language == 'c-cpp'
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
