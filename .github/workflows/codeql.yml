@@ -1,0 +1,76 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '**.md'
+      - 'docs/**'
+      - 'demo/**'
+      - 'examples/**'
+      - '.github/dependabot.yml'
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly, Sunday 00:00 UTC
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - actions
+          - c-cpp
+          - javascript-typescript
+          - python
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies (skip scripts)
+        if: matrix.language == 'javascript-typescript' || matrix.language == 'c-cpp'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild (c-cpp)
+        if: matrix.language == 'c-cpp'
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:${{ matrix.language }}'
