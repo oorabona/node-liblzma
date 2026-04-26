@@ -1,10 +1,44 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as lzma from '../../src/lzma.js';
 
 describe('Parameter Parsing and Async Paths', () => {
+  // Track every stream + timer created so we can guarantee cleanup, even if a
+  // test rejects mid-flight or a native callback is queued after the test ends.
+  // Without this, late callbacks (xz.emit('onerror', ...) firing after close())
+  // can crash the vitest worker — historical Windows+Node20 / Ubuntu+Node24 flakes.
+  let streams: (lzma.Xz | lzma.Unxz)[] = [];
+  let timers: NodeJS.Timeout[] = [];
+
+  const track = <T extends lzma.Xz | lzma.Unxz>(s: T): T => {
+    streams.push(s);
+    return s;
+  };
+
+  const trackTimer = (t: NodeJS.Timeout): NodeJS.Timeout => {
+    timers.push(t);
+    return t;
+  };
+
+  beforeEach(() => {
+    streams = [];
+    timers = [];
+  });
+
+  afterEach(() => {
+    for (const t of timers) clearTimeout(t);
+    for (const s of streams) {
+      try {
+        if (typeof s.destroy === 'function') s.destroy();
+        else if (typeof s.close === 'function' && !s._closed) s.close();
+      } catch {
+        // best-effort: ignore double-destroy errors
+      }
+    }
+  });
+
   describe('Async Error Path Coverage', () => {
     it('should trigger async error path in _processChunk', async () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
 
       return new Promise<void>((resolve) => {
         let errorEmitted = false;
@@ -14,10 +48,12 @@ describe('Parameter Parsing and Async Paths', () => {
           expect(error).toBeInstanceOf(Error);
           expect(error.errno).toBe(lzma.LZMA_PROG_ERROR);
           // Don't close here to avoid race condition
-          setTimeout(() => {
-            xz.close();
-            resolve();
-          }, 5);
+          trackTimer(
+            setTimeout(() => {
+              xz.close();
+              resolve();
+            }, 5)
+          );
         });
 
         // Force async path with callback
@@ -29,11 +65,13 @@ describe('Parameter Parsing and Async Paths', () => {
         });
 
         // Emit error to trigger async error path (lines 457-458)
-        setTimeout(() => {
-          if (!xz._closed) {
-            xz.emit('onerror', lzma.LZMA_PROG_ERROR);
-          }
-        }, 10);
+        trackTimer(
+          setTimeout(() => {
+            if (!xz._closed) {
+              xz.emit('onerror', lzma.LZMA_PROG_ERROR);
+            }
+          }, 10)
+        );
       });
     });
   });
@@ -83,7 +121,7 @@ describe('Parameter Parsing and Async Paths', () => {
 
   describe('Type Validation Coverage', () => {
     it('should throw TypeError for invalid buffer input in xzBufferSync', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
 
       // Pass invalid type to trigger TypeError for non-Buffer input
       expect(() => {
@@ -123,7 +161,7 @@ describe('Parameter Parsing and Async Paths', () => {
 
     it('should reach TypeError path in real xzBufferSync', () => {
       // Test the real scenario that would trigger TypeError
-      const engine = new lzma.Xz();
+      const engine = track(new lzma.Xz());
 
       // This should simulate the path that could lead to TypeError
       // Since the function is internal, we test indirectly
@@ -136,7 +174,7 @@ describe('Parameter Parsing and Async Paths', () => {
 
   describe('Variable Declaration Coverage', () => {
     it('should ensure all sync path variables are initialized (lines 373, 448)', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       const testData = Buffer.from('test data for variable coverage');
 
       // Process chunk in sync mode to initialize all variables
@@ -147,7 +185,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should initialize async processing correctly', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       const testData = Buffer.from('async test data');
 
       return new Promise<void>((resolve) => {
@@ -159,7 +197,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should cover sync processing path completely', () => {
-      const xz = new lzma.Xz({ chunkSize: 16 });
+      const xz = track(new lzma.Xz({ chunkSize: 16 }));
       const testData = Buffer.alloc(64, 'a'); // Larger data to ensure processing
 
       // Process without callback to hit sync path and initialize variables
@@ -174,20 +212,20 @@ describe('Parameter Parsing and Async Paths', () => {
   describe('Line Spacing Coverage', () => {
     it('should call createUnxz factory function', () => {
       // Test createUnxz factory function creation
-      const stream1 = lzma.createXz();
+      const stream1 = track(lzma.createXz());
       expect(stream1).toBeInstanceOf(lzma.Xz);
       stream1.close();
 
-      const stream2 = lzma.createUnxz();
+      const stream2 = track(lzma.createUnxz());
       expect(stream2).toBeInstanceOf(lzma.Unxz);
       stream2.close();
 
       // Test with options
-      const stream3 = lzma.createXz({ chunkSize: 1024 });
+      const stream3 = track(lzma.createXz({ chunkSize: 1024 }));
       expect(stream3).toBeInstanceOf(lzma.Xz);
       stream3.close();
 
-      const stream4 = lzma.createUnxz({ chunkSize: 1024 });
+      const stream4 = track(lzma.createUnxz({ chunkSize: 1024 }));
       expect(stream4).toBeInstanceOf(lzma.Unxz);
       stream4.close();
     });
@@ -195,7 +233,7 @@ describe('Parameter Parsing and Async Paths', () => {
 
   describe('Stream State Coverage', () => {
     it('should handle flush operation on ended stream', async () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       const testData = Buffer.from('test');
 
       return new Promise<void>((resolve) => {
@@ -210,7 +248,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should handle flush operation during stream ending', async () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
 
       return new Promise<void>((resolve) => {
         let callbackCalled = false;
@@ -218,7 +256,7 @@ describe('Parameter Parsing and Async Paths', () => {
         // Setup end handler
         xz.on('end', () => {
           if (!callbackCalled) {
-            setTimeout(() => xz.close(() => resolve()), 10);
+            trackTimer(setTimeout(() => xz.close(() => resolve()), 10));
           }
         });
 
@@ -227,17 +265,19 @@ describe('Parameter Parsing and Async Paths', () => {
         xz.end();
 
         // Try to flush while stream is in ending state
-        setTimeout(() => {
-          xz.flush(() => {
-            callbackCalled = true;
-            xz.close(() => resolve());
-          });
-        }, 5);
+        trackTimer(
+          setTimeout(() => {
+            xz.flush(() => {
+              callbackCalled = true;
+              xz.close(() => resolve());
+            });
+          }, 5)
+        );
       });
     });
 
     it('should handle operations on closed stream', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       xz.close();
 
       return new Promise<void>((resolve, _reject) => {
@@ -252,7 +292,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should initialize processing variables correctly', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       const testData = Buffer.from('sync path test');
 
       // Process in sync mode to initialize variables
@@ -266,13 +306,13 @@ describe('Parameter Parsing and Async Paths', () => {
   describe('Missing Lines Coverage', () => {
     it('should complete constructor initialization', () => {
       // Line 247 is just an empty line after error handler setup
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       expect(xz).toBeInstanceOf(lzma.Xz);
       xz.close();
     });
 
     it('should handle flush callback during stream ending', async () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
 
       return new Promise<void>((resolve) => {
         xz.write(Buffer.from('test'));
@@ -286,7 +326,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should throw error when transforming closed stream', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
       xz.close();
 
       return new Promise<void>((resolve) => {
@@ -298,7 +338,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should declare and initialize inOff variable', () => {
-      const xz = new lzma.Xz();
+      const xz = track(new lzma.Xz());
 
       // This processes synchronously and initializes inOff variable
       const result = xz._processChunk(Buffer.from('test sync'), lzma.LZMA_FINISH);
@@ -308,7 +348,7 @@ describe('Parameter Parsing and Async Paths', () => {
     });
 
     it('should access createUnxz factory function', () => {
-      const stream = lzma.createUnxz({ chunkSize: 1024 });
+      const stream = track(lzma.createUnxz({ chunkSize: 1024 }));
       expect(stream).toBeInstanceOf(lzma.Unxz);
       stream.close();
     });

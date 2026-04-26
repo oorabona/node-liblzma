@@ -1,16 +1,52 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as lzma from '../../src/lzma.js';
 
 describe('Callback Validation and Behavior', () => {
+  // Track every stream + timer created so we can guarantee cleanup, even if a
+  // test rejects mid-flight or a native callback is queued after the test ends.
+  // Without this, late callbacks firing after close() can crash the vitest worker
+  // — historical Windows+Node20 / Ubuntu+Node24 flakes.
+  let streams: (lzma.Xz | lzma.Unxz)[] = [];
+  let timers: NodeJS.Timeout[] = [];
+
+  const track = <T extends lzma.Xz | lzma.Unxz>(s: T): T => {
+    streams.push(s);
+    return s;
+  };
+
+  const trackTimer = (t: NodeJS.Timeout): NodeJS.Timeout => {
+    timers.push(t);
+    return t;
+  };
+
+  beforeEach(() => {
+    streams = [];
+    timers = [];
+  });
+
+  afterEach(() => {
+    for (const t of timers) clearTimeout(t);
+    for (const s of streams) {
+      try {
+        if (typeof s.destroy === 'function') s.destroy();
+        else if (typeof s.close === 'function' && !s._closed) s.close();
+      } catch {
+        // best-effort: ignore double-destroy errors
+      }
+    }
+  });
+
   describe('Sync Mode Return Values', () => {
     it('should return correct errno, availIn, availOut tuple', () => {
       const testData = Buffer.from('Test data for sync return validation');
-      const stream = new lzma.Xz({
-        check: lzma.check.CRC32,
-        preset: lzma.preset.DEFAULT,
-        filters: [lzma.filter.LZMA2],
-        threads: 1,
-      });
+      const stream = track(
+        new lzma.Xz({
+          check: lzma.check.CRC32,
+          preset: lzma.preset.DEFAULT,
+          filters: [lzma.filter.LZMA2],
+          threads: 1,
+        })
+      );
       const outputBuffer = Buffer.alloc(1024);
 
       const [errno, availInAfter, availOutAfter] = stream.lzma.codeSync(
@@ -43,12 +79,14 @@ describe('Callback Validation and Behavior', () => {
 
     it('should return LZMA_STREAM_END when finishing', () => {
       const testData = Buffer.from('Small data for finish test');
-      const stream = new lzma.Xz({
-        check: lzma.check.CRC32,
-        preset: lzma.preset.DEFAULT,
-        filters: [lzma.filter.LZMA2],
-        threads: 1,
-      });
+      const stream = track(
+        new lzma.Xz({
+          check: lzma.check.CRC32,
+          preset: lzma.preset.DEFAULT,
+          filters: [lzma.filter.LZMA2],
+          threads: 1,
+        })
+      );
       const outputBuffer = Buffer.alloc(1024);
 
       // First pass - process data
@@ -81,12 +119,14 @@ describe('Callback Validation and Behavior', () => {
 
     it('should handle partial processing correctly', () => {
       const largeData = Buffer.alloc(10000, 'X');
-      const stream = new lzma.Xz({
-        check: lzma.check.CRC32,
-        preset: lzma.preset.DEFAULT,
-        filters: [lzma.filter.LZMA2],
-        threads: 1,
-      });
+      const stream = track(
+        new lzma.Xz({
+          check: lzma.check.CRC32,
+          preset: lzma.preset.DEFAULT,
+          filters: [lzma.filter.LZMA2],
+          threads: 1,
+        })
+      );
       const smallOutputBuffer = Buffer.alloc(100); // Intentionally small
 
       let totalProcessed = 0;
@@ -218,9 +258,11 @@ describe('Callback Validation and Behavior', () => {
 
       return new Promise<void>((resolve, reject) => {
         let completedCallbacks = 0;
-        const timeout = setTimeout(() => {
-          reject(new Error('Test timed out waiting for callbacks'));
-        }, 4000);
+        const timeout = trackTimer(
+          setTimeout(() => {
+            reject(new Error('Test timed out waiting for callbacks'));
+          }, 4000)
+        );
 
         for (let i = 0; i < totalOperations; i++) {
           const dataWithIndex = Buffer.from(`${testData.toString()} - ${i}`);
@@ -327,12 +369,14 @@ describe('Callback Validation and Behavior', () => {
 
   describe('Stream Event Callbacks', () => {
     it('should emit data events during compression', () => {
-      const stream = new lzma.Xz({
-        check: lzma.check.CRC32,
-        preset: lzma.preset.DEFAULT,
-        filters: [lzma.filter.LZMA2],
-        threads: 1,
-      });
+      const stream = track(
+        new lzma.Xz({
+          check: lzma.check.CRC32,
+          preset: lzma.preset.DEFAULT,
+          filters: [lzma.filter.LZMA2],
+          threads: 1,
+        })
+      );
       const inputData = Buffer.from('Stream event test data');
 
       return new Promise<void>((resolve, reject) => {
@@ -362,12 +406,14 @@ describe('Callback Validation and Behavior', () => {
     });
 
     it('should emit error events for invalid operations', () => {
-      const stream = new lzma.Xz({
-        check: lzma.check.CRC32,
-        preset: lzma.preset.DEFAULT,
-        filters: [lzma.filter.LZMA2],
-        threads: 1,
-      });
+      const stream = track(
+        new lzma.Xz({
+          check: lzma.check.CRC32,
+          preset: lzma.preset.DEFAULT,
+          filters: [lzma.filter.LZMA2],
+          threads: 1,
+        })
+      );
 
       return new Promise<void>((resolve) => {
         stream.on('error', (error: Error) => {
@@ -389,12 +435,14 @@ describe('Callback Validation and Behavior', () => {
     });
 
     it('should handle stream close gracefully', () => {
-      const stream = new lzma.Xz({
-        check: lzma.check.CRC32,
-        preset: lzma.preset.DEFAULT,
-        filters: [lzma.filter.LZMA2],
-        threads: 1,
-      });
+      const stream = track(
+        new lzma.Xz({
+          check: lzma.check.CRC32,
+          preset: lzma.preset.DEFAULT,
+          filters: [lzma.filter.LZMA2],
+          threads: 1,
+        })
+      );
 
       // Just test that close doesn't crash
       expect(() => {
@@ -428,10 +476,12 @@ describe('Callback Validation and Behavior', () => {
           });
 
           // Give time for callback to execute
-          setTimeout(() => {
-            // If we get here, the process didn't crash
-            resolve();
-          }, 100);
+          trackTimer(
+            setTimeout(() => {
+              // If we get here, the process didn't crash
+              resolve();
+            }, 100)
+          );
         } catch {
           // The exception should be contained
           resolve();
