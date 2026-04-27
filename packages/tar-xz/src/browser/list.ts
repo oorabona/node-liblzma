@@ -75,23 +75,6 @@ function listTarEntries(data: Uint8Array): TarEntry[] {
 }
 
 /**
- * List contents of a tar.xz archive in browser
- *
- * @param archive - Compressed archive data (ArrayBuffer or Uint8Array)
- * @returns Array of entry metadata (without content)
- *
- * @example
- * ```ts
- * const response = await fetch('archive.tar.xz');
- * const data = await response.arrayBuffer();
- * const entries = await listTarXz(data);
- *
- * for (const entry of entries) {
- *   console.log(entry.name, entry.size, entry.type);
- * }
- * ```
- */
-/**
  * List the contents of a tar.xz archive (browser).
  *
  * Returns an `AsyncIterable<TarEntry>` yielding each entry's metadata.

@@ -85,24 +85,6 @@ function parseTar(data: Uint8Array): Array<TarEntry & { data: Uint8Array }> {
 }
 
 /**
- * Extract a tar.xz archive in browser
- *
- * @param archive - Compressed archive data (ArrayBuffer or Uint8Array)
- * @param options - Extraction options
- * @returns Array of extracted files
- *
- * @example
- * ```ts
- * const response = await fetch('archive.tar.xz');
- * const data = await response.arrayBuffer();
- * const files = await extractTarXz(data);
- *
- * for (const file of files) {
- *   console.log(file.name, file.data.length);
- * }
- * ```
- */
-/**
  * Extract a tar.xz archive (browser).
  *
  * Returns an `AsyncIterable<TarEntryWithData>`. Each yielded entry includes:

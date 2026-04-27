@@ -140,26 +140,6 @@ class TarUnpack extends Writable {
 }
 
 /**
- * Validate that a path doesn't escape the target directory (path traversal protection)
- * @throws Error if path traversal is detected
- */
-
-/**
- * Extract a tar.xz archive
- *
- * @param options - Extraction options
- * @returns Promise with list of extracted entries
- *
- * @example
- * ```ts
- * await extract({
- *   file: 'archive.tar.xz',
- *   cwd: '/dest',
- *   strip: 1
- * });
- * ```
- */
-/**
  * Extract a tar.xz archive.
  *
  * Returns an `AsyncIterable<TarEntryWithData>`. Each yielded entry includes:

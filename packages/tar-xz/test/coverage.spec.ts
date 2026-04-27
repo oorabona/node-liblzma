@@ -749,6 +749,45 @@ describe('Coverage: Node API', () => {
       expect(linkStat.ino).toBe(aStat.ino);
     });
 
+    it('R5-1 regression: rejects hardlink whose linkname is a symlink (symlink traversal via hardlink)', async () => {
+      // Attack:
+      //   Entry 1: 's' (SYMLINK) with linkname '../external/secret' → creates cwd/s → ../external/secret
+      //   Entry 2: 'myhardlink' (HARDLINK) with linkname 's'
+      //     → linkSource = resolve(cwd, 's') → cwd/s (passes the linkRel check: inside cwd)
+      //     → link(cwd/s, cwd/myhardlink) → kernel follows cwd/s symlink → hardlinks /external/secret
+      // Fix: check lstat(linkSource).isSymbolicLink() BEFORE calling link().
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+      const secretFile = path.join(externalDir, 'secret');
+      await fs.writeFile(secretFile, 'sensitive');
+
+      const tar = buildTar([
+        // Step 1: plant a symlink inside cwd pointing to an external file
+        { name: 's', type: TarEntryType.SYMLINK, linkname: '../external/secret' },
+        // Step 2: hardlink with linkname 's' (the symlink)
+        { name: 'myhardlink', type: TarEntryType.HARDLINK, linkname: 's' },
+      ]);
+
+      const archive = path.join(tempDir, 'hl-symlink-src.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject: linkSource 's' is a symlink
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // The external secret file must NOT be hardlinked into dest
+      const destContents = await fs.readdir(dest);
+      expect(destContents).not.toContain('myhardlink');
+
+      // Stronger guarantee: the external secret file's link count must remain 1
+      // (a successful hardlink would have bumped it to 2, even if the dest entry
+      // was later cleaned up by an error handler).
+      const secretStat = await fs.stat(secretFile);
+      expect(secretStat.nlink).toBe(1);
+    });
+
     it('raw extract() yields traversal entry without rejecting (caller responsibility)', async () => {
       const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
       const archivePath = path.join(tempDir, 'evil.tar.xz');

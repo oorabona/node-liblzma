@@ -156,6 +156,26 @@ export async function extractFile(
       if (linkRel === '..' || linkRel.startsWith('..' + sep) || isAbsolute(linkRel)) {
         throw new Error(`Refusing hardlink outside cwd: ${entry.linkname}`);
       }
+      // R5-1: reject if linkSource itself is a symlink — the kernel would follow it
+      // and create a hardlink to whatever the symlink points to (possibly outside cwd).
+      // ENOENT is fine (linkname may point to a not-yet-extracted file); rethrow others.
+      let linkSrcStat: Awaited<ReturnType<typeof lstat>> | null = null;
+      try {
+        linkSrcStat = await lstat(linkSource);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      }
+      if (linkSrcStat?.isSymbolicLink()) {
+        throw new Error(
+          `Refusing hardlink: source '${entry.linkname}' is a symlink (would resolve outside cwd)`
+        );
+      }
+      // R5-1: reject if any ancestor of linkSource is a symlink (TOCTOU risk).
+      if (await hasSymlinkAncestor(linkSource, cwd)) {
+        throw new Error(
+          `Refusing hardlink: source '${entry.linkname}' has a symlink ancestor (TOCTOU risk)`
+        );
+      }
       await mkdir(dirname(target), { recursive: true });
       // Remove existing file if present (allow re-extract)
       try {
