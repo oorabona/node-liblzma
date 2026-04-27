@@ -169,10 +169,10 @@ function makeTarEntryWithData(entry: TarEntry, data: Uint8Array): TarEntryWithDa
 
   async function collectText(encoding?: string): Promise<string> {
     const bytes = await collectBytes();
-    if (typeof TextDecoder !== 'undefined') {
-      return new TextDecoder(encoding ?? 'utf-8').decode(bytes);
+    if (typeof TextDecoder === 'undefined') {
+      throw new Error('TextDecoder is not available in this environment');
     }
-    return Buffer.from(bytes).toString((encoding ?? 'utf-8') as BufferEncoding);
+    return new TextDecoder(encoding ?? 'utf-8').decode(bytes);
   }
 
   return {

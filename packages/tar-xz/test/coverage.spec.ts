@@ -677,6 +677,44 @@ describe('Coverage: Node API', () => {
       expect(externalContents).toHaveLength(0);
     });
 
+    it('R3-1 regression: rejects file through symlink ancestor when intermediate dir is missing (ENOENT bypass fix)', async () => {
+      // Bug: old code returned false on ENOENT in hasSymlinkAncestor,
+      // which stopped the ancestor walk early. An archive could:
+      //   1. Create link → ../external (symlink, now on disk)
+      //   2. Write link/subdir/file.txt (link/subdir does NOT exist yet)
+      //      → lstat(link/subdir) → ENOENT → old code: return false → escape!
+      // Fix: ENOENT means "not yet created", continue walking up.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      // Archive: symlink 'link' → '../external', then 'link/subdir/file.txt'
+      // (link/subdir does NOT exist on disk before extraction).
+      const tar = buildTar([
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        { name: 'link/subdir/file.txt', content: Buffer.from('escaped') },
+      ]);
+
+      const archive = path.join(tempDir, 'enoent-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject: hasSymlinkAncestor must walk past the missing 'link/subdir'
+      // and detect that 'link' itself is a symlink.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/ must remain empty — no subdir/file.txt was created.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+
+      // Confirm no file was written inside dest either
+      const destContents = await fs.readdir(dest);
+      // Only 'link' symlink was created (first entry), no subdir
+      const hasBadFile = destContents.some((f) => f === 'subdir');
+      expect(hasBadFile).toBe(false);
+    });
+
     it('raw extract() yields traversal entry without rejecting (caller responsibility)', async () => {
       const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
       const archivePath = path.join(tempDir, 'evil.tar.xz');

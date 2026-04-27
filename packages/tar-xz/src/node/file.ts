@@ -33,9 +33,11 @@ async function hasSymlinkAncestor(filePath: string, root: string): Promise<boole
     try {
       const st = await lstat(dir);
       if (st.isSymbolicLink()) return true;
-    } catch {
-      // Directory doesn't exist yet — no symlink risk.
-      return false;
+    } catch (err) {
+      // ENOENT is fine — this intermediate dir doesn't exist yet, keep walking up.
+      // A higher ancestor may still be a symlink.
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') throw err;
     }
     const parent = dirname(dir);
     if (parent === dir) break; // filesystem root reached
