@@ -1,180 +1,331 @@
 # tar-xz
 
-Create and extract tar.xz archives with streaming support for Node.js and buffer-based API for browsers.
+Universal tar.xz library — stream-first, Node and Browser, same API.
+
+[![npm](https://img.shields.io/npm/v/tar-xz)](https://www.npmjs.com/package/tar-xz)
+[![License: LGPL-3.0](https://img.shields.io/badge/License-LGPL--3.0-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
+
+Create and extract `.tar.xz` archives with streaming support for Node.js and
+WebAssembly-powered support for browsers — using the same `create`/`extract`/`list`
+function names in both environments.
 
 ## Features
 
-- **Node.js streaming API** - Memory-efficient processing of large archives
-- **Browser support** - WASM-powered XZ compression works in any browser
-- **Full TAR support** - POSIX ustar format with PAX extensions for long filenames
-- **TypeScript** - Full type definitions included
-- **Zero dependencies** - Only requires `node-liblzma` (workspace dependency)
+- **Unified API** — `create`, `extract`, `list` work identically in Node.js and browsers
+- **Stream-first** — all functions return `AsyncIterable<…>`; no whole-file buffering required
+- **Flexible input** — `extract()` and `list()` accept `AsyncIterable`, `Uint8Array`,
+  `ArrayBuffer`, Web `ReadableStream`, or Node `ReadableStream`
+- **Flexible source** — `create()` accepts fs paths (Node), `Buffer`/`Uint8Array`, or
+  `AsyncIterable<Uint8Array>` per file
+- **File helpers** — `tar-xz/file` subpath for disk I/O (Node only)
+- **Full TAR support** — POSIX ustar with PAX extensions for long filenames and metadata
+- **TypeScript** — full type definitions included
+- **Zero runtime deps** — only requires `node-liblzma` (native in Node, WASM in browser)
 
 ## Installation
 
 ```bash
 npm install tar-xz
-# or
 pnpm add tar-xz
-# or
 yarn add tar-xz
 ```
 
-## Usage
+## Quick Start
 
-### Node.js
+Node.js and browser use the **same import**:
 
 ```typescript
 import { create, extract, list } from 'tar-xz';
+```
 
-// Create an archive
-await create({
-  file: 'archive.tar.xz',
-  cwd: '/source/directory',
-  files: ['file1.txt', 'subdir/'],
-  preset: 6 // compression level (0-9)
+Bundlers (Vite, Webpack, esbuild) resolve to the WASM implementation in browser
+builds automatically via the `browser` condition in `package.json`.
+
+## API Usage
+
+### Creating an archive
+
+`create()` returns an `AsyncIterable<Uint8Array>`. Pipe it wherever you need:
+
+```typescript
+import { create } from 'tar-xz';
+
+const archiveStream = create({
+  files: [
+    { name: 'hello.txt', source: Buffer.from('Hello, world!') },
+    { name: 'data.json', source: Buffer.from(JSON.stringify({ ok: true })) },
+  ],
+  preset: 6,                               // XZ compression level 0–9 (default: 6)
+  filter: (file) => !file.name.endsWith('.tmp'),  // optional
 });
 
-// List contents
-const entries = await list({ file: 'archive.tar.xz' });
-for (const entry of entries) {
-  console.log(entry.name, entry.size);
+// Collect to a Uint8Array (browser / in-memory use)
+const chunks: Uint8Array[] = [];
+for await (const chunk of archiveStream) {
+  chunks.push(chunk);
+}
+const archive = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+let offset = 0;
+for (const chunk of chunks) { archive.set(chunk, offset); offset += chunk.length; }
+
+// Or pipe to a WritableStream (browser)
+const writer = writable.getWriter();
+for await (const chunk of create({ files: [...] })) {
+  await writer.write(chunk);
+}
+await writer.close();
+```
+
+### Extracting an archive
+
+`extract()` yields `TarEntryWithData` objects. Consume `entry.data` or use the
+convenience helpers `entry.text()` and `entry.bytes()`:
+
+```typescript
+import { extract } from 'tar-xz';
+
+for await (const entry of extract(archiveStream)) {
+  if (entry.type === '0') {          // regular file — TarEntryType.FILE
+    const content = await entry.text();
+    console.log(entry.name, content);
+  }
 }
 
-// Extract to disk
-await extract({
-  file: 'archive.tar.xz',
-  cwd: '/destination',
-  strip: 1, // remove leading path component
-  filter: (entry) => !entry.name.startsWith('.') // skip hidden files
-});
-
-// Extract to memory
-import { extractToMemory } from 'tar-xz';
-const files = await extractToMemory('archive.tar.xz');
-for (const file of files) {
-  console.log(file.name, file.content.toString());
+// Or collect raw bytes
+for await (const entry of extract(archive)) {
+  if (entry.type === '0') {
+    const bytes = await entry.bytes();
+    console.log(entry.name, bytes.byteLength, 'bytes');
+  }
 }
 ```
 
-### Browser
+> **Important:** `entry.data` is a lazy `AsyncIterable` — consume or skip each entry
+> before the `for await` loop advances to the next one. Calling `entry.bytes()` or
+> iterating `entry.data` fully satisfies this requirement.
+
+### Listing an archive
+
+`list()` yields `TarEntry` metadata without reading file content:
 
 ```typescript
-import { createTarXz, extractTarXz, listTarXz } from 'tar-xz';
+import { list } from 'tar-xz';
 
-// Create from files (e.g., from file input or drag & drop)
-const archive = await createTarXz({
+for await (const entry of list(archiveStream)) {
+  console.log(entry.name, entry.size, entry.mtime);
+}
+```
+
+### Inputs accepted by `extract()` and `list()`
+
+All of the following are valid as the first argument:
+
+```typescript
+extract(asyncIterable)            // AsyncIterable<Uint8Array>
+extract(syncIterable)             // Iterable<Uint8Array> (e.g. [chunk1, chunk2])
+extract(uint8array)               // Uint8Array (in-memory archive)
+extract(arrayBuffer)              // ArrayBuffer
+extract(webReadableStream)        // ReadableStream<Uint8Array> (Web Streams)
+extract(nodeReadableStream)       // NodeJS.ReadableStream (Node only)
+```
+
+### Source types per file in `create()`
+
+```typescript
+create({
   files: [
-    { name: 'hello.txt', content: 'Hello, World!' },
-    { name: 'data.json', content: JSON.stringify({ foo: 'bar' }) }
+    { name: 'from-disk.txt', source: '/absolute/or/relative/path' }, // Node only
+    { name: 'from-buffer.bin', source: Buffer.from([0x01, 0x02]) },
+    { name: 'from-uint8.bin', source: new Uint8Array([0x03, 0x04]) },
+    { name: 'from-stream.bin', source: asyncIterableOfChunks },
   ],
-  preset: 3 // lower preset for browser performance
+});
+```
+
+`string` sources (fs paths) throw a helpful error in browser environments — there
+is no filesystem access in browsers.
+
+## File Helpers (Node only)
+
+`tar-xz/file` wraps the stream API with disk I/O convenience functions:
+
+```typescript
+import { createFile, extractFile, listFile } from 'tar-xz/file';
+
+// Write archive to disk
+await createFile('archive.tar.xz', {
+  files: [
+    { name: 'a.txt', source: '/path/to/a.txt' },
+    { name: 'b.txt', source: Buffer.from('hello') },
+  ],
 });
 
-// Download the archive
-const blob = new Blob([archive], { type: 'application/x-xz' });
-const url = URL.createObjectURL(blob);
-// ... trigger download
+// Extract archive from disk to a directory
+await extractFile('archive.tar.xz', {
+  cwd: './output',     // target directory (default: process.cwd())
+  strip: 1,            // strip N leading path components (default: 0)
+  filter: (entry) => entry.name.endsWith('.ts'),  // optional
+});
 
-// Extract an archive
-const response = await fetch('archive.tar.xz');
-const data = await response.arrayBuffer();
-const files = await extractTarXz(data);
+// List archive on disk (returns TarEntry[])
+const entries = await listFile('archive.tar.xz');
+for (const entry of entries) {
+  console.log(entry.name, entry.size);
+}
+```
 
-for (const file of files) {
-  console.log(file.name, file.data.length);
+Do not import `tar-xz/file` in browser bundles — it imports `node:fs` and will
+fail at runtime. Use `create`/`extract`/`list` directly in browser code.
+
+## Streaming Patterns
+
+### Hash while creating
+
+Compute a checksum over the compressed bytes as they are produced:
+
+```typescript
+import { create } from 'tar-xz';
+import { createHash } from 'node:crypto';
+
+const hasher = createHash('sha256');
+const chunks: Uint8Array[] = [];
+
+for await (const chunk of create({ files: [...] })) {
+  hasher.update(chunk);
+  chunks.push(chunk);
 }
 
-// List contents only (no extraction)
-const entries = await listTarXz(data);
+const digest = hasher.digest('hex');
+console.log('SHA-256:', digest);
+```
+
+### HTTP upload
+
+Stream the archive directly to an HTTP endpoint without buffering:
+
+```typescript
+import { create } from 'tar-xz';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+
+const archiveStream = Readable.from(create({ files: [...] }));
+// Use with node:http or any streaming HTTP client
+```
+
+### Extract from HTTP response (browser)
+
+```typescript
+import { extract } from 'tar-xz';
+
+const response = await fetch('https://example.com/archive.tar.xz');
+// ReadableStream<Uint8Array> is accepted directly
+for await (const entry of extract(response.body!)) {
+  if (entry.type === '0') {
+    const text = await entry.text();
+    console.log(entry.name, text);
+  }
+}
+```
+
+### Large file extraction to IndexedDB (browser)
+
+```typescript
+import { extract } from 'tar-xz';
+
+const response = await fetch('large.tar.xz');
+for await (const entry of extract(response.body!)) {
+  if (entry.type === '0') {
+    const bytes = await entry.bytes();
+    // write to IndexedDB, OPFS, etc.
+    await saveToStorage(entry.name, bytes);
+  }
+}
 ```
 
 ## API Reference
 
-### Node.js API
+### Core API (`tar-xz`)
 
-#### `create(options: CreateOptions): Promise<void>`
+| Function | Signature | Returns |
+|----------|-----------|---------|
+| `create` | `(options: CreateOptions) => AsyncIterable<Uint8Array>` | Compressed archive chunks |
+| `extract` | `(input: TarInput, options?: ExtractOptions) => AsyncIterable<TarEntryWithData>` | Entries with data |
+| `list` | `(input: TarInput, options?: ExtractOptions) => AsyncIterable<TarEntry>` | Metadata only |
 
-Create a tar.xz archive from files on disk.
+### File Helpers API (`tar-xz/file`, Node only)
 
-Options:
-- `file` - Output archive path
-- `cwd` - Base directory for file paths (default: `process.cwd()`)
-- `files` - Array of file/directory paths to include
-- `preset` - XZ compression preset 0-9 (default: 6)
-- `follow` - Follow symbolic links (default: false)
+| Function | Signature | Returns |
+|----------|-----------|---------|
+| `createFile` | `(path: string, options: CreateOptions) => Promise<void>` | Writes archive to `path` |
+| `extractFile` | `(archivePath: string, options?: ExtractOptions & { cwd?: string }) => Promise<void>` | Extracts to `cwd` |
+| `listFile` | `(archivePath: string) => Promise<TarEntry[]>` | Collected entry array |
 
-#### `extract(options: ExtractOptions): Promise<TarEntry[]>`
+### `CreateOptions`
 
-Extract a tar.xz archive to disk.
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `files` | `TarSourceFile[]` | required | Files to include |
+| `preset` | `number` | `6` | XZ compression level 0–9 |
+| `filter` | `(file: TarSourceFile) => boolean` | — | Return `false` to exclude |
 
-Options:
-- `file` - Input archive path
-- `cwd` - Output directory (default: `process.cwd()`)
-- `strip` - Number of leading path components to strip (default: 0)
-- `filter` - Function to filter entries
-- `preserveOwner` - Preserve file ownership (requires root)
+### `TarSourceFile`
 
-#### `list(options: ListOptions): Promise<TarEntry[]>`
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Path inside the archive |
+| `source` | `string \| Uint8Array \| ArrayBuffer \| AsyncIterable<Uint8Array>` | File content or fs path (Node only) |
+| `mode` | `number?` | File permissions (default: `0o644`) |
+| `mtime` | `Date?` | Modification time (default: now) |
 
-List contents of a tar.xz archive.
+### `ExtractOptions`
 
-#### `extractToMemory(file: string, options?): Promise<Array<TarEntry & { content: Buffer }>>`
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `strip` | `number` | `0` | Strip N leading path components |
+| `filter` | `(entry: TarEntry) => boolean` | — | Return `false` to skip entry |
 
-Extract archive to memory without writing to disk.
+### `TarEntry`
 
-### Browser API
+Metadata yielded by `list()` and attached to each `TarEntryWithData`:
 
-#### `createTarXz(options: BrowserCreateOptions): Promise<Uint8Array>`
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Relative file path |
+| `type` | `TarEntryTypeValue` | Entry type (`'0'`=file, `'5'`=dir, `'2'`=symlink, …) |
+| `size` | `number` | File size in bytes |
+| `mode` | `number` | File permissions |
+| `uid` / `gid` | `number` | Owner user/group IDs |
+| `uname` / `gname` | `string` | Owner user/group names |
+| `mtime` | `number` | Modification time (seconds since epoch) |
+| `linkname` | `string` | Symlink / hardlink target |
 
-Create a tar.xz archive from in-memory files.
+### `TarEntryWithData` (extends `TarEntry`)
 
-Options:
-- `files` - Array of `{ name, content, mode?, mtime? }`
-- `preset` - XZ compression preset 0-9 (default: 3)
-
-#### `extractTarXz(archive: ArrayBuffer | Uint8Array, options?): Promise<ExtractedFile[]>`
-
-Extract a tar.xz archive to memory.
-
-Options:
-- `strip` - Number of leading path components to strip
-- `filter` - Function to filter entries
-
-#### `listTarXz(archive: ArrayBuffer | Uint8Array): Promise<TarEntry[]>`
-
-List contents of a tar.xz archive.
-
-## Low-level API
-
-For advanced usage, the package also exports low-level TAR utilities:
-
-```typescript
-import {
-  BLOCK_SIZE,
-  createHeader,
-  parseHeader,
-  calculatePadding,
-  createEndOfArchive,
-  needsPaxHeaders,
-  createPaxHeaderBlocks,
-} from 'tar-xz';
-```
+| Member | Description |
+|--------|-------------|
+| `data` | `AsyncIterable<Uint8Array>` — lazy content stream (consume once, in order) |
+| `text(encoding?)` | Collect all chunks and decode to string (default UTF-8) |
+| `bytes()` | Collect all chunks into a single `Uint8Array` |
 
 ## Compression Presets
 
-| Preset | Memory Usage | Speed | Ratio |
-|--------|-------------|-------|-------|
-| 1 | ~10 MB | Fastest | Lowest |
-| 3 | ~20 MB | Fast | Good (browser default) |
-| 6 | ~100 MB | Medium | Very Good (Node default) |
-| 9 | ~700 MB | Slowest | Best |
+| Preset | WASM Memory | Speed | Ratio | Recommendation |
+|--------|------------|-------|-------|----------------|
+| 1 | ~10 MB | Fastest | Lowest | Batch of many small files |
+| 3 | ~20 MB | Fast | Good | Browser default |
+| 6 | ~100 MB | Medium | Very good | Node default |
+| 9 | ~700 MB | Slowest | Best | Archive longevity |
 
-For browser usage, presets 1-6 are recommended to avoid memory issues.
+## Browser Limitations
+
+- **No fs path source** — `source: '/path/to/file'` throws; use `Uint8Array` or `AsyncIterable` instead
+- **256 MB WASM memory cap** — single-file content exceeding this limit will fail; batch large files carefully
+- **No synchronous APIs** — all browser operations are async
+- **Preset 1–6 recommended** — presets 7–9 approach or exceed the memory cap
 
 ## Compatibility
 
-Archives created with `tar-xz` are fully compatible with standard tools:
+Archives produced by `tar-xz` are fully compatible with standard tooling:
 
 ```bash
 # Extract with system tar
@@ -182,20 +333,76 @@ tar -xJf archive.tar.xz
 
 # List contents
 tar -tJf archive.tar.xz
+```
 
-# Create (for reference)
-tar -cJf archive.tar.xz files/
+## Migration: v5 → v6
+
+v6 unifies the Node and browser APIs under a single set of function names.
+
+### Renamed / removed exports
+
+| v5 | v6 |
+|----|----|
+| `createTarXz(options)` | `create(options)` (browser entry point) |
+| `extractTarXz(archive)` | `extract(archive)` (browser entry point) |
+| `listTarXz(archive)` | `list(archive)` (browser entry point) |
+| `extractToMemory(path)` | `extract(createReadStream(path))` + `entry.bytes()` |
+| `BrowserCreateOptions` | `CreateOptions` |
+| `BrowserExtractOptions` | `ExtractOptions` |
+| `ExtractedFile` | `TarEntryWithData` |
+
+### Return type changes
+
+`create()` now returns `AsyncIterable<Uint8Array>` instead of `Promise<Uint8Array>`.
+Collect all chunks if you need the full buffer:
+
+```typescript
+// v5
+const archive = await createTarXz({ files: [...] });
+
+// v6
+const chunks: Uint8Array[] = [];
+for await (const chunk of create({ files: [...] })) chunks.push(chunk);
+const archive = Buffer.concat(chunks);  // Node
+// or new Blob(chunks) for a Blob in browser
+```
+
+`extract()` now returns `AsyncIterable<TarEntryWithData>` instead of `Promise<Array<...>>`.
+Iterate with `for await`:
+
+```typescript
+// v5
+const files = await extractTarXz(archive);
+for (const f of files) { /* f.name, f.data */ }
+
+// v6
+for await (const entry of extract(archive)) {
+  if (entry.type === '0') {
+    const data = await entry.bytes();  // f.data equivalent
+  }
+}
+```
+
+### Node-only file helpers moved to subpath
+
+```typescript
+// v5 (mixed in main export)
+import { create, extract } from 'tar-xz';
+await create({ file: 'archive.tar.xz', cwd: '.', files: ['a.txt'] });
+
+// v6 (dedicated subpath)
+import { createFile, extractFile } from 'tar-xz/file';
+await createFile('archive.tar.xz', { files: [{ name: 'a.txt', source: 'a.txt' }] });
 ```
 
 ## Why tar-xz?
 
-The popular `node-tar` package (226M downloads/month) does not support `.tar.xz` files.
-While there are open issues requesting this feature, the maintainer prefers external libraries handle it.
+[node-tar](https://github.com/isaacs/node-tar) (230M+ downloads/month) does not
+support `.tar.xz`. `tar-xz` fills that gap by combining:
 
-`tar-xz` fills this gap by combining:
-- **node-liblzma** for XZ compression (native + WASM)
-- A minimal TAR implementation (no external dependencies)
+- **node-liblzma** for XZ compression (native addon in Node, WASM in browser)
+- A minimal POSIX ustar TAR implementation (no external dependencies)
 
 ## License
 
-LGPL-3.0 - Same as node-liblzma
+[LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0) — same as node-liblzma.

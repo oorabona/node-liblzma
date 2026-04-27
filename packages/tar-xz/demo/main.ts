@@ -1,5 +1,5 @@
 import { initModule, xzAsync } from 'node-liblzma';
-import { createTarXz, extractTarXz, listTarXz, type TarEntry } from '../src/index.browser.js';
+import { create, extract, list, type TarEntry, type TarSourceFile } from '../src/index.browser.js';
 
 // DOM Elements
 const dropZone = document.getElementById('drop-zone') as HTMLDivElement;
@@ -204,35 +204,35 @@ createBtn.addEventListener('click', async () => {
   let totalOriginal = 0;
 
   try {
-    // Convert files to TarInputFile format
-    const inputFiles = await Promise.all(
+    // Convert browser File objects to TarSourceFile (Uint8Array source — no fs in browser)
+    const sourceFiles: TarSourceFile[] = await Promise.all(
       filesToArchive.map(async (file) => {
         const content = new Uint8Array(await file.arrayBuffer());
         totalOriginal += content.length;
         return {
           name: file.name,
-          content,
-          mtime: file.lastModified / 1000,
+          source: content,
+          mtime: new Date(file.lastModified),
         };
       })
     );
 
     const preset = Number.parseInt(presetSelect.value, 10);
-    const archive = await createTarXz({ files: inputFiles, preset });
+
+    // create() returns AsyncIterable<Uint8Array> — collect all chunks into a Blob
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of create({ files: sourceFiles, preset })) {
+      chunks.push(chunk);
+    }
+    const blob = new Blob(chunks, { type: 'application/x-xz' });
 
     const endTime = performance.now();
 
     // Download the archive
-    const blob = new Blob([archive], { type: 'application/x-xz' });
     downloadBlob('archive.tar.xz', blob);
 
     // Update stats
-    updateStats(
-      filesToArchive.length,
-      totalOriginal,
-      archive.length,
-      Math.round(endTime - startTime)
-    );
+    updateStats(filesToArchive.length, totalOriginal, blob.size, Math.round(endTime - startTime));
   } catch (error) {
     console.error('Failed to create archive:', error);
     alert(`Failed to create archive: ${error}`);
@@ -250,19 +250,29 @@ archiveInput.addEventListener('change', async () => {
     const data = new Uint8Array(await file.arrayBuffer());
     const startTime = performance.now();
 
-    // List contents
-    const entries = await listTarXz(data);
+    // list() yields TarEntry metadata — collect into array for rendering
+    const entries: TarEntry[] = [];
+    for await (const entry of list(data)) {
+      entries.push(entry);
+    }
     renderArchiveTree(entries);
 
-    // Extract to memory for download
-    extractedFiles = await extractTarXz(data);
+    // extract() yields TarEntryWithData — collect bytes for per-file download
+    extractedFiles = [];
+    for await (const entry of extract(data)) {
+      if (entry.type !== '5') {
+        // Skip directories — collect file content via bytes()
+        const bytes = await entry.bytes();
+        extractedFiles.push({ name: entry.name, data: bytes, entry });
+      }
+    }
 
     const endTime = performance.now();
 
     extractBtn.disabled = false;
     downloadAllBtn.disabled = false;
 
-    // Calculate total original size
+    // Calculate total original size from extracted content
     const totalOriginal = extractedFiles.reduce((sum, f) => sum + f.data.length, 0);
     updateStats(entries.length, totalOriginal, data.length, Math.round(endTime - startTime));
   } catch (error) {
