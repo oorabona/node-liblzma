@@ -17,9 +17,6 @@ import type { CreateOptions, TarSourceFile } from '../types.js';
 import { TarEntryType, type TarEntryTypeValue } from '../types.js';
 
 /**
- * Transform stream that packs files into TAR format
- */
-/**
  * Build a single TAR entry (header + content blocks) into an array of Uint8Array chunks.
  * Does not write to disk; caller decides what to do with the chunks.
  */
@@ -69,9 +66,6 @@ async function buildTarEntry(
   return chunks;
 }
 
-/**
- * Recursively collect all files in a directory
- */
 /**
  * Resolve a TarSourceFile's `source` into a raw Uint8Array.
  * - string → interpreted as an fs path; file is read entirely into memory.
@@ -161,10 +155,7 @@ export async function* create(options: CreateOptions): AsyncIterable<Uint8Array>
   const xzStream = createXz({ preset });
   const tarReadable = Readable.from(buildTar(files, filter));
 
-  // R7-5: use pipeline() instead of pipe() so that errors from buildTar
-  // (e.g. missing source file) propagate and reject the iteration rather than
-  // hanging or emitting an unhandled error event.
-  // R7-5: use pipeline() instead of pipe() so that errors from buildTar
+  // Use pipeline() instead of pipe() so that errors from buildTar
   // (e.g. missing source file) propagate and reject the iteration rather than
   // hanging or emitting an unhandled error event.
   const pipelinePromise = pipeline(tarReadable, xzStream);

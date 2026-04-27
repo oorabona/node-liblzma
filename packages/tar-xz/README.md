@@ -50,10 +50,11 @@ builds automatically via the `browser` condition in `package.json`.
 ```typescript
 import { create } from 'tar-xz';
 
+const enc = new TextEncoder();
 const archiveStream = create({
   files: [
-    { name: 'hello.txt', source: Buffer.from('Hello, world!') },
-    { name: 'data.json', source: Buffer.from(JSON.stringify({ ok: true })) },
+    { name: 'hello.txt', source: enc.encode('Hello, world!') },
+    { name: 'data.json', source: enc.encode(JSON.stringify({ ok: true })) },
   ],
   preset: 6,                               // XZ compression level 0–9 (default: 6)
   filter: (file) => !file.name.endsWith('.tmp'),  // optional

@@ -1,6 +1,7 @@
 /**
  * Coverage completion tests — targeting all uncovered lines in tar-xz
  */
+import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -314,8 +315,6 @@ describe('Coverage: createPaxHeaderBlocks', () => {
 // ===========================================================================
 // Integration tests: Node API edge cases
 // ===========================================================================
-
-import { createReadStream } from 'node:fs';
 
 /** Helper: collect an extract() async iterable to memory entries (using Node fs.createReadStream) */
 async function collectExtract(

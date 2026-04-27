@@ -32,14 +32,7 @@ const SAFE_MODE_MASK = 0o0777;
  * Rejects:
  *  - Empty strings (would cause target === cwd or ambiguous hardlink resolution)
  *  - Strings containing the NUL byte (U+0000)
- */
-/**
- * Validate a tar entry name or linkname for safety.
- *
- * Rejects:
- *  - Empty strings (would cause target === cwd or ambiguous hardlink resolution)
- *  - Strings containing the NUL byte (U+0000)
- *  - R7-1: Dot-segment-only names ('.', '..') that resolve to cwd or its parent
+ *  - Dot-segment-only names ('.', '..') that resolve to cwd or its parent
  */
 function ensureSafeName(s: string | undefined, label: string): void {
   if (s === undefined) return;
@@ -55,7 +48,7 @@ function ensureSafeName(s: string | undefined, label: string): void {
 
 /**
  * S3 (TOCTOU guard): Check whether any ancestor directory of `filePath` (up to
- * and including `root`) is a symlink. If so, a malicious archive could first
+ * but not including `root`) is a symlink. If so, a malicious archive could first
  * plant a symlink pointing outside root, then write a file through it.
  *
  * Returns true if a symlink ancestor is found (caller should reject the entry).
