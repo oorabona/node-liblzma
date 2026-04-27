@@ -1,14 +1,13 @@
 /**
- * Node.js TAR listing with XZ decompression
+ * Node.js TAR listing with XZ decompression — v6 AsyncIterable API
  */
 
-import { createReadStream } from 'node:fs';
 import { Writable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import { createUnxz } from 'node-liblzma';
 import { calculatePadding } from '../tar/index.js';
-import type { ListOptions, TarEntry } from '../types.js';
+import type { TarInputNode } from '../internal/to-async-iterable.js';
+import type { TarEntry } from '../types.js';
 import { type HeaderParserState, parseNextHeader } from './tar-parser.js';
+import { collectAllChunks, decompressXz, runWritable } from './xz-helpers.js';
 
 /**
  * Writable stream that lists TAR entries without extracting content
@@ -70,27 +69,26 @@ class TarList extends Writable {
 }
 
 /**
- * List contents of a tar.xz archive
+ * List the contents of a tar.xz archive.
  *
- * @param options - List options
- * @returns Promise with list of entries
+ * Returns an `AsyncIterable<TarEntry>` yielding each entry's metadata.
+ * Entry content is skipped — use `extract()` if you need the data.
  *
  * @example
  * ```ts
- * const entries = await list({ file: 'archive.tar.xz' });
- * for (const entry of entries) {
+ * for await (const entry of list(input)) {
  *   console.log(entry.name, entry.size);
  * }
  * ```
  */
-export async function list(options: ListOptions): Promise<TarEntry[]> {
-  const { file } = options;
+export async function* list(input: TarInputNode): AsyncIterable<TarEntry> {
+  const chunks = await collectAllChunks(input);
+  const tarData = await decompressXz(chunks);
 
-  const inputStream = createReadStream(file);
-  const unxzStream = createUnxz();
   const tarList = new TarList();
+  await runWritable(tarList, tarData);
 
-  await pipeline(inputStream, unxzStream, tarList);
-
-  return tarList.entries;
+  for (const entry of tarList.entries) {
+    yield entry;
+  }
 }

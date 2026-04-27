@@ -1,8 +1,8 @@
 /**
- * Browser-based TAR listing with XZ decompression
+ * Browser-based TAR listing with XZ decompression — v6 AsyncIterable API
  */
 
-import { unxzAsync } from 'node-liblzma';
+import { unxzAsync } from 'node-liblzma/wasm';
 import {
   applyPaxAttributes,
   BLOCK_SIZE,
@@ -12,7 +12,8 @@ import {
   parsePaxData,
 } from '../tar/index.js';
 import type { PaxAttributes } from '../tar/pax.js';
-import { type TarEntry, TarEntryType } from '../types.js';
+import { toAsyncIterable } from '../internal/to-async-iterable.browser.js';
+import { type TarEntry, type TarInput, TarEntryType } from '../types.js';
 
 /**
  * Parse TAR headers only (skip content)
@@ -74,30 +75,37 @@ function listTarEntries(data: Uint8Array): TarEntry[] {
 }
 
 /**
- * List contents of a tar.xz archive in browser
+ * List the contents of a tar.xz archive (browser).
  *
- * @param archive - Compressed archive data (ArrayBuffer or Uint8Array)
- * @returns Array of entry metadata (without content)
+ * Returns an `AsyncIterable<TarEntry>` yielding each entry's metadata.
+ * Entry content is skipped — use `extract()` if you need the data.
  *
  * @example
  * ```ts
- * const response = await fetch('archive.tar.xz');
- * const data = await response.arrayBuffer();
- * const entries = await listTarXz(data);
- *
- * for (const entry of entries) {
+ * for await (const entry of list(archiveBytes)) {
  *   console.log(entry.name, entry.size, entry.type);
  * }
  * ```
  */
-export async function listTarXz(archive: ArrayBuffer | Uint8Array): Promise<TarEntry[]> {
-  // Convert to Uint8Array if needed
-  const archiveData = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
+export async function* list(input: TarInput): AsyncIterable<TarEntry> {
+  // Collect all input chunks
+  const inputChunks: Uint8Array[] = [];
+  for await (const chunk of toAsyncIterable(input)) {
+    inputChunks.push(chunk);
+  }
+  const total = inputChunks.reduce((n, c) => n + c.length, 0);
+  const archiveData = new Uint8Array(total);
+  let off = 0;
+  for (const chunk of inputChunks) {
+    archiveData.set(chunk, off);
+    off += chunk.length;
+  }
 
   // Decompress XZ
-  // Cast to any because WASM accepts Uint8Array but types are defined for Node.js Buffer
-  const tarData = await unxzAsync(archiveData as unknown as Parameters<typeof unxzAsync>[0]);
+  const tarData = await unxzAsync(archiveData);
 
   // List entries
-  return listTarEntries(tarData);
+  for (const entry of listTarEntries(tarData)) {
+    yield entry;
+  }
 }

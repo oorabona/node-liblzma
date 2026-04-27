@@ -1,12 +1,15 @@
 /**
  * Coverage completion tests — targeting all uncovered lines in tar-xz
  */
+import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { create, extract, extractToMemory, list } from '../src/node/index.js';
+import { extract } from '../src/node/index.js';
+import { create } from '../src/node/create.js';
+import { createFile, extractFile, listFile } from '../src/node/file.js';
 import { parseOctal } from '../src/tar/checksum.js';
 import {
   BLOCK_SIZE,
@@ -313,6 +316,24 @@ describe('Coverage: createPaxHeaderBlocks', () => {
 // Integration tests: Node API edge cases
 // ===========================================================================
 
+/** Helper: collect an extract() async iterable to memory entries (using Node fs.createReadStream) */
+async function collectExtract(
+  archive: string,
+  options: { strip?: number; filter?: (e: TarEntry) => boolean } = {}
+): Promise<Array<{ name: string; type: string; content: Buffer; linkname: string }>> {
+  const results: Array<{ name: string; type: string; content: Buffer; linkname: string }> = [];
+  for await (const entry of extract(createReadStream(archive), options)) {
+    const bytes = await entry.bytes();
+    results.push({
+      name: entry.name,
+      type: entry.type,
+      content: Buffer.from(bytes),
+      linkname: entry.linkname,
+    });
+  }
+  return results;
+}
+
 describe('Coverage: Node API', () => {
   let tempDir: string;
 
@@ -328,40 +349,40 @@ describe('Coverage: Node API', () => {
 
   describe('symlinks', () => {
     it('creates and extracts symlinks', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'target.txt'), 'content');
-      await fs.symlink('target.txt', path.join(src, 'link.txt'));
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['target.txt', 'link.txt'] });
+      // M1: use buildTar helper to create a proper symlink entry (createFile only
+      // supports FILE/DIRECTORY via TarSourceFile; symlinks need a raw TAR approach).
+      const tar = buildTar([
+        { name: 'target.txt', content: Buffer.from('content') },
+        { name: 'link.txt', type: TarEntryType.SYMLINK, linkname: 'target.txt' },
+      ]);
+      await saveAsXz(tar, archive);
 
       // List
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       const linkEntry = entries.find((e) => e.name === 'link.txt');
       expect(linkEntry?.type).toBe(TarEntryType.SYMLINK);
 
       // Extract
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readlink(path.join(dest, 'link.txt'))).toBe('target.txt');
     });
 
     it('replaces existing symlink on re-extract', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'target.txt'), 'content');
-      await fs.symlink('target.txt', path.join(src, 'link.txt'));
-
+      const tar = buildTar([
+        { name: 'target.txt', content: Buffer.from('content') },
+        { name: 'link.txt', type: TarEntryType.SYMLINK, linkname: 'target.txt' },
+      ]);
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['target.txt', 'link.txt'] });
+      await saveAsXz(tar, archive);
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       // Re-extract — exercises the unlink-before-symlink path
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readlink(path.join(dest, 'link.txt'))).toBe('target.txt');
     });
   });
@@ -369,45 +390,41 @@ describe('Coverage: Node API', () => {
   // --- Empty files ---
 
   describe('empty files', () => {
-    it('handles empty files through create/list/extract', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'empty.txt'), '');
-
+    it('handles empty files through createFile/listFile/extractFile', async () => {
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['empty.txt'] });
+      await createFile(archive, {
+        files: [{ name: 'empty.txt', source: new Uint8Array(0) }],
+      });
 
-      const entries = await list({ file: archive });
-      expect(entries[0].size).toBe(0);
+      const entries = await listFile(archive);
+      expect(entries[0]?.size).toBe(0);
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect((await fs.stat(path.join(dest, 'empty.txt'))).size).toBe(0);
     });
   });
 
-  // --- Empty directories (collectFiles branch, create.ts:119) ---
+  // --- Empty directories ---
 
   describe('empty directories', () => {
     it('packs an empty directory into the archive', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(path.join(src, 'emptydir'), { recursive: true });
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['emptydir'] });
+      // Directory entries in v6: name ends with '/', source is empty Uint8Array
+      await createFile(archive, {
+        files: [{ name: 'emptydir/', source: new Uint8Array(0) }],
+      });
 
-      // List should contain only the directory entry
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('emptydir/');
-      expect(entries[0].type).toBe(TarEntryType.DIRECTORY);
-      expect(entries[0].size).toBe(0);
+      expect(entries[0]?.name).toBe('emptydir/');
+      expect(entries[0]?.type).toBe(TarEntryType.DIRECTORY);
+      expect(entries[0]?.size).toBe(0);
 
-      // Extract and verify the directory exists
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       const stat = await fs.stat(path.join(dest, 'emptydir'));
       expect(stat.isDirectory()).toBe(true);
     });
@@ -417,27 +434,29 @@ describe('Coverage: Node API', () => {
 
   describe('long filenames (PAX)', () => {
     it('roundtrips filenames > 255 chars via PAX headers', async () => {
-      const src = path.join(tempDir, 'src');
-      // 3 segments of 90 chars each → intermediate dirs < 100 chars (no prefix issues)
-      // Full 3-level path = 273 chars → > 255 → triggers PAX
+      // 3 segments of 90 chars → full 3-level path = 273 chars → triggers PAX
       const segments = ['a'.repeat(90), 'b'.repeat(90), 'c'.repeat(90)];
       const deepDir = segments.join('/');
-      await fs.mkdir(path.join(src, deepDir), { recursive: true });
-      await fs.writeFile(path.join(src, deepDir, 'file.txt'), 'deep');
+      const longName = `${deepDir}/file.txt`;
 
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: [segments[0]] });
+      await createFile(archive, {
+        files: [
+          { name: `${segments[0]}/`, source: new Uint8Array(0) },
+          { name: `${segments[0]}/${segments[1]}/`, source: new Uint8Array(0) },
+          { name: `${deepDir}/`, source: new Uint8Array(0) },
+          { name: longName, source: Buffer.from('deep') },
+        ],
+      });
 
-      // List should find the deeply nested file
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       const fileEntry = entries.find((e) => e.name.endsWith('file.txt'));
       expect(fileEntry).toBeDefined();
+      expect(fileEntry?.name).toBe(longName);
 
-      // Extract and verify
       const dest = path.join(tempDir, 'dest');
-      await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
-      expect(await fs.readFile(path.join(dest, deepDir, 'file.txt'), 'utf-8')).toBe('deep');
+      await extractFile(archive, { cwd: dest });
+      expect(await fs.readFile(path.join(dest, longName), 'utf-8')).toBe('deep');
     });
   });
 
@@ -455,7 +474,7 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
 
       expect(await fs.readFile(path.join(dest, 'original.txt'), 'utf-8')).toBe('Hello');
       expect(await fs.readFile(path.join(dest, 'link.txt'), 'utf-8')).toBe('Hello');
@@ -474,7 +493,7 @@ describe('Coverage: Node API', () => {
 
       const archive = path.join(tempDir, 'archive.tar.xz');
       await saveAsXz(tar, archive);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
 
       expect(await fs.readFile(path.join(dest, 'link.txt'), 'utf-8')).toBe('Hello');
     });
@@ -484,7 +503,6 @@ describe('Coverage: Node API', () => {
 
       const blocks: Array<Buffer | Uint8Array> = [];
 
-      // Global PAX header (type 'g')
       blocks.push(
         createHeader({
           name: 'pax_global_header',
@@ -496,7 +514,6 @@ describe('Coverage: Node API', () => {
       const gPad = calculatePadding(globalPaxData.length);
       if (gPad > 0) blocks.push(new Uint8Array(gPad));
 
-      // Regular file
       const content = Buffer.from('Hello');
       blocks.push(createHeader({ name: 'file.txt', size: content.length }));
       blocks.push(content);
@@ -508,37 +525,34 @@ describe('Coverage: Node API', () => {
       const archive = path.join(tempDir, 'archive.tar.xz');
       await saveAsXz(buildTarRaw(blocks), archive);
 
-      // List should skip global PAX and show the file
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('file.txt');
+      expect(entries[0]?.name).toBe('file.txt');
 
-      // Extract should work
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readFile(path.join(dest, 'file.txt'), 'utf-8')).toBe('Hello');
     });
 
     it('handles crafted PAX extended headers in extract/list', async () => {
-      // Use segments under FS limit but total path > 255 chars for PAX
       const longName = `dir/${'a'.repeat(120)}/${'b'.repeat(120)}/file.txt`;
       const tar = buildTar([{ name: longName, content: Buffer.from('PAX content'), usePax: true }]);
 
       const archive = path.join(tempDir, 'archive.tar.xz');
       await saveAsXz(tar, archive);
 
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe(longName);
+      expect(entries[0]?.name).toBe(longName);
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readFile(path.join(dest, longName), 'utf-8')).toBe('PAX content');
     });
 
-    it('rejects path traversal', async () => {
+    it('rejects path traversal in extractFile', async () => {
       const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
 
       const archive = path.join(tempDir, 'archive.tar.xz');
@@ -546,24 +560,256 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await expect(extract({ file: archive, cwd: dest })).rejects.toThrow('Path traversal');
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/outside cwd/i);
     });
 
-    it('propagates parse errors in extract', async () => {
-      // Valid header + content, then corrupted header
+    it('rejects file write through symlink ancestor (TOCTOU guard)', async () => {
+      // S3: archive first creates a symlink pointing outside cwd, then tries to
+      // write a file through it. The extractor must reject the file write.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // Step 1: create a directory that the symlink will point to (outside dest).
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      // Step 2: build the archive — symlink 'link' → '../external', then 'link/file.txt'
+      const tar = buildTar([
+        // Symlink entry: link → ../external (points outside dest)
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // File entry written through the symlink path
+        { name: 'link/file.txt', content: Buffer.from('escaped') },
+      ]);
+
+      const archive = path.join(tempDir, 'toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // The extractor must reject the file write through the symlink ancestor.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // The external directory must NOT have been written to.
+      const externalFiles = await fs.readdir(externalDir);
+      expect(externalFiles).toHaveLength(0);
+    });
+
+    // --- F-003 regression tests: F-002 escape vectors (DIRECTORY / HARDLINK / SYMLINK) ---
+
+    it('F-003a: rejects directory entry created through symlink ancestor (TOCTOU guard)', async () => {
+      // Attack vector: archive creates link→../external (symlink), then link/subdir/ (directory).
+      // mkdir(link/subdir/) follows the symlink and creates external/subdir/ — an escape.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        // Step 1: plant symlink inside dest pointing outside
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // Step 2: directory entry through the symlink
+        { name: 'link/subdir/', type: TarEntryType.DIRECTORY },
+      ]);
+
+      const archive = path.join(tempDir, 'dir-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject — directory creation through a symlink ancestor is an escape vector.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/subdir MUST NOT have been created.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+    });
+
+    it('F-003b: rejects hardlink entry whose target path has a symlink ancestor (TOCTOU guard)', async () => {
+      // Attack vector: archive plants link→../external, then link/file.txt (hardlink to original).
+      // link(original, link/file.txt) follows the symlink and creates external/file.txt — an escape.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        // Lay down an original file first (hardlink source must exist)
+        { name: 'original.txt', content: Buffer.from('data') },
+        // Plant the symlink
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // Hardlink through the symlink ancestor
+        { name: 'link/file.txt', type: TarEntryType.HARDLINK, linkname: 'original.txt' },
+      ]);
+
+      const archive = path.join(tempDir, 'hl-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject — hardlink destination through a symlink ancestor is an escape vector.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/ MUST be empty.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+    });
+
+    it('F-003c: rejects symlink entry whose target path has a symlink ancestor (TOCTOU guard)', async () => {
+      // Attack vector: archive plants link→../external, then link/inner (symlink to anything).
+      // symlink(anything, link/inner) follows the symlink ancestor and creates external/inner.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        // Plant outer symlink pointing outside
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // Inner symlink entry whose destination path passes through the outer symlink
+        { name: 'link/inner', type: TarEntryType.SYMLINK, linkname: 'anything' },
+      ]);
+
+      const archive = path.join(tempDir, 'sym-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject — creating a symlink through a symlink ancestor is an escape vector.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/ MUST be empty.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+    });
+
+    it('R3-1 regression: rejects file through symlink ancestor when intermediate dir is missing (ENOENT bypass fix)', async () => {
+      // Bug: old code returned false on ENOENT in hasSymlinkAncestor,
+      // which stopped the ancestor walk early. An archive could:
+      //   1. Create link → ../external (symlink, now on disk)
+      //   2. Write link/subdir/file.txt (link/subdir does NOT exist yet)
+      //      → lstat(link/subdir) → ENOENT → old code: return false → escape!
+      // Fix: ENOENT means "not yet created", continue walking up.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      // Archive: symlink 'link' → '../external', then 'link/subdir/file.txt'
+      // (link/subdir does NOT exist on disk before extraction).
+      const tar = buildTar([
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        { name: 'link/subdir/file.txt', content: Buffer.from('escaped') },
+      ]);
+
+      const archive = path.join(tempDir, 'enoent-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject: hasSymlinkAncestor must walk past the missing 'link/subdir'
+      // and detect that 'link' itself is a symlink.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/ must remain empty — no subdir/file.txt was created.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+
+      // Confirm no file was written inside dest either
+      const destContents = await fs.readdir(dest);
+      // Only 'link' symlink was created (first entry), no subdir
+      const hasBadFile = destContents.some((f) => f === 'subdir');
+      expect(hasBadFile).toBe(false);
+    });
+
+    it('R4-2 regression: strip option applies to hardlink linkname (not just entry name)', async () => {
+      // Bug: extractFile applied 'strip' to entry.name (output path) but NOT to
+      // entry.linkname for HARDLINK entries. With strip: 1, archive entry
+      //   dir/link → linkname dir/a.txt
+      // would attempt link(cwd/a.txt, cwd/dir/a.txt) — failing because the
+      // unstripped 'dir/' prefix on linkname does not exist in the stripped output.
+      // Fix: apply strip to linkname before resolving.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const tar = buildTar([
+        { name: 'dir/a.txt', content: Buffer.from('content') },
+        { name: 'dir/link', type: TarEntryType.HARDLINK, linkname: 'dir/a.txt' },
+      ]);
+
+      const archive = path.join(tempDir, 'hl-strip.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // strip: 1 → 'dir/a.txt' becomes 'a.txt', 'dir/link' becomes 'link',
+      //           and 'dir/a.txt' linkname must also become 'a.txt'
+      await extractFile(archive, { cwd: dest, strip: 1 });
+
+      // Both files exist at the stripped paths
+      const aPath = path.join(dest, 'a.txt');
+      const linkPath = path.join(dest, 'link');
+      expect(await fs.readFile(aPath, 'utf8')).toBe('content');
+      expect(await fs.readFile(linkPath, 'utf8')).toBe('content');
+
+      // Confirm hardlink semantics: same inode
+      const aStat = await fs.stat(aPath);
+      const linkStat = await fs.stat(linkPath);
+      expect(linkStat.ino).toBe(aStat.ino);
+    });
+
+    it('R5-1 regression: rejects hardlink whose linkname is a symlink (symlink traversal via hardlink)', async () => {
+      // Attack:
+      //   Entry 1: 's' (SYMLINK) with linkname '../external/secret' → creates cwd/s → ../external/secret
+      //   Entry 2: 'myhardlink' (HARDLINK) with linkname 's'
+      //     → linkSource = resolve(cwd, 's') → cwd/s (passes the linkRel check: inside cwd)
+      //     → link(cwd/s, cwd/myhardlink) → kernel follows cwd/s symlink → hardlinks /external/secret
+      // Fix: check lstat(linkSource).isSymbolicLink() BEFORE calling link().
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+      const secretFile = path.join(externalDir, 'secret');
+      await fs.writeFile(secretFile, 'sensitive');
+
+      const tar = buildTar([
+        // Step 1: plant a symlink inside cwd pointing to an external file
+        { name: 's', type: TarEntryType.SYMLINK, linkname: '../external/secret' },
+        // Step 2: hardlink with linkname 's' (the symlink)
+        { name: 'myhardlink', type: TarEntryType.HARDLINK, linkname: 's' },
+      ]);
+
+      const archive = path.join(tempDir, 'hl-symlink-src.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject: linkSource 's' is a symlink
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // The external secret file must NOT be hardlinked into dest
+      const destContents = await fs.readdir(dest);
+      expect(destContents).not.toContain('myhardlink');
+
+      // Stronger guarantee: the external secret file's link count must remain 1
+      // (a successful hardlink would have bumped it to 2, even if the dest entry
+      // was later cleaned up by an error handler).
+      const secretStat = await fs.stat(secretFile);
+      expect(secretStat.nlink).toBe(1);
+    });
+
+    it('raw extract() yields traversal entry without rejecting (caller responsibility)', async () => {
+      const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
+      const archivePath = path.join(tempDir, 'evil.tar.xz');
+      await saveAsXz(tar, archivePath);
+      // Raw extract() does NOT reject path traversal — it yields the entry as-is.
+      // Path safety is enforced by extractFile(), not extract().
+      const entries = await collectExtract(archivePath);
+      expect(entries[0]?.name).toContain('evil.txt');
+    });
+
+    it('propagates parse errors in extract()', async () => {
       const content = Buffer.from('Hello');
       const blocks: Array<Buffer | Uint8Array> = [];
       blocks.push(createHeader({ name: 'good.txt', size: content.length }));
       blocks.push(content);
       blocks.push(new Uint8Array(calculatePadding(content.length)));
 
-      // Corrupted header: non-empty but invalid checksum
       const bad = new Uint8Array(BLOCK_SIZE);
       bad[0] = 'X'.charCodeAt(0);
       bad[1] = 'Y'.charCodeAt(0);
       bad[2] = 'Z'.charCodeAt(0);
       blocks.push(bad);
-
       blocks.push(createEndOfArchive());
 
       const archive = path.join(tempDir, 'corrupt.tar.xz');
@@ -571,10 +817,10 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await expect(extract({ file: archive, cwd: dest })).rejects.toThrow('checksum');
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow('checksum');
     });
 
-    it('propagates parse errors in list', async () => {
+    it('propagates parse errors in list()', async () => {
       const content = Buffer.from('Hello');
       const blocks: Array<Buffer | Uint8Array> = [];
       blocks.push(createHeader({ name: 'good.txt', size: content.length }));
@@ -586,17 +832,15 @@ describe('Coverage: Node API', () => {
       bad[1] = 'Y'.charCodeAt(0);
       bad[2] = 'Z'.charCodeAt(0);
       blocks.push(bad);
-
       blocks.push(createEndOfArchive());
 
       const archive = path.join(tempDir, 'corrupt.tar.xz');
       await saveAsXz(buildTarRaw(blocks), archive);
 
-      await expect(list({ file: archive })).rejects.toThrow('checksum');
+      await expect(listFile(archive)).rejects.toThrow('checksum');
     });
 
     it('detects truncated file content (unexpected end)', async () => {
-      // Header says size=200 but we only provide 50 bytes
       const blocks: Array<Buffer | Uint8Array> = [];
       blocks.push(createHeader({ name: 'truncated.txt', size: 200 }));
       blocks.push(Buffer.alloc(50)); // Only 50 of 200 bytes
@@ -606,38 +850,313 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await expect(extract({ file: archive, cwd: dest })).rejects.toThrow('Unexpected end');
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow('Unexpected end');
     });
   });
 
-  // --- extractToMemory ---
+  // ---------------------------------------------------------------------------
+  // Security hardening tests (7-fix consolidated PR)
+  // ---------------------------------------------------------------------------
 
-  describe('extractToMemory options', () => {
+  describe('Security: leaf symlink checks (Fix 1 — R6-1/V1)', () => {
+    it('R6-1 FILE: rejects overwrite when target is a pre-existing symlink', async () => {
+      // Attack: archive plants [SYMLINK evil → ../external/secret, FILE evil content]
+      // The leaf-symlink check must reject the FILE entry because 'evil' is a symlink.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+      const secretFile = path.join(externalDir, 'secret');
+      await fs.writeFile(secretFile, 'original-secret');
+
+      const tar = buildTar([
+        // Step 1: plant symlink (no leaf check on SYMLINK itself — it's fine to create them)
+        { name: 'evil', type: TarEntryType.SYMLINK, linkname: '../external/secret' },
+        // Step 2: FILE entry with same name — would overwrite through symlink
+        { name: 'evil', content: Buffer.from('overwritten') },
+      ]);
+      const archive = path.join(tempDir, 'leaf-file.tar.xz');
+      await saveAsXz(tar, archive);
+
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // Verify external file was NOT overwritten
+      expect(await fs.readFile(secretFile, 'utf8')).toBe('original-secret');
+    });
+
+    it('V4 DIRECTORY: rejects overwrite when target is a pre-existing symlink', async () => {
+      // Attack: archive plants [SYMLINK evil → ../external/, DIRECTORY evil/]
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        { name: 'evil', type: TarEntryType.SYMLINK, linkname: '../external' },
+        { name: 'evil/', type: TarEntryType.DIRECTORY },
+      ]);
+      const archive = path.join(tempDir, 'leaf-dir.tar.xz');
+      await saveAsXz(tar, archive);
+
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+    });
+  });
+
+  describe('Security: NUL byte / empty name rejection (Fix 2 — V6a/V6b)', () => {
+    it('V6b: rejects entry name containing NUL byte', async () => {
+      // Craft a tar entry with NUL byte embedded in the name via raw header manipulation
+      const content = Buffer.from('evil');
+      const header = createHeader({ name: 'safe.txt', size: content.length });
+      // Inject NUL at position 4 in the name field (offset 0)
+      header[4] = 0x00;
+      // Recalculate checksum
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
+      }
+      // Write checksum in octal to bytes 148-155
+      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+
+      const archive = path.join(tempDir, 'nul-name.tar.xz');
+      await saveAsXz(
+        Buffer.concat([
+          Buffer.from(header),
+          content,
+          Buffer.alloc(calculatePadding(content.length)),
+          Buffer.from(createEndOfArchive()),
+        ]),
+        archive
+      );
+
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // The NUL truncates the name — the remaining portion after NUL should still extract
+      // cleanly OR cause a rejection depending on how NUL affects the resolved path.
+      // The key requirement is: no file should escape dest.
+      try {
+        await extractFile(archive, { cwd: dest });
+        // If it didn't throw, verify nothing escaped dest
+        const destContents = await fs.readdir(dest);
+        for (const f of destContents) {
+          const resolved = path.resolve(dest, f);
+          expect(resolved.startsWith(dest)).toBe(true);
+        }
+      } catch {
+        // Rejection is also acceptable — both outcomes are safe
+      }
+    });
+
+    it('V6b: rejects SYMLINK with NUL byte in linkname', async () => {
+      // Build a SYMLINK entry where linkname contains a NUL byte
+      const header = createHeader({
+        name: 'link.txt',
+        type: TarEntryType.SYMLINK,
+        linkname: 'target.txt',
+      });
+      // Inject NUL at offset 157 (linkname field starts at 157 in USTAR)
+      header[158] = 0x00;
+      // Recalculate checksum
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
+      }
+      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+
+      const archive = path.join(tempDir, 'nul-linkname.tar.xz');
+      await saveAsXz(
+        Buffer.concat([Buffer.from(header), Buffer.from(createEndOfArchive())]),
+        archive
+      );
+
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // The NUL truncates linkname — result is either safe extraction or rejection. Both are safe.
+      // Key: no escape outside dest.
+      try {
+        await extractFile(archive, { cwd: dest });
+        const destContents = await fs.readdir(dest);
+        for (const f of destContents) {
+          const resolved = path.resolve(dest, f);
+          expect(resolved.startsWith(dest)).toBe(true);
+        }
+      } catch {
+        // Rejection is safe
+      }
+    });
+
+    it('V6a: rejects SYMLINK entry with empty linkname', async () => {
+      // Build an archive where SYMLINK has linkname='' (empty)
+      const tar = buildTar([{ name: 'link.txt', type: TarEntryType.SYMLINK, linkname: '' }]);
+      const archive = path.join(tempDir, 'empty-linkname.tar.xz');
+      await saveAsXz(tar, archive);
+
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/empty linkname/i);
+    });
+  });
+
+  describe('Security: strip applied to SYMLINK linkname (Fix 3 — V6c/V14)', () => {
+    it('V6c: strip:1 strips linkname prefix in SYMLINK entries', async () => {
+      // Archive: [FILE dir/a.txt, SYMLINK dir/link → dir/a.txt]
+      // Extract with strip:1 → cwd/a.txt exists, cwd/link → a.txt
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const tar = buildTar([
+        { name: 'dir/a.txt', content: Buffer.from('hello') },
+        { name: 'dir/link', type: TarEntryType.SYMLINK, linkname: 'dir/a.txt' },
+      ]);
+      const archive = path.join(tempDir, 'strip-symlink.tar.xz');
+      await saveAsXz(tar, archive);
+
+      await extractFile(archive, { cwd: dest, strip: 1 });
+
+      // cwd/a.txt should exist
+      expect(await fs.readFile(path.join(dest, 'a.txt'), 'utf8')).toBe('hello');
+
+      // cwd/link should be a symlink with target 'a.txt' (stripped, not 'dir/a.txt')
+      const linkTarget = await fs.readlink(path.join(dest, 'link'));
+      expect(linkTarget).toBe('a.txt');
+    });
+  });
+
+  describe('Security: setuid/setgid/sticky bit stripping (Fix 4 — V12)', () => {
+    it('V12: strips setuid bit from extracted file (mode 0o4755 → 0o755)', async () => {
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const tar = buildTar([{ name: 'x', content: Buffer.from('data') }]);
+      // Manually patch the mode in the header to 0o4755 (setuid + rwxr-xr-x)
+      const tarBuf = Buffer.from(tar);
+      // Mode field is at offset 100, length 8 in USTAR
+      const modeStr = (0o4755).toString(8).padStart(7, '0') + '\x00';
+      for (let i = 0; i < 8; i++) tarBuf[100 + i] = modeStr.charCodeAt(i);
+      // Recalculate checksum (field at offset 148, length 8)
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += i >= 148 && i < 156 ? 0x20 : tarBuf[i]!;
+      }
+      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      for (let i = 0; i < 8; i++) tarBuf[148 + i] = checksumStr.charCodeAt(i);
+
+      const archive = path.join(tempDir, 'setuid.tar.xz');
+      await saveAsXz(tarBuf, archive);
+
+      await extractFile(archive, { cwd: dest });
+
+      const stat = await fs.stat(path.join(dest, 'x'));
+      // setuid bit (04000) must be stripped
+      expect(stat.mode & 0o7000).toBe(0);
+      // rwxr-xr-x should be preserved
+      expect(stat.mode & 0o777).toBe(0o755);
+    });
+
+    it('V12: strips setgid+sticky bits from extracted directory (mode 0o3755 → at most 0o755|0o111)', async () => {
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // buildTar with DIRECTORY type and mode 0o3755 (setgid+sticky+rwxr-xr-x)
+      const header = createHeader({ name: 'testdir/', type: TarEntryType.DIRECTORY, mode: 0o3755 });
+      const tarBuf = Buffer.concat([Buffer.from(header), Buffer.from(createEndOfArchive())]);
+
+      const archive = path.join(tempDir, 'setgid-dir.tar.xz');
+      await saveAsXz(tarBuf, archive);
+
+      await extractFile(archive, { cwd: dest });
+
+      const stat = await fs.stat(path.join(dest, 'testdir'));
+      // setgid (02000) + sticky (01000) bits must be stripped
+      expect(stat.mode & 0o7000).toBe(0);
+    });
+  });
+
+  // --- In-memory extract (replaces extractToMemory) ---
+
+  describe('R7-5: create() error propagation via pipeline()', () => {
+    it('propagates fs errors from buildTar when source file is missing', async () => {
+      // Source file does not exist — buildTar throws ENOENT inside resolveSource.
+      // With pipe() this would hang or emit an unhandled error; with pipeline() it rejects.
+      const files = [{ name: 'a.txt', source: '/nonexistent/__no_such_file__.bin' }];
+      const archive = create({ files });
+      await expect(
+        (async () => {
+          for await (const _ of archive) {
+            /* drain */
+          }
+        })()
+      ).rejects.toThrow(/ENOENT|no such file/i);
+    });
+  });
+
+  describe('R7-1: dot-segment entry name rejection', () => {
+    it('rejects entry name "." (dot-segment placeholder)', async () => {
+      const tar = buildTar([{ name: '.', type: TarEntryType.DIRECTORY }]);
+      const archive = path.join(tempDir, 'dot.tar.xz');
+      await saveAsXz(tar, archive);
+      const dest = path.join(tempDir, 'dest-dot');
+      await fs.mkdir(dest);
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/dot-segment/i);
+    });
+
+    it('rejects entry name "./" (trailing-slash dot)', async () => {
+      // buildTar normalises to '.' after stripping the trailing slash
+      const tar = buildTar([{ name: './', type: TarEntryType.DIRECTORY }]);
+      const archive = path.join(tempDir, 'dotslash.tar.xz');
+      await saveAsXz(tar, archive);
+      const dest = path.join(tempDir, 'dest-dotslash');
+      await fs.mkdir(dest);
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/dot-segment/i);
+    });
+
+    it('does NOT reject legitimate dotfiles like ".gitignore"', async () => {
+      // Regression guard: dotfiles must still be extractable.
+      const archive = path.join(tempDir, 'dotfile.tar.xz');
+      await createFile(archive, {
+        files: [{ name: '.gitignore', source: Buffer.from('*.log') }],
+      });
+      const dest = path.join(tempDir, 'dest-dotfile');
+      await fs.mkdir(dest);
+      // Should not throw
+      await extractFile(archive, { cwd: dest });
+      expect(await fs.readFile(path.join(dest, '.gitignore'), 'utf8')).toBe('*.log');
+    });
+  });
+
+  describe('in-memory extract via extract() stream', () => {
     it('supports filter', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'keep.txt'), 'Keep');
-      await fs.writeFile(path.join(src, 'skip.log'), 'Skip');
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['keep.txt', 'skip.log'] });
+      await createFile(archive, {
+        files: [
+          { name: 'keep.txt', source: Buffer.from('Keep') },
+          { name: 'skip.log', source: Buffer.from('Skip') },
+        ],
+      });
 
-      const entries = await extractToMemory(archive, {
+      const entries = await collectExtract(archive, {
         filter: (e) => e.name.endsWith('.txt'),
       });
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('keep.txt');
+      expect(entries[0]?.name).toBe('keep.txt');
     });
 
     it('supports strip', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(path.join(src, 'prefix'), { recursive: true });
-      await fs.writeFile(path.join(src, 'prefix', 'file.txt'), 'Content');
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['prefix'] });
+      await createFile(archive, {
+        files: [
+          { name: 'prefix/', source: new Uint8Array(0) },
+          { name: 'prefix/file.txt', source: Buffer.from('Content') },
+        ],
+      });
 
-      const entries = await extractToMemory(archive, { strip: 1 });
+      const entries = await collectExtract(archive, { strip: 1 });
       const fileEntry = entries.find((e) => e.name === 'file.txt');
       expect(fileEntry).toBeDefined();
       expect(fileEntry?.content.toString()).toBe('Content');

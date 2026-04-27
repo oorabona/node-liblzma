@@ -1,7 +1,7 @@
 /**
- * Browser API for tar.xz archives
+ * Browser API for tar.xz archives — v6
  */
 
-export { createTarXz } from './create.js';
-export { extractTarXz } from './extract.js';
-export { listTarXz } from './list.js';
+export { create } from './create.js';
+export { extract } from './extract.js';
+export { list } from './list.js';

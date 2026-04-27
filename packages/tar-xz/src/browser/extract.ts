@@ -1,8 +1,8 @@
 /**
- * Browser-based TAR extraction with XZ decompression
+ * Browser-based TAR extraction with XZ decompression — v6 AsyncIterable API
  */
 
-import { unxzAsync } from 'node-liblzma';
+import { unxzAsync } from 'node-liblzma/wasm';
 import {
   applyPaxAttributes,
   BLOCK_SIZE,
@@ -13,10 +13,12 @@ import {
 } from '../tar/index.js';
 import type { PaxAttributes } from '../tar/pax.js';
 import { stripPath } from '../tar/utils.js';
+import { toAsyncIterable } from '../internal/to-async-iterable.browser.js';
 import {
-  type BrowserExtractOptions,
-  type ExtractedFile,
+  type ExtractOptions,
   type TarEntry,
+  type TarEntryWithData,
+  type TarInput,
   TarEntryType,
 } from '../types.js';
 
@@ -83,41 +85,46 @@ function parseTar(data: Uint8Array): Array<TarEntry & { data: Uint8Array }> {
 }
 
 /**
- * Extract a tar.xz archive in browser
+ * Extract a tar.xz archive (browser).
  *
- * @param archive - Compressed archive data (ArrayBuffer or Uint8Array)
- * @param options - Extraction options
- * @returns Array of extracted files
+ * Returns an `AsyncIterable<TarEntryWithData>`. Each yielded entry includes:
+ * - Full metadata (`TarEntry` fields)
+ * - `data` — `AsyncIterable<Uint8Array>` for the entry's content
+ * - `bytes()` — helper that collects all chunks into a single `Uint8Array`
+ * - `text(encoding?)` — helper that collects and decodes to a string
  *
  * @example
  * ```ts
- * const response = await fetch('archive.tar.xz');
- * const data = await response.arrayBuffer();
- * const files = await extractTarXz(data);
- *
- * for (const file of files) {
- *   console.log(file.name, file.data.length);
+ * for await (const entry of extract(archiveBytes)) {
+ *   const content = await entry.bytes();
+ *   console.log(entry.name, content.length);
  * }
  * ```
  */
-export async function extractTarXz(
-  archive: ArrayBuffer | Uint8Array,
-  options: BrowserExtractOptions = {}
-): Promise<ExtractedFile[]> {
+export async function* extract(
+  input: TarInput,
+  options: ExtractOptions = {}
+): AsyncIterable<TarEntryWithData> {
   const { strip = 0, filter } = options;
 
-  // Convert to Uint8Array if needed
-  const archiveData = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
+  // Collect all input chunks
+  const inputChunks: Uint8Array[] = [];
+  for await (const chunk of toAsyncIterable(input)) {
+    inputChunks.push(chunk);
+  }
+  const total = inputChunks.reduce((n, c) => n + c.length, 0);
+  const archiveData = new Uint8Array(total);
+  let off = 0;
+  for (const chunk of inputChunks) {
+    archiveData.set(chunk, off);
+    off += chunk.length;
+  }
 
   // Decompress XZ
-  // Cast to any because WASM accepts Uint8Array but types are defined for Node.js Buffer
-  const tarData = await unxzAsync(archiveData as unknown as Parameters<typeof unxzAsync>[0]);
+  const tarData = await unxzAsync(archiveData);
 
-  // Parse TAR
+  // Parse TAR entries
   const entries = parseTar(tarData);
-
-  // Apply strip and filter
-  const results: ExtractedFile[] = [];
 
   for (const entry of entries) {
     const strippedName = stripPath(entry.name, strip);
@@ -126,17 +133,36 @@ export async function extractTarXz(
     }
 
     const strippedEntry = { ...entry, name: strippedName };
-
     if (filter && !filter(strippedEntry)) {
       continue;
     }
 
-    results.push({
-      name: strippedName,
-      data: entry.data,
-      entry: strippedEntry,
-    });
+    const entryData = entry.data;
+
+    yield makeTarEntryWithData(strippedEntry, entryData);
+  }
+}
+
+/** Wrap a TarEntry + data Uint8Array into a TarEntryWithData. */
+function makeTarEntryWithData(entry: TarEntry, data: Uint8Array): TarEntryWithData {
+  async function collectBytes(): Promise<Uint8Array> {
+    return data;
   }
 
-  return results;
+  async function collectText(encoding?: string): Promise<string> {
+    const bytes = await collectBytes();
+    if (typeof TextDecoder === 'undefined') {
+      throw new Error('TextDecoder is not available in this environment');
+    }
+    return new TextDecoder(encoding ?? 'utf-8').decode(bytes);
+  }
+
+  return {
+    ...entry,
+    data: (async function* () {
+      if (data.length > 0) yield data;
+    })(),
+    bytes: collectBytes,
+    text: collectText,
+  };
 }

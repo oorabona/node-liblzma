@@ -368,29 +368,47 @@ node-liblzma powers a family of focused packages:
 | Package | Description | Install |
 |---------|-------------|---------|
 | [`node-liblzma`](https://www.npmjs.com/package/node-liblzma) | Core XZ library — Node.js native + browser WASM | `npm i node-liblzma` |
-| [`tar-xz`](https://www.npmjs.com/package/tar-xz) | Create/extract .tar.xz archives — Node.js + browser | `npm i tar-xz` |
+| [`tar-xz`](https://www.npmjs.com/package/tar-xz) | Create/extract .tar.xz archives — stream-first, Node + browser, same API (v6) | `npm i tar-xz` |
 | [`nxz-cli`](https://www.npmjs.com/package/nxz-cli) | Standalone CLI — `npx nxz-cli file.txt` | `npx nxz-cli` |
 
-### tar-xz — tar.xz archives
+### tar-xz — tar.xz archives (v6)
 
 > **[Live Demo](https://oorabona.github.io/node-liblzma/tar-xz/)** — Create and extract tar.xz archives in your browser.
 
-A library for working with `.tar.xz` archives, with dual Node.js (streaming) and browser (buffer-based) APIs. This fills the gap left by [node-tar](https://github.com/isaacs/node-tar) which does not support `.tar.xz`.
+> **v6 redesign** — unified stream-first API, same function names in Node and browser.
+> See [packages/tar-xz/README.md](packages/tar-xz/README.md) for full docs and migration guide.
+
+A library for working with `.tar.xz` archives. Fills the gap left by
+[node-tar](https://github.com/isaacs/node-tar) which does not support `.tar.xz`.
 
 ```typescript
-// Node.js — streaming API
+// Same import works in Node.js AND browser (bundler resolves WASM automatically)
 import { create, extract, list } from 'tar-xz';
 
-await create({ file: 'archive.tar.xz', cwd: './src', files: ['index.ts', 'utils.ts'] });
-const entries = await list({ file: 'archive.tar.xz' });
-await extract({ file: 'archive.tar.xz', cwd: './output' });
+// CREATE — returns AsyncIterable<Uint8Array>
+const archiveStream = create({
+  files: [
+    { name: 'hello.txt', source: Buffer.from('Hello!') },
+    { name: 'data.json', source: Buffer.from('{}') },
+  ],
+  preset: 6,
+});
 
-// Browser — buffer-based API
-import { createTarXz, extractTarXz, listTarXz } from 'tar-xz';
+// EXTRACT — returns AsyncIterable<TarEntryWithData>
+for await (const entry of extract(archiveStream)) {
+  if (entry.type === '0') console.log(entry.name, await entry.text());
+}
 
-const archive = await createTarXz({ files: [{ name: 'hello.txt', content: data }] });
-const files = await extractTarXz(archive);
-const entries = await listTarXz(archive);
+// LIST — returns AsyncIterable<TarEntry>
+for await (const entry of list(archiveStream)) {
+  console.log(entry.name, entry.size);
+}
+
+// File helpers (Node only, tar-xz/file subpath)
+import { createFile, extractFile, listFile } from 'tar-xz/file';
+await createFile('archive.tar.xz', { files: [{ name: 'a.txt', source: 'a.txt' }] });
+await extractFile('archive.tar.xz', { cwd: './output', strip: 1 });
+const entries = await listFile('archive.tar.xz');
 ```
 
 ### nxz-cli — standalone CLI

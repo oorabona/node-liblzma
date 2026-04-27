@@ -32,20 +32,11 @@ import {
   xzSync,
 } from 'node-liblzma';
 import type { TarEntry } from 'tar-xz';
-
-type TarXzModule = typeof import('tar-xz');
-let tarXzModule: TarXzModule | null = null;
-
-async function loadTarXz(): Promise<TarXzModule> {
-  if (!tarXzModule) {
-    try {
-      tarXzModule = await import('tar-xz');
-    } catch {
-      throw new Error('tar-xz package not available. Install it with: pnpm add tar-xz');
-    }
-  }
-  return tarXzModule;
-}
+import {
+  createFile as tarCreateFile,
+  extractFile as tarExtractFile,
+  listFile as tarListFile,
+} from 'tar-xz/file';
 
 /** CLI options parsed from arguments */
 interface CliOptions {
@@ -687,8 +678,7 @@ function formatTarEntryVerbose(entry: TarEntry): string {
 
 async function listTarFile(filename: string, options: CliOptions): Promise<number> {
   try {
-    const tarXz = await loadTarXz();
-    const entries: TarEntry[] = await tarXz.list({ file: filename });
+    const entries: TarEntry[] = await tarListFile(filename);
 
     if (options.verbose) {
       for (const entry of entries) {
@@ -801,7 +791,6 @@ async function collectArchiveFiles(
 
 async function createTarFile(files: string[], options: CliOptions): Promise<number> {
   try {
-    const tarXz = await loadTarXz();
     const path = await import('node:path');
 
     const outputFile = resolveTarOutput(files, options, path);
@@ -820,10 +809,14 @@ async function createTarFile(files: string[], options: CliOptions): Promise<numb
       console.error(`Creating ${outputFile} from ${filesToArchive.length} files...`);
     }
 
-    await tarXz.create({
-      file: outputFile,
-      cwd,
-      files: filesToArchive,
+    // Map relative file names to TarSourceFile objects (source = absolute fs path)
+    const tarFiles = filesToArchive.map((relPath) => ({
+      name: relPath,
+      source: path.resolve(cwd, relPath),
+    }));
+
+    await tarCreateFile(outputFile, {
+      files: tarFiles,
       preset: presetValue,
     });
 
@@ -847,8 +840,6 @@ async function createTarFile(files: string[], options: CliOptions): Promise<numb
  */
 async function extractTarFile(filename: string, options: CliOptions): Promise<number> {
   try {
-    const tarXz = await loadTarXz();
-
     // Determine output directory
     const outputDir = options.output ?? process.cwd();
 
@@ -860,20 +851,18 @@ async function extractTarFile(filename: string, options: CliOptions): Promise<nu
 
     if (options.verbose) {
       console.error(`Extracting ${filename} to ${outputDir}...`);
-    }
-
-    const entries = await tarXz.extract({
-      file: filename,
-      cwd: outputDir,
-      strip: options.strip,
-    });
-
-    if (options.verbose) {
+      // List entries first for verbose output (separate pass; list is cheap)
+      const entries = await tarListFile(filename);
       for (const entry of entries) {
         console.error(`  ${entry.name}`);
       }
-      console.error(`\nExtracted ${entries.length} entries`);
+      console.error(`\nExtracting ${entries.length} entries`);
     }
+
+    await tarExtractFile(filename, {
+      cwd: outputDir,
+      strip: options.strip,
+    });
 
     // Delete original if not keeping
     removeOriginalIfNeeded(filename, options);

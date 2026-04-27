@@ -1,16 +1,43 @@
 /**
- * Node.js TAR extraction with XZ decompression
+ * Node.js TAR extraction with XZ decompression — v6 AsyncIterable API
  */
 
-import { createReadStream, promises as fs } from 'node:fs';
-import * as path from 'node:path';
 import { Writable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import { createUnxz } from 'node-liblzma';
 import { calculatePadding } from '../tar/index.js';
 import { stripPath } from '../tar/utils.js';
-import { type ExtractOptions, type TarEntry, TarEntryType } from '../types.js';
+import type { TarInputNode } from '../internal/to-async-iterable.js';
+import {
+  type ExtractOptions,
+  type TarEntry,
+  type TarEntryWithData,
+  TarEntryType,
+} from '../types.js';
 import { type HeaderParserState, parseNextHeader } from './tar-parser.js';
+import { collectAllChunks, decompressXz, runWritable } from './xz-helpers.js';
+
+/** Wrap a TarEntry + content Buffer into a TarEntryWithData. */
+function makeTarEntryWithData(entry: TarEntry, content: Buffer): TarEntryWithData {
+  const u8 = new Uint8Array(content.buffer, content.byteOffset, content.byteLength);
+
+  async function collectBytes(): Promise<Uint8Array> {
+    return u8;
+  }
+
+  async function collectText(encoding?: string): Promise<string> {
+    const bytes = await collectBytes();
+    const enc = (encoding ?? 'utf-8') as BufferEncoding;
+    return Buffer.from(bytes).toString(enc);
+  }
+
+  return {
+    ...entry,
+    data: (async function* () {
+      if (u8.length > 0) yield u8;
+    })(),
+    bytes: collectBytes,
+    text: collectText,
+  };
+}
 
 /**
  * Transform stream that unpacks TAR format
@@ -113,142 +140,52 @@ class TarUnpack extends Writable {
 }
 
 /**
- * Validate that a path doesn't escape the target directory (path traversal protection)
- * @throws Error if path traversal is detected
- */
-function validatePath(destPath: string, cwd: string): void {
-  const resolvedDest = path.resolve(destPath);
-  const resolvedCwd = path.resolve(cwd);
-
-  // Ensure the destination path starts with the cwd (no escape via ../)
-  if (!resolvedDest.startsWith(resolvedCwd + path.sep) && resolvedDest !== resolvedCwd) {
-    throw new Error(`Path traversal detected: ${destPath} escapes ${cwd}`);
-  }
-}
-
-/**
- * Extract a tar.xz archive
+ * Extract a tar.xz archive.
  *
- * @param options - Extraction options
- * @returns Promise with list of extracted entries
+ * Returns an `AsyncIterable<TarEntryWithData>`. Each yielded entry includes:
+ * - Full metadata (`TarEntry` fields)
+ * - `data` — `AsyncIterable<Uint8Array>` for the entry's content (consume in order)
+ * - `bytes()` — helper that collects all chunks into a single `Uint8Array`
+ * - `text(encoding?)` — helper that collects and decodes to a string
  *
  * @example
  * ```ts
- * await extract({
- *   file: 'archive.tar.xz',
- *   cwd: '/dest',
- *   strip: 1
- * });
+ * for await (const entry of extract(input)) {
+ *   const content = await entry.bytes();
+ *   console.log(entry.name, content.length);
+ * }
  * ```
  */
-export async function extract(options: ExtractOptions): Promise<TarEntry[]> {
-  const { file, cwd = process.cwd(), strip = 0, filter, preserveOwner = false } = options;
+export async function* extract(
+  input: TarInputNode,
+  options: ExtractOptions = {}
+): AsyncIterable<TarEntryWithData> {
+  const { strip = 0, filter } = options;
 
-  // Create decompression and unpacking streams
-  const inputStream = createReadStream(file);
-  const unxzStream = createUnxz();
+  const chunks = await collectAllChunks(input);
+  const tarData = await decompressXz(chunks);
+
   const tarUnpack = new TarUnpack();
-
-  // Run pipeline
-  await pipeline(inputStream, unxzStream, tarUnpack);
-
-  // Extract files
-  const extractedEntries: TarEntry[] = [];
+  await runWritable(tarUnpack, tarData);
 
   for (const entry of tarUnpack.entries) {
-    // Apply strip
     const strippedName = stripPath(entry.name, strip);
     if (!strippedName) {
       continue;
     }
 
-    // Apply filter
-    const entryForFilter = { ...entry, name: strippedName };
-    if (filter && !filter(entryForFilter)) {
+    const strippedEntry = { ...entry, name: strippedName };
+    if (filter && !filter(strippedEntry)) {
       continue;
     }
 
-    const destPath = path.join(cwd, strippedName);
+    const entryContent = entry.content;
 
-    // Validate path doesn't escape cwd (path traversal protection)
-    validatePath(destPath, cwd);
-
-    // Ensure parent directory exists
-    await fs.mkdir(path.dirname(destPath), { recursive: true });
-
-    if (entry.type === TarEntryType.DIRECTORY) {
-      await fs.mkdir(destPath, { recursive: true });
-    } else if (entry.type === TarEntryType.SYMLINK) {
-      try {
-        await fs.unlink(destPath);
-      } catch {
-        // Ignore if doesn't exist
-      }
-      await fs.symlink(entry.linkname, destPath);
-    } else if (entry.type === TarEntryType.HARDLINK) {
-      const linkDest = path.join(cwd, stripPath(entry.linkname, strip));
-      try {
-        await fs.unlink(destPath);
-      } catch {
-        // Ignore if doesn't exist
-      }
-      await fs.link(linkDest, destPath);
-    } else {
-      // Regular file
-      await fs.writeFile(destPath, entry.content);
-    }
-
-    // Set permissions
-    try {
-      await fs.chmod(destPath, entry.mode);
-    } catch {
-      // Ignore permission errors
-    }
-
-    // Set ownership if requested and running as root
-    /* v8 ignore start - requires root privileges to test */
-    if (preserveOwner && process.getuid?.() === 0) {
-      try {
-        await fs.chown(destPath, entry.uid, entry.gid);
-      } catch {
-        // Ignore ownership errors
-      }
-    }
-    /* v8 ignore stop */
-
-    // Set modification time
-    try {
-      const mtime = new Date(entry.mtime * 1000);
-      await fs.utimes(destPath, mtime, mtime);
-    } catch {
-      // Ignore time errors
-    }
-
-    extractedEntries.push(entryForFilter);
+    yield makeTarEntryWithData(strippedEntry, entryContent);
   }
-
-  return extractedEntries;
 }
 
 /**
  * Extract archive to memory (no disk writes)
  */
-export async function extractToMemory(
-  file: string,
-  options: { strip?: number; filter?: (entry: TarEntry) => boolean } = {}
-): Promise<Array<TarEntry & { content: Buffer }>> {
-  const { strip = 0, filter } = options;
-
-  const inputStream = createReadStream(file);
-  const unxzStream = createUnxz();
-  const tarUnpack = new TarUnpack();
-
-  await pipeline(inputStream, unxzStream, tarUnpack);
-
-  return tarUnpack.entries
-    .map((entry) => ({
-      ...entry,
-      name: stripPath(entry.name, strip),
-    }))
-    .filter((entry) => entry.name && (!filter || filter(entry)));
-}
+// extractToMemory removed in v6 — use extract() with entry.bytes() instead
