@@ -1,5 +1,11 @@
 # tar-xz
 
+## 6.0.1
+
+### Patch Changes
+
+- [`adfbc99`](https://github.com/oorabona/node-liblzma/commit/adfbc99fe227e1a09a7297b03f6982106f660dce) Thanks [@oorabona](https://github.com/oorabona)! - Validate Changesets workflow on this monorepo. Test changeset to confirm the "Version Packages" PR opens correctly. No functional change.
+
 ## 6.0.0
 
 ### Major Changes
