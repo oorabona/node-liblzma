@@ -9,8 +9,8 @@
  */
 
 import { createReadStream, createWriteStream } from 'node:fs';
-import { chmod, link, mkdir, symlink, unlink, utimes } from 'node:fs/promises';
-import { dirname, normalize, resolve } from 'node:path';
+import { chmod, link, lstat, mkdir, symlink, unlink, utimes } from 'node:fs/promises';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { CreateOptions, ExtractOptions, TarEntry } from '../types.js';
@@ -18,6 +18,57 @@ import { TarEntryType } from '../types.js';
 import { create } from './create.js';
 import { extract } from './extract.js';
 import { list } from './list.js';
+
+/**
+ * S3 (TOCTOU guard): Check whether any ancestor directory of `filePath` (up to
+ * and including `root`) is a symlink. If so, a malicious archive could first
+ * plant a symlink pointing outside root, then write a file through it.
+ *
+ * Returns true if a symlink ancestor is found (caller should reject the entry).
+ */
+async function hasSymlinkAncestor(filePath: string, root: string): Promise<boolean> {
+  // Walk each ancestor from filePath up to (but not including) root.
+  let dir = dirname(filePath);
+  while (dir !== root && dir.length >= root.length) {
+    try {
+      const st = await lstat(dir);
+      if (st.isSymbolicLink()) return true;
+    } catch {
+      // Directory doesn't exist yet — no symlink risk.
+      return false;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break; // filesystem root reached
+    dir = parent;
+  }
+  return false;
+}
+
+/**
+ * F-001 + F-002: Unified path-safety + TOCTOU check for any entry type.
+ *
+ * F-001: Correct traversal check — `rel === '..'` or `rel.startsWith('..' + sep)`.
+ *   The old `rel.startsWith('..')` falsely rejects legitimate dotfiles like
+ *   `'..gitignore'` or `'..config'` whose relative path happens to start with `..`.
+ *
+ * F-002: Extend TOCTOU symlink-ancestor check (was FILE-only) to cover DIRECTORY,
+ *   SYMLINK, and HARDLINK entries — all of which call OS operations that follow
+ *   symlink ancestors and can be exploited to escape cwd.
+ */
+async function ensureSafeTarget(target: string, cwd: string, entryName: string): Promise<void> {
+  // F-001: safe traversal check — only reject when the relative path IS '..' or
+  // starts with '../' (POSIX) / '..\' (Windows). Dotfiles like '..gitignore' are fine.
+  const rel = relative(cwd, target);
+  if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
+    throw new Error(`Refusing to extract entry outside cwd: ${entryName}`);
+  }
+  // F-002: TOCTOU guard — reject if any ancestor directory is a symlink.
+  if (await hasSymlinkAncestor(target, cwd)) {
+    throw new Error(
+      `Refusing to extract '${entryName}': a parent directory is a symlink (TOCTOU risk)`
+    );
+  }
+}
 
 /**
  * Create a tar.xz archive on disk from a list of source files.
@@ -59,12 +110,9 @@ export async function extractFile(
 
   for await (const entry of extract(archiveStream, options)) {
     const target = resolve(cwd, entry.name);
-    const normalized = normalize(target);
 
-    // Path safety: prevent directory traversal
-    if (!normalized.startsWith(cwd + '/') && normalized !== cwd) {
-      throw new Error(`Refusing to extract entry outside cwd: ${entry.name}`);
-    }
+    // F-001 + F-002: unified path-safety + TOCTOU check applied to ALL entry types.
+    await ensureSafeTarget(target, cwd, entry.name);
 
     if (entry.type === TarEntryType.DIRECTORY) {
       // Ensure directory is traversable: always set execute bits (x) for user/group/other.
@@ -75,6 +123,11 @@ export async function extractFile(
     }
 
     if (entry.type === TarEntryType.SYMLINK) {
+      // S3 (TOCTOU): symlinks pointing outside cwd could be used to redirect
+      // subsequent file writes (e.g. archive creates link→/etc, then writes link/file).
+      // We do NOT validate entry.linkname here because symlinks can legitimately
+      // point to relative paths inside the archive; the TOCTOU risk comes from
+      // follow-up entries — those are guarded by ensureSafeTarget() on each entry.
       await mkdir(dirname(target), { recursive: true });
       // Remove existing symlink if present (allow re-extract)
       try {
@@ -87,8 +140,13 @@ export async function extractFile(
     }
 
     if (entry.type === TarEntryType.HARDLINK) {
-      await mkdir(dirname(target), { recursive: true });
+      // S2: validate linkname — it must not escape cwd (absolute paths or ".." segments).
       const linkSource = resolve(cwd, entry.linkname);
+      const linkRel = relative(cwd, linkSource);
+      if (linkRel === '..' || linkRel.startsWith('..' + sep) || isAbsolute(linkRel)) {
+        throw new Error(`Refusing hardlink outside cwd: ${entry.linkname}`);
+      }
+      await mkdir(dirname(target), { recursive: true });
       // Remove existing file if present (allow re-extract)
       try {
         await unlink(target);

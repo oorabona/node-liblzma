@@ -316,7 +316,7 @@ describe('Coverage: createPaxHeaderBlocks', () => {
 
 import { createReadStream } from 'node:fs';
 
-/** Helper: collect an extract() async iterable to memory entries (using ReadableStream) */
+/** Helper: collect an extract() async iterable to memory entries (using Node fs.createReadStream) */
 async function collectExtract(
   archive: string,
   options: { strip?: number; filter?: (e: TarEntry) => boolean } = {}
@@ -350,19 +350,8 @@ describe('Coverage: Node API', () => {
   describe('symlinks', () => {
     it('creates and extracts symlinks', async () => {
       const archive = path.join(tempDir, 'archive.tar.xz');
-      // Build archive with explicit symlink entry
-      await createFile(archive, {
-        files: [
-          { name: 'target.txt', source: Buffer.from('content') },
-          {
-            name: 'link.txt',
-            source: new Uint8Array(0),
-            mode: TarEntryType.SYMLINK as unknown as number,
-          },
-        ],
-      });
-
-      // Use crafted TAR to include a real symlink entry
+      // M1: use buildTar helper to create a proper symlink entry (createFile only
+      // supports FILE/DIRECTORY via TarSourceFile; symlinks need a raw TAR approach).
       const tar = buildTar([
         { name: 'target.txt', content: Buffer.from('content') },
         { name: 'link.txt', type: TarEntryType.SYMLINK, linkname: 'target.txt' },
@@ -572,6 +561,120 @@ describe('Coverage: Node API', () => {
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
       await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/outside cwd/i);
+    });
+
+    it('rejects file write through symlink ancestor (TOCTOU guard)', async () => {
+      // S3: archive first creates a symlink pointing outside cwd, then tries to
+      // write a file through it. The extractor must reject the file write.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // Step 1: create a directory that the symlink will point to (outside dest).
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      // Step 2: build the archive — symlink 'link' → '../external', then 'link/file.txt'
+      const tar = buildTar([
+        // Symlink entry: link → ../external (points outside dest)
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // File entry written through the symlink path
+        { name: 'link/file.txt', content: Buffer.from('escaped') },
+      ]);
+
+      const archive = path.join(tempDir, 'toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // The extractor must reject the file write through the symlink ancestor.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // The external directory must NOT have been written to.
+      const externalFiles = await fs.readdir(externalDir);
+      expect(externalFiles).toHaveLength(0);
+    });
+
+    // --- F-003 regression tests: F-002 escape vectors (DIRECTORY / HARDLINK / SYMLINK) ---
+
+    it('F-003a: rejects directory entry created through symlink ancestor (TOCTOU guard)', async () => {
+      // Attack vector: archive creates link→../external (symlink), then link/subdir/ (directory).
+      // mkdir(link/subdir/) follows the symlink and creates external/subdir/ — an escape.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        // Step 1: plant symlink inside dest pointing outside
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // Step 2: directory entry through the symlink
+        { name: 'link/subdir/', type: TarEntryType.DIRECTORY },
+      ]);
+
+      const archive = path.join(tempDir, 'dir-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject — directory creation through a symlink ancestor is an escape vector.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/subdir MUST NOT have been created.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+    });
+
+    it('F-003b: rejects hardlink entry whose target path has a symlink ancestor (TOCTOU guard)', async () => {
+      // Attack vector: archive plants link→../external, then link/file.txt (hardlink to original).
+      // link(original, link/file.txt) follows the symlink and creates external/file.txt — an escape.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        // Lay down an original file first (hardlink source must exist)
+        { name: 'original.txt', content: Buffer.from('data') },
+        // Plant the symlink
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // Hardlink through the symlink ancestor
+        { name: 'link/file.txt', type: TarEntryType.HARDLINK, linkname: 'original.txt' },
+      ]);
+
+      const archive = path.join(tempDir, 'hl-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject — hardlink destination through a symlink ancestor is an escape vector.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/ MUST be empty.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
+    });
+
+    it('F-003c: rejects symlink entry whose target path has a symlink ancestor (TOCTOU guard)', async () => {
+      // Attack vector: archive plants link→../external, then link/inner (symlink to anything).
+      // symlink(anything, link/inner) follows the symlink ancestor and creates external/inner.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        // Plant outer symlink pointing outside
+        { name: 'link', type: TarEntryType.SYMLINK, linkname: '../external' },
+        // Inner symlink entry whose destination path passes through the outer symlink
+        { name: 'link/inner', type: TarEntryType.SYMLINK, linkname: 'anything' },
+      ]);
+
+      const archive = path.join(tempDir, 'sym-toctou.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // Must reject — creating a symlink through a symlink ancestor is an escape vector.
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // external/ MUST be empty.
+      const externalContents = await fs.readdir(externalDir);
+      expect(externalContents).toHaveLength(0);
     });
 
     it('raw extract() yields traversal entry without rejecting (caller responsibility)', async () => {

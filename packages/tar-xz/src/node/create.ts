@@ -127,9 +127,9 @@ async function* buildTar(
     const mtime = file.mtime
       ? Math.floor(file.mtime.getTime() / 1000)
       : Math.floor(Date.now() / 1000);
-    const mode = file.mode ?? 0o644;
-
     const isDir = name.endsWith('/') && size === 0;
+    // M5: directories need execute bits to be traversable (0o755); files default to 0o644.
+    const mode = file.mode ?? (isDir ? 0o755 : 0o644);
     const type: TarEntryTypeValue = isDir ? TarEntryType.DIRECTORY : TarEntryType.FILE;
 
     const entryChunks = await buildTarEntry(name, content, size, mode, mtime, type);

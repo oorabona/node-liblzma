@@ -134,20 +134,6 @@ class TarList extends Writable {
 }
 
 /**
- * List contents of a tar.xz archive
- *
- * @param options - List options
- * @returns Promise with list of entries
- *
- * @example
- * ```ts
- * const entries = await list({ file: 'archive.tar.xz' });
- * for (const entry of entries) {
- *   console.log(entry.name, entry.size);
- * }
- * ```
- */
-/**
  * List the contents of a tar.xz archive.
  *
  * Returns an `AsyncIterable<TarEntry>` yielding each entry's metadata.

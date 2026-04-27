@@ -183,13 +183,15 @@ describe('Node.js file API (v6)', () => {
       expect(content).toBe('deep');
     });
 
-    it('extracts to process.cwd() when no cwd option given', async () => {
+    it('accepts no options (does not throw on default options shape)', async () => {
       const archivePath = path.join(tempDir, 'archive.tar.xz');
       await createFile(archivePath, {
         files: [{ name: 'cwd-test.txt', source: Buffer.from('cwd') }],
       });
-      // extractFile with no options — extracts to cwd (tempDir not applicable here, but API works)
-      // Just verify it doesn't throw when called with default options shape
+      // Verify the archive is well-formed (listFile does not throw).
+      // We do not test default-cwd extraction here because it would write into
+      // process.cwd() and may conflict with other tests; that behaviour is an
+      // implementation detail exercised by the roundtrip tests.
       await expect(listFile(archivePath)).resolves.toHaveLength(1);
     });
   });

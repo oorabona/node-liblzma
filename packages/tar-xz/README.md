@@ -12,7 +12,7 @@ function names in both environments.
 ## Features
 
 - **Unified API** — `create`, `extract`, `list` work identically in Node.js and browsers
-- **Stream-first** — all functions return `AsyncIterable<…>`; no whole-file buffering required
+- **Stream-shaped API** — all functions return `AsyncIterable<…>`; stream-shaped inputs accepted. Note: current Node `extract()`/`list()` implementations buffer internally — true streaming is a planned optimization
 - **Flexible input** — `extract()` and `list()` accept `AsyncIterable`, `Uint8Array`,
   `ArrayBuffer`, Web `ReadableStream`, or Node `ReadableStream`
 - **Flexible source** — `create()` accepts fs paths (Node), `Buffer`/`Uint8Array`, or
@@ -250,7 +250,7 @@ for await (const entry of extract(response.body!)) {
 |----------|-----------|---------|
 | `create` | `(options: CreateOptions) => AsyncIterable<Uint8Array>` | Compressed archive chunks |
 | `extract` | `(input: TarInput, options?: ExtractOptions) => AsyncIterable<TarEntryWithData>` | Entries with data |
-| `list` | `(input: TarInput, options?: ExtractOptions) => AsyncIterable<TarEntry>` | Metadata only |
+| `list` | `(input: TarInput) => AsyncIterable<TarEntry>` | Metadata only |
 
 ### File Helpers API (`tar-xz/file`, Node only)
 
