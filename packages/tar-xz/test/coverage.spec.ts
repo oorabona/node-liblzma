@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { extract } from '../src/node/index.js';
+import { create } from '../src/node/create.js';
 import { createFile, extractFile, listFile } from '../src/node/file.js';
 import { parseOctal } from '../src/tar/checksum.js';
 import {
@@ -1079,6 +1080,56 @@ describe('Coverage: Node API', () => {
   });
 
   // --- In-memory extract (replaces extractToMemory) ---
+
+  describe('R7-5: create() error propagation via pipeline()', () => {
+    it('propagates fs errors from buildTar when source file is missing', async () => {
+      // Source file does not exist — buildTar throws ENOENT inside resolveSource.
+      // With pipe() this would hang or emit an unhandled error; with pipeline() it rejects.
+      const files = [{ name: 'a.txt', source: '/nonexistent/__no_such_file__.bin' }];
+      const archive = create({ files });
+      await expect(
+        (async () => {
+          for await (const _ of archive) {
+            /* drain */
+          }
+        })()
+      ).rejects.toThrow(/ENOENT|no such file/i);
+    });
+  });
+
+  describe('R7-1: dot-segment entry name rejection', () => {
+    it('rejects entry name "." (dot-segment placeholder)', async () => {
+      const tar = buildTar([{ name: '.', type: TarEntryType.DIRECTORY }]);
+      const archive = path.join(tempDir, 'dot.tar.xz');
+      await saveAsXz(tar, archive);
+      const dest = path.join(tempDir, 'dest-dot');
+      await fs.mkdir(dest);
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/dot-segment/i);
+    });
+
+    it('rejects entry name "./" (trailing-slash dot)', async () => {
+      // buildTar normalises to '.' after stripping the trailing slash
+      const tar = buildTar([{ name: './', type: TarEntryType.DIRECTORY }]);
+      const archive = path.join(tempDir, 'dotslash.tar.xz');
+      await saveAsXz(tar, archive);
+      const dest = path.join(tempDir, 'dest-dotslash');
+      await fs.mkdir(dest);
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/dot-segment/i);
+    });
+
+    it('does NOT reject legitimate dotfiles like ".gitignore"', async () => {
+      // Regression guard: dotfiles must still be extractable.
+      const archive = path.join(tempDir, 'dotfile.tar.xz');
+      await createFile(archive, {
+        files: [{ name: '.gitignore', source: Buffer.from('*.log') }],
+      });
+      const dest = path.join(tempDir, 'dest-dotfile');
+      await fs.mkdir(dest);
+      // Should not throw
+      await extractFile(archive, { cwd: dest });
+      expect(await fs.readFile(path.join(dest, '.gitignore'), 'utf8')).toBe('*.log');
+    });
+  });
 
   describe('in-memory extract via extract() stream', () => {
     it('supports filter', async () => {

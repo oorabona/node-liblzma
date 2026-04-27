@@ -4,6 +4,7 @@
 
 import { promises as fs } from 'node:fs';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { createXz } from 'node-liblzma';
 import {
   calculatePadding,
@@ -157,14 +158,28 @@ async function* buildTar(
 export async function* create(options: CreateOptions): AsyncIterable<Uint8Array> {
   const { files, preset = 6, filter } = options;
 
-  // Pipe TAR builder → XZ compressor; yield each compressed chunk as it arrives.
-  // Node's Readable streams are themselves AsyncIterable, so we can `for await`
-  // directly without buffering everything in memory.
   const xzStream = createXz({ preset });
-  Readable.from(buildTar(files, filter)).pipe(xzStream);
+  const tarReadable = Readable.from(buildTar(files, filter));
 
-  for await (const chunk of xzStream) {
-    const buf = chunk as Buffer;
-    yield new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  // R7-5: use pipeline() instead of pipe() so that errors from buildTar
+  // (e.g. missing source file) propagate and reject the iteration rather than
+  // hanging or emitting an unhandled error event.
+  // R7-5: use pipeline() instead of pipe() so that errors from buildTar
+  // (e.g. missing source file) propagate and reject the iteration rather than
+  // hanging or emitting an unhandled error event.
+  const pipelinePromise = pipeline(tarReadable, xzStream);
+
+  try {
+    for await (const chunk of xzStream) {
+      const buf = chunk as Buffer;
+      yield new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    }
+    // Surface any error that occurred in the pipeline after the stream ends.
+    await pipelinePromise;
+  } catch (err) {
+    // Ensure the pipeline promise is settled even when iteration fails, to
+    // avoid an unhandled rejection on the background promise.
+    await pipelinePromise.catch(() => undefined);
+    throw err;
   }
 }

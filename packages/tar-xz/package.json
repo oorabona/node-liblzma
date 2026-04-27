@@ -16,6 +16,7 @@
       "default": "./lib/index.js"
     },
     "./file": {
+      "browser": null,
       "types": "./lib/node/file.d.ts",
       "import": "./lib/node/file.js",
       "default": "./lib/node/file.js"

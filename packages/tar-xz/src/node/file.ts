@@ -33,10 +33,24 @@ const SAFE_MODE_MASK = 0o0777;
  *  - Empty strings (would cause target === cwd or ambiguous hardlink resolution)
  *  - Strings containing the NUL byte (U+0000)
  */
+/**
+ * Validate a tar entry name or linkname for safety.
+ *
+ * Rejects:
+ *  - Empty strings (would cause target === cwd or ambiguous hardlink resolution)
+ *  - Strings containing the NUL byte (U+0000)
+ *  - R7-1: Dot-segment-only names ('.', '..') that resolve to cwd or its parent
+ */
 function ensureSafeName(s: string | undefined, label: string): void {
   if (s === undefined) return;
   if (s.length === 0) throw new Error(`Refusing entry: empty ${label}`);
   if (s.includes('\x00')) throw new Error(`Refusing entry: ${label} contains NUL byte`);
+  // R7-1: reject names that are dot-segment-only after normalising separators.
+  // './' → '.', '../' → '..', '.\' → '.' etc.
+  const normalized = s.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (normalized === '.' || normalized === '..') {
+    throw new Error(`Refusing entry: ${label} is a dot-segment placeholder ('${s}')`);
+  }
 }
 
 /**
