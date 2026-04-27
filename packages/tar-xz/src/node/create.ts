@@ -1,11 +1,9 @@
 /**
- * Node.js TAR creation with XZ compression
+ * Node.js TAR creation with XZ compression — v6 AsyncIterable API
  */
 
-import { promises as fs, type Stats } from 'node:fs';
-import * as path from 'node:path';
-import { Transform, type TransformCallback } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { promises as fs } from 'node:fs';
+import { Readable } from 'node:stream';
 import { createXz } from 'node-liblzma';
 import {
   calculatePadding,
@@ -14,183 +12,159 @@ import {
   createPaxHeaderBlocks,
   needsPaxHeaders,
 } from '../tar/index.js';
-import type { CreateOptions } from '../types.js';
+import type { CreateOptions, TarSourceFile } from '../types.js';
 import { TarEntryType, type TarEntryTypeValue } from '../types.js';
 
 /**
  * Transform stream that packs files into TAR format
  */
-class TarPack extends Transform {
-  constructor() {
-    super({ objectMode: false });
-  }
+/**
+ * Build a single TAR entry (header + content blocks) into an array of Uint8Array chunks.
+ * Does not write to disk; caller decides what to do with the chunks.
+ */
+async function buildTarEntry(
+  entryName: string,
+  content: Uint8Array,
+  size: number,
+  mode: number,
+  mtime: number,
+  type: TarEntryTypeValue,
+  linkname?: string
+): Promise<Uint8Array[]> {
+  const chunks: Uint8Array[] = [];
 
-  /**
-   * Add a file entry to the archive
-   */
-  async addEntry(
-    name: string,
-    content: Buffer | null,
-    stats: Stats,
-    linkTarget?: string
-  ): Promise<void> {
-    const isDir = stats.isDirectory();
-    const isSymlink = stats.isSymbolicLink();
-    const size = isDir || isSymlink ? 0 : stats.size;
+  let name = entryName;
 
-    // Normalize path (use forward slashes, add trailing slash for dirs)
-    let entryName = name.replace(/\\/g, '/');
-    if (isDir && !entryName.endsWith('/')) {
-      entryName += '/';
-    }
-
-    // Determine type
-    let type: TarEntryTypeValue = TarEntryType.FILE;
-    if (isDir) {
-      type = TarEntryType.DIRECTORY;
-    } else if (isSymlink) {
-      type = TarEntryType.SYMLINK;
-    }
-
-    // Check if PAX headers are needed
-    if (needsPaxHeaders({ name: entryName, size, linkname: linkTarget })) {
-      const paxBlocks = createPaxHeaderBlocks(entryName, {
-        path: entryName,
-        size,
-        linkpath: linkTarget,
-      });
-      for (const block of paxBlocks) {
-        this.push(block);
-      }
-      // Truncate name for the regular header (PAX has the full name)
-      entryName = entryName.slice(-100);
-    }
-
-    // Create header
-    const header = createHeader({
-      name: entryName,
-      type,
+  if (needsPaxHeaders({ name, size, linkname })) {
+    const paxBlocks = createPaxHeaderBlocks(name, {
+      path: name,
       size,
-      mode: stats.mode & 0o7777,
-      uid: stats.uid,
-      gid: stats.gid,
-      mtime: Math.floor(stats.mtimeMs / 1000),
-      linkname: linkTarget,
+      linkpath: linkname,
     });
+    chunks.push(...paxBlocks);
+    // Truncate name for the regular header (PAX carries the full name)
+    name = name.slice(-100);
+  }
 
-    this.push(header);
+  const header = createHeader({
+    name,
+    type,
+    size,
+    mode,
+    mtime,
+    linkname,
+  });
 
-    // Write content for files
-    if (content && size > 0) {
-      this.push(content);
+  chunks.push(header);
 
-      // Add padding
-      const padding = calculatePadding(size);
-      if (padding > 0) {
-        this.push(Buffer.alloc(padding));
-      }
+  if (size > 0) {
+    chunks.push(content);
+    const padding = calculatePadding(size);
+    if (padding > 0) {
+      chunks.push(new Uint8Array(padding));
     }
   }
 
-  /**
-   * Finalize the archive with end-of-archive marker
-   */
-  finalize(): void {
-    this.push(createEndOfArchive());
-  }
-
-  /* v8 ignore next 4 - required by Transform interface but never called (data pushed via addEntry) */
-  _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback): void {
-    callback(null, chunk);
-  }
+  return chunks;
 }
 
 /**
  * Recursively collect all files in a directory
  */
-async function collectFiles(
-  basePath: string,
-  relativePath: string,
-  follow: boolean
-): Promise<Array<{ path: string; relativePath: string; stats: Stats }>> {
-  const results: Array<{ path: string; relativePath: string; stats: Stats }> = [];
-  const fullPath = path.join(basePath, relativePath);
+/**
+ * Resolve a TarSourceFile's `source` into a raw Uint8Array.
+ * - string → interpreted as an fs path; file is read entirely into memory.
+ * - Uint8Array/ArrayBuffer → used directly.
+ * - AsyncIterable<Uint8Array> → all chunks are concatenated.
+ */
+async function resolveSource(file: TarSourceFile): Promise<Uint8Array> {
+  const { source } = file;
 
-  const stats = follow ? await fs.stat(fullPath) : await fs.lstat(fullPath);
-
-  results.push({ path: fullPath, relativePath, stats });
-
-  if (stats.isDirectory()) {
-    const entries = await fs.readdir(fullPath);
-    for (const entry of entries) {
-      const childRelative = path.join(relativePath, entry);
-      const childResults = await collectFiles(basePath, childRelative, follow);
-      results.push(...childResults);
-    }
+  if (typeof source === 'string') {
+    // Treat as fs path
+    const buf = await fs.readFile(source);
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 
-  return results;
+  if (source instanceof Uint8Array) {
+    return source;
+  }
+
+  if (source instanceof ArrayBuffer) {
+    return new Uint8Array(source);
+  }
+
+  // AsyncIterable<Uint8Array> — collect chunks
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of source) {
+    chunks.push(chunk);
+  }
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
 }
 
 /**
- * Create a tar.xz archive
- *
- * @param options - Creation options
- * @returns Promise that resolves when archive is complete
- *
- * @example
- * ```ts
- * await create({
- *   file: 'archive.tar.xz',
- *   cwd: '/source',
- *   files: ['file1.txt', 'dir/'],
- *   preset: 6
- * });
- * ```
+ * Build a raw (uncompressed) TAR byte stream from a list of source files.
  */
-export async function create(options: CreateOptions): Promise<void> {
-  const { file, cwd = process.cwd(), files, preset = 6, follow = false } = options;
-
-  // Collect all files to archive
-  const allFiles: Array<{ path: string; relativePath: string; stats: Stats }> = [];
-
-  for (const filePattern of files) {
-    const collected = await collectFiles(cwd, filePattern, follow);
-    allFiles.push(...collected);
-  }
-
-  // Sort entries (directories before their contents)
-  allFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-
-  // Create streams
-  const tarPack = new TarPack();
-  const xzStream = createXz({ preset });
-  const outputFile = await fs.open(file, 'w');
-  const outputStream = outputFile.createWriteStream();
-
-  // Process files
-  const processFiles = async (): Promise<void> => {
-    for (const { path: filePath, relativePath, stats } of allFiles) {
-      let content: Buffer | null = null;
-      let linkTarget: string | undefined;
-
-      if (stats.isSymbolicLink()) {
-        linkTarget = await fs.readlink(filePath);
-      } else if (stats.isFile()) {
-        content = await fs.readFile(filePath);
-      }
-
-      await tarPack.addEntry(relativePath, content, stats, linkTarget);
+async function* buildTar(
+  files: TarSourceFile[],
+  filter: CreateOptions['filter']
+): AsyncIterable<Uint8Array> {
+  for (const file of files) {
+    if (filter && !filter(file)) {
+      continue;
     }
 
-    tarPack.finalize();
-    tarPack.push(null); // End the stream
-  };
+    const content = await resolveSource(file);
+    const size = content.length;
+    const name = file.name.replace(/\\/g, '/');
+    const mtime = file.mtime
+      ? Math.floor(file.mtime.getTime() / 1000)
+      : Math.floor(Date.now() / 1000);
+    const mode = file.mode ?? 0o644;
 
-  // Start processing and pipeline
-  const processPromise = processFiles();
+    const isDir = name.endsWith('/') && size === 0;
+    const type: TarEntryTypeValue = isDir ? TarEntryType.DIRECTORY : TarEntryType.FILE;
 
-  await pipeline(tarPack, xzStream, outputStream);
-  await processPromise;
-  await outputFile.close();
+    const entryChunks = await buildTarEntry(name, content, size, mode, mtime, type);
+    for (const chunk of entryChunks) {
+      yield chunk;
+    }
+  }
+  yield createEndOfArchive();
+}
+
+/**
+ * Create a tar.xz archive.
+ *
+ * Returns an `AsyncIterable<Uint8Array>` of compressed chunks. The output is
+ * never written to disk — pipe it wherever you need:
+ *
+ * ```ts
+ * const out = createWriteStream('archive.tar.xz');
+ * await pipeline(Readable.from(create({ files })), out);
+ * ```
+ *
+ * @param options - Creation options
+ * @returns AsyncIterable of compressed XZ chunks
+ */
+export async function* create(options: CreateOptions): AsyncIterable<Uint8Array> {
+  const { files, preset = 6, filter } = options;
+
+  // Pipe TAR builder → XZ compressor; yield each compressed chunk as it arrives.
+  // Node's Readable streams are themselves AsyncIterable, so we can `for await`
+  // directly without buffering everything in memory.
+  const xzStream = createXz({ preset });
+  Readable.from(buildTar(files, filter)).pipe(xzStream);
+
+  for await (const chunk of xzStream) {
+    const buf = chunk as Buffer;
+    yield new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  }
 }

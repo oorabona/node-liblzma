@@ -1,8 +1,8 @@
 /**
- * Browser-based TAR creation with XZ compression
+ * Browser-based TAR creation with XZ compression — v6 AsyncIterable API
  */
 
-import { xzAsync } from 'node-liblzma';
+import { xzAsync } from 'node-liblzma/wasm';
 import {
   calculatePadding,
   createEndOfArchive,
@@ -10,128 +10,119 @@ import {
   createPaxHeaderBlocks,
   needsPaxHeaders,
 } from '../tar/index.js';
-import { type BrowserCreateOptions, TarEntryType } from '../types.js';
+import {
+  type CreateOptions,
+  type TarSourceFile,
+  TarEntryType,
+  type TarEntryTypeValue,
+} from '../types.js';
 
 /**
  * Convert input content to Uint8Array
  */
-async function toUint8Array(
-  content: string | Uint8Array | ArrayBuffer | Blob
-): Promise<Uint8Array> {
-  if (typeof content === 'string') {
-    return new TextEncoder().encode(content);
-  }
-  if (content instanceof Uint8Array) {
-    return content;
-  }
-  if (content instanceof ArrayBuffer) {
-    return new Uint8Array(content);
-  }
-  if (content instanceof Blob) {
-    const buffer = await content.arrayBuffer();
-    return new Uint8Array(buffer);
-  }
-  throw new Error('Unsupported content type');
-}
-
 /**
- * Concatenate multiple Uint8Arrays
+ * Resolve a TarSourceFile's source to Uint8Array.
+ * Strings (fs paths) are not supported in browsers and throw an error.
  */
-function concatArrays(arrays: Uint8Array[]): Uint8Array {
-  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const arr of arrays) {
-    result.set(arr, offset);
-    offset += arr.length;
+async function resolveSource(file: TarSourceFile): Promise<Uint8Array> {
+  const { source } = file;
+
+  if (typeof source === 'string') {
+    throw new Error(
+      `tar-xz: TarSourceFile.source is a string (fs path), which is not supported in browsers. ` +
+        `Pass a Uint8Array or AsyncIterable<Uint8Array> instead.`
+    );
   }
-  return result;
+
+  if (source instanceof Uint8Array) {
+    return source;
+  }
+
+  if (source instanceof ArrayBuffer) {
+    return new Uint8Array(source);
+  }
+
+  // AsyncIterable<Uint8Array> — collect chunks
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of source) {
+    chunks.push(chunk);
+  }
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
 }
 
 /**
- * Create a tar.xz archive in browser
+ * Build TAR blocks for a single file and push them into `out`.
+ */
+async function buildFileBlocks(file: TarSourceFile, out: Uint8Array[]): Promise<void> {
+  const content = await resolveSource(file);
+  const size = content.length;
+  let name = file.name.replace(/\\/g, '/');
+  const mtime = file.mtime
+    ? Math.floor(file.mtime.getTime() / 1000)
+    : Math.floor(Date.now() / 1000);
+  const mode = file.mode ?? 0o644;
+  const isDir = name.endsWith('/') && size === 0;
+  const type: TarEntryTypeValue = isDir ? TarEntryType.DIRECTORY : TarEntryType.FILE;
+
+  if (needsPaxHeaders({ name, size })) {
+    out.push(...createPaxHeaderBlocks(name, { path: name, size }));
+    name = name.slice(-100);
+  }
+
+  out.push(createHeader({ name, type, size, mode, mtime }));
+
+  if (size > 0) {
+    out.push(content);
+    const padding = calculatePadding(size);
+    if (padding > 0) out.push(new Uint8Array(padding));
+  }
+}
+
+/**
+ * Concatenate Uint8Array blocks into a single buffer.
+ */
+function concatBlocks(blocks: Uint8Array[]): Uint8Array {
+  const totalLength = blocks.reduce((n, b) => n + b.length, 0);
+  const out = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const block of blocks) {
+    out.set(block, offset);
+    offset += block.length;
+  }
+  return out;
+}
+
+/**
+ * Create a tar.xz archive (browser).
  *
- * @param options - Creation options
- * @returns Compressed archive as Uint8Array
+ * Returns an `AsyncIterable<Uint8Array>` of compressed chunks.
  *
  * @example
  * ```ts
- * const archive = await createTarXz({
- *   files: [
- *     { name: 'hello.txt', content: 'Hello, World!' },
- *     { name: 'data.json', content: JSON.stringify({ foo: 'bar' }) }
- *   ],
- *   preset: 3
- * });
- *
- * // Download the archive
- * const blob = new Blob([archive], { type: 'application/x-xz' });
- * const url = URL.createObjectURL(blob);
+ * const chunks: Uint8Array[] = [];
+ * for await (const chunk of create({ files })) {
+ *   chunks.push(chunk);
+ * }
+ * const blob = new Blob(chunks, { type: 'application/x-xz' });
  * ```
  */
-export async function createTarXz(options: BrowserCreateOptions): Promise<Uint8Array> {
-  const { files, preset = 3 } = options;
+export async function* create(options: CreateOptions): AsyncIterable<Uint8Array> {
+  const { files, preset = 6, filter } = options;
 
   const blocks: Uint8Array[] = [];
-
   for (const file of files) {
-    const content = await toUint8Array(file.content);
-    const size = content.length;
-
-    // Normalize name
-    let name = file.name.replace(/\\/g, '/');
-
-    // Determine if it's a directory (ends with / and has no content)
-    const isDir = name.endsWith('/') && size === 0;
-    const type = isDir ? TarEntryType.DIRECTORY : TarEntryType.FILE;
-
-    // Check if PAX headers are needed
-    if (needsPaxHeaders({ name, size })) {
-      const paxBlocks = createPaxHeaderBlocks(name, {
-        path: name,
-        size,
-      });
-      blocks.push(...paxBlocks);
-      // Truncate name for the regular header
-      name = name.slice(-100);
-    }
-
-    // Create header
-    const mtime = file.mtime
-      ? typeof file.mtime === 'number'
-        ? file.mtime
-        : Math.floor(file.mtime.getTime() / 1000)
-      : Math.floor(Date.now() / 1000);
-
-    const header = createHeader({
-      name,
-      type,
-      size,
-      mode: file.mode ?? (isDir ? 0o755 : 0o644),
-      mtime,
-    });
-
-    blocks.push(header);
-
-    // Add content
-    if (size > 0) {
-      blocks.push(content);
-
-      // Add padding
-      const padding = calculatePadding(size);
-      if (padding > 0) {
-        blocks.push(new Uint8Array(padding));
-      }
-    }
+    if (filter && !filter(file)) continue;
+    await buildFileBlocks(file, blocks);
   }
-
-  // Add end-of-archive marker
   blocks.push(createEndOfArchive());
 
-  // Concatenate all blocks into TAR
-  const tarData = concatArrays(blocks);
-
-  // Compress with XZ
-  // Cast to any because WASM accepts Uint8Array but types are defined for Node.js Buffer
-  return xzAsync(tarData as unknown as Parameters<typeof xzAsync>[0], { preset });
+  const compressed = await xzAsync(concatBlocks(blocks), { preset });
+  yield compressed;
 }

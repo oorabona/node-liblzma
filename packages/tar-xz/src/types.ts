@@ -1,4 +1,12 @@
 /**
+ * tar-xz v6 — Universal type definitions
+ *
+ * Same types used by both Node.js and Browser implementations.
+ *
+ * @packageDocumentation
+ */
+
+/**
  * TAR entry type flags (POSIX ustar format)
  */
 export const TarEntryType = {
@@ -57,97 +65,81 @@ export interface TarEntry {
 }
 
 /**
- * TAR entry with content data
+ * TAR entry with streaming content data.
+ *
+ * `data` is a lazy AsyncIterable — consume it exactly once per entry before
+ * advancing to the next entry yielded by `extract()`.
  */
 export interface TarEntryWithData extends TarEntry {
-  /** File content */
-  data: Uint8Array;
+  /** Streaming entry content (consume once, in order) */
+  data: AsyncIterable<Uint8Array>;
+  /**
+   * Collect all chunks and decode to a string.
+   * @param encoding - Text encoding (default: 'utf-8')
+   */
+  text(encoding?: string): Promise<string>;
+  /** Collect all chunks into a single Uint8Array */
+  bytes(): Promise<Uint8Array>;
 }
 
 /**
- * Input file for archive creation
+ * Input source for archive creation.
+ *
+ * In the Node.js implementation, `source` may be a `string` interpreted as an
+ * fs path.  In the Browser implementation, `string` sources throw a helpful
+ * error (no filesystem access).
  */
-export interface TarInputFile {
-  /** File path in archive */
+export interface TarSourceFile {
+  /** Path inside the archive */
   name: string;
-  /** File content (string, Uint8Array, ArrayBuffer, or Blob) */
-  content: string | Uint8Array | ArrayBuffer | Blob;
-  /** Optional file mode (default: 0o644 for files, 0o755 for directories) */
+  /**
+   * File content.
+   * - `string` — fs path (Node only; rejected in browser)
+   * - `Uint8Array` / `ArrayBuffer` / `Buffer` — raw bytes
+   * - `AsyncIterable<Uint8Array>` — streaming source
+   */
+  source: AsyncIterable<Uint8Array> | Uint8Array | ArrayBuffer | string;
+  /** File mode (default: 0o644) */
   mode?: number;
-  /** Optional modification time (default: current time) */
-  mtime?: Date | number;
+  /** Modification time (default: current time) */
+  mtime?: Date;
 }
 
 /**
- * Options for creating tar.xz archives (Node.js)
+ * Options for `create()`.
  */
 export interface CreateOptions {
-  /** Output file path */
-  file: string;
-  /** Base directory for file paths */
-  cwd?: string;
-  /** Files/directories to include */
-  files: string[];
-  /** XZ compression preset (0-9, default: 6) */
+  /** Files to include in the archive */
+  files: TarSourceFile[];
+  /** XZ compression preset 0–9 (default: 6) */
   preset?: number;
-  /** Follow symbolic links */
-  follow?: boolean;
-  /** Dereference symlinks (archive target, not link) */
-  dereference?: boolean;
+  /**
+   * Optional filter — return `false` to exclude a file.
+   * Called with the TarSourceFile before any I/O.
+   */
+  filter?: (file: TarSourceFile) => boolean;
 }
 
 /**
- * Options for extracting tar.xz archives (Node.js)
+ * Options for `extract()`.
  */
 export interface ExtractOptions {
-  /** Input file path */
-  file: string;
-  /** Output directory */
-  cwd?: string;
-  /** Number of leading path components to strip */
+  /** Number of leading path components to strip (default: 0) */
   strip?: number;
-  /** Filter function to select entries */
-  filter?: (entry: TarEntry) => boolean;
-  /** Preserve file ownership (requires root) */
-  preserveOwner?: boolean;
-}
-
-/**
- * Options for listing tar.xz archives (Node.js)
- */
-export interface ListOptions {
-  /** Input file path */
-  file: string;
-}
-
-/**
- * Options for browser-based archive creation
- */
-export interface BrowserCreateOptions {
-  /** Files to include */
-  files: TarInputFile[];
-  /** XZ compression preset (0-9, default: 3 for browser performance) */
-  preset?: number;
-}
-
-/**
- * Options for browser-based archive extraction
- */
-export interface BrowserExtractOptions {
-  /** Number of leading path components to strip */
-  strip?: number;
-  /** Filter function to select entries */
+  /** Optional filter — return `false` to skip an entry */
   filter?: (entry: TarEntry) => boolean;
 }
 
 /**
- * Extracted file from browser API
+ * Any stream/buffer type accepted by `extract()` and `list()` as input.
+ *
+ * Note: `NodeJS.ReadableStream` is handled transparently in the Node.js
+ * implementation via the internal `toAsyncIterable` helper.
+ * In browsers, pass a `ReadableStream<Uint8Array>` (Web Streams API) instead.
  */
-export interface ExtractedFile {
-  /** File path */
-  name: string;
-  /** File content */
-  data: Uint8Array;
-  /** File metadata */
-  entry: TarEntry;
-}
+export type TarInput =
+  | AsyncIterable<Uint8Array>
+  | Iterable<Uint8Array>
+  | Uint8Array
+  | ArrayBuffer
+  | ReadableStream<Uint8Array>;

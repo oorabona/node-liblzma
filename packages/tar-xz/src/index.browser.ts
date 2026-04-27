@@ -1,13 +1,14 @@
 /**
- * tar-xz — Create and extract tar.xz archives (Browser)
+ * tar-xz v6 — Universal stream-first API (Browser)
  *
- * Buffer-based API for browsers with XZ compression powered by node-liblzma WASM.
+ * Browser entry point. Same function names as the Node.js entry point.
+ * XZ compression powered by node-liblzma WASM.
  *
  * @packageDocumentation
  */
 
 // Re-export Browser API
-export { createTarXz, extractTarXz, listTarXz } from './browser/index.js';
+export { create, extract, list } from './browser/index.js';
 export type { CreateHeaderOptions, PaxAttributes } from './tar/index.js';
 
 // Re-export low-level TAR utilities for advanced usage
@@ -23,13 +24,14 @@ export {
   parseHeader,
   parsePaxData,
 } from './tar/index.js';
+
 // Re-export types
 export {
-  type BrowserCreateOptions,
-  type BrowserExtractOptions,
-  type ExtractedFile,
+  type CreateOptions,
+  type ExtractOptions,
   type TarEntry,
   TarEntryType,
   type TarEntryWithData,
-  type TarInputFile,
+  type TarInput,
+  type TarSourceFile,
 } from './types.js';
