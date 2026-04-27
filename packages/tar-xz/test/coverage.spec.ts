@@ -6,7 +6,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { create, extract, extractToMemory, list } from '../src/node/index.js';
+import { extract } from '../src/node/index.js';
+import { createFile, extractFile, listFile } from '../src/node/file.js';
 import { parseOctal } from '../src/tar/checksum.js';
 import {
   BLOCK_SIZE,
@@ -313,6 +314,26 @@ describe('Coverage: createPaxHeaderBlocks', () => {
 // Integration tests: Node API edge cases
 // ===========================================================================
 
+import { createReadStream } from 'node:fs';
+
+/** Helper: collect an extract() async iterable to memory entries (using ReadableStream) */
+async function collectExtract(
+  archive: string,
+  options: { strip?: number; filter?: (e: TarEntry) => boolean } = {}
+): Promise<Array<{ name: string; type: string; content: Buffer; linkname: string }>> {
+  const results: Array<{ name: string; type: string; content: Buffer; linkname: string }> = [];
+  for await (const entry of extract(createReadStream(archive), options)) {
+    const bytes = await entry.bytes();
+    results.push({
+      name: entry.name,
+      type: entry.type,
+      content: Buffer.from(bytes),
+      linkname: entry.linkname,
+    });
+  }
+  return results;
+}
+
 describe('Coverage: Node API', () => {
   let tempDir: string;
 
@@ -328,40 +349,51 @@ describe('Coverage: Node API', () => {
 
   describe('symlinks', () => {
     it('creates and extracts symlinks', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'target.txt'), 'content');
-      await fs.symlink('target.txt', path.join(src, 'link.txt'));
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['target.txt', 'link.txt'] });
+      // Build archive with explicit symlink entry
+      await createFile(archive, {
+        files: [
+          { name: 'target.txt', source: Buffer.from('content') },
+          {
+            name: 'link.txt',
+            source: new Uint8Array(0),
+            mode: TarEntryType.SYMLINK as unknown as number,
+          },
+        ],
+      });
+
+      // Use crafted TAR to include a real symlink entry
+      const tar = buildTar([
+        { name: 'target.txt', content: Buffer.from('content') },
+        { name: 'link.txt', type: TarEntryType.SYMLINK, linkname: 'target.txt' },
+      ]);
+      await saveAsXz(tar, archive);
 
       // List
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       const linkEntry = entries.find((e) => e.name === 'link.txt');
       expect(linkEntry?.type).toBe(TarEntryType.SYMLINK);
 
       // Extract
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readlink(path.join(dest, 'link.txt'))).toBe('target.txt');
     });
 
     it('replaces existing symlink on re-extract', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'target.txt'), 'content');
-      await fs.symlink('target.txt', path.join(src, 'link.txt'));
-
+      const tar = buildTar([
+        { name: 'target.txt', content: Buffer.from('content') },
+        { name: 'link.txt', type: TarEntryType.SYMLINK, linkname: 'target.txt' },
+      ]);
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['target.txt', 'link.txt'] });
+      await saveAsXz(tar, archive);
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       // Re-extract — exercises the unlink-before-symlink path
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readlink(path.join(dest, 'link.txt'))).toBe('target.txt');
     });
   });
@@ -369,45 +401,41 @@ describe('Coverage: Node API', () => {
   // --- Empty files ---
 
   describe('empty files', () => {
-    it('handles empty files through create/list/extract', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'empty.txt'), '');
-
+    it('handles empty files through createFile/listFile/extractFile', async () => {
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['empty.txt'] });
+      await createFile(archive, {
+        files: [{ name: 'empty.txt', source: new Uint8Array(0) }],
+      });
 
-      const entries = await list({ file: archive });
-      expect(entries[0].size).toBe(0);
+      const entries = await listFile(archive);
+      expect(entries[0]?.size).toBe(0);
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect((await fs.stat(path.join(dest, 'empty.txt'))).size).toBe(0);
     });
   });
 
-  // --- Empty directories (collectFiles branch, create.ts:119) ---
+  // --- Empty directories ---
 
   describe('empty directories', () => {
     it('packs an empty directory into the archive', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(path.join(src, 'emptydir'), { recursive: true });
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['emptydir'] });
+      // Directory entries in v6: name ends with '/', source is empty Uint8Array
+      await createFile(archive, {
+        files: [{ name: 'emptydir/', source: new Uint8Array(0) }],
+      });
 
-      // List should contain only the directory entry
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('emptydir/');
-      expect(entries[0].type).toBe(TarEntryType.DIRECTORY);
-      expect(entries[0].size).toBe(0);
+      expect(entries[0]?.name).toBe('emptydir/');
+      expect(entries[0]?.type).toBe(TarEntryType.DIRECTORY);
+      expect(entries[0]?.size).toBe(0);
 
-      // Extract and verify the directory exists
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       const stat = await fs.stat(path.join(dest, 'emptydir'));
       expect(stat.isDirectory()).toBe(true);
     });
@@ -417,27 +445,29 @@ describe('Coverage: Node API', () => {
 
   describe('long filenames (PAX)', () => {
     it('roundtrips filenames > 255 chars via PAX headers', async () => {
-      const src = path.join(tempDir, 'src');
-      // 3 segments of 90 chars each → intermediate dirs < 100 chars (no prefix issues)
-      // Full 3-level path = 273 chars → > 255 → triggers PAX
+      // 3 segments of 90 chars → full 3-level path = 273 chars → triggers PAX
       const segments = ['a'.repeat(90), 'b'.repeat(90), 'c'.repeat(90)];
       const deepDir = segments.join('/');
-      await fs.mkdir(path.join(src, deepDir), { recursive: true });
-      await fs.writeFile(path.join(src, deepDir, 'file.txt'), 'deep');
+      const longName = `${deepDir}/file.txt`;
 
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: [segments[0]] });
+      await createFile(archive, {
+        files: [
+          { name: `${segments[0]}/`, source: new Uint8Array(0) },
+          { name: `${segments[0]}/${segments[1]}/`, source: new Uint8Array(0) },
+          { name: `${deepDir}/`, source: new Uint8Array(0) },
+          { name: longName, source: Buffer.from('deep') },
+        ],
+      });
 
-      // List should find the deeply nested file
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       const fileEntry = entries.find((e) => e.name.endsWith('file.txt'));
       expect(fileEntry).toBeDefined();
+      expect(fileEntry?.name).toBe(longName);
 
-      // Extract and verify
       const dest = path.join(tempDir, 'dest');
-      await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
-      expect(await fs.readFile(path.join(dest, deepDir, 'file.txt'), 'utf-8')).toBe('deep');
+      await extractFile(archive, { cwd: dest });
+      expect(await fs.readFile(path.join(dest, longName), 'utf-8')).toBe('deep');
     });
   });
 
@@ -455,7 +485,7 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
 
       expect(await fs.readFile(path.join(dest, 'original.txt'), 'utf-8')).toBe('Hello');
       expect(await fs.readFile(path.join(dest, 'link.txt'), 'utf-8')).toBe('Hello');
@@ -474,7 +504,7 @@ describe('Coverage: Node API', () => {
 
       const archive = path.join(tempDir, 'archive.tar.xz');
       await saveAsXz(tar, archive);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
 
       expect(await fs.readFile(path.join(dest, 'link.txt'), 'utf-8')).toBe('Hello');
     });
@@ -484,7 +514,6 @@ describe('Coverage: Node API', () => {
 
       const blocks: Array<Buffer | Uint8Array> = [];
 
-      // Global PAX header (type 'g')
       blocks.push(
         createHeader({
           name: 'pax_global_header',
@@ -496,7 +525,6 @@ describe('Coverage: Node API', () => {
       const gPad = calculatePadding(globalPaxData.length);
       if (gPad > 0) blocks.push(new Uint8Array(gPad));
 
-      // Regular file
       const content = Buffer.from('Hello');
       blocks.push(createHeader({ name: 'file.txt', size: content.length }));
       blocks.push(content);
@@ -508,37 +536,34 @@ describe('Coverage: Node API', () => {
       const archive = path.join(tempDir, 'archive.tar.xz');
       await saveAsXz(buildTarRaw(blocks), archive);
 
-      // List should skip global PAX and show the file
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('file.txt');
+      expect(entries[0]?.name).toBe('file.txt');
 
-      // Extract should work
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readFile(path.join(dest, 'file.txt'), 'utf-8')).toBe('Hello');
     });
 
     it('handles crafted PAX extended headers in extract/list', async () => {
-      // Use segments under FS limit but total path > 255 chars for PAX
       const longName = `dir/${'a'.repeat(120)}/${'b'.repeat(120)}/file.txt`;
       const tar = buildTar([{ name: longName, content: Buffer.from('PAX content'), usePax: true }]);
 
       const archive = path.join(tempDir, 'archive.tar.xz');
       await saveAsXz(tar, archive);
 
-      const entries = await list({ file: archive });
+      const entries = await listFile(archive);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe(longName);
+      expect(entries[0]?.name).toBe(longName);
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await extract({ file: archive, cwd: dest });
+      await extractFile(archive, { cwd: dest });
       expect(await fs.readFile(path.join(dest, longName), 'utf-8')).toBe('PAX content');
     });
 
-    it('rejects path traversal', async () => {
+    it('rejects path traversal in extractFile', async () => {
       const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
 
       const archive = path.join(tempDir, 'archive.tar.xz');
@@ -546,24 +571,31 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await expect(extract({ file: archive, cwd: dest })).rejects.toThrow('Path traversal');
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/outside cwd/i);
     });
 
-    it('propagates parse errors in extract', async () => {
-      // Valid header + content, then corrupted header
+    it('raw extract() yields traversal entry without rejecting (caller responsibility)', async () => {
+      const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
+      const archivePath = path.join(tempDir, 'evil.tar.xz');
+      await saveAsXz(tar, archivePath);
+      // Raw extract() does NOT reject path traversal — it yields the entry as-is.
+      // Path safety is enforced by extractFile(), not extract().
+      const entries = await collectExtract(archivePath);
+      expect(entries[0]?.name).toContain('evil.txt');
+    });
+
+    it('propagates parse errors in extract()', async () => {
       const content = Buffer.from('Hello');
       const blocks: Array<Buffer | Uint8Array> = [];
       blocks.push(createHeader({ name: 'good.txt', size: content.length }));
       blocks.push(content);
       blocks.push(new Uint8Array(calculatePadding(content.length)));
 
-      // Corrupted header: non-empty but invalid checksum
       const bad = new Uint8Array(BLOCK_SIZE);
       bad[0] = 'X'.charCodeAt(0);
       bad[1] = 'Y'.charCodeAt(0);
       bad[2] = 'Z'.charCodeAt(0);
       blocks.push(bad);
-
       blocks.push(createEndOfArchive());
 
       const archive = path.join(tempDir, 'corrupt.tar.xz');
@@ -571,10 +603,10 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await expect(extract({ file: archive, cwd: dest })).rejects.toThrow('checksum');
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow('checksum');
     });
 
-    it('propagates parse errors in list', async () => {
+    it('propagates parse errors in list()', async () => {
       const content = Buffer.from('Hello');
       const blocks: Array<Buffer | Uint8Array> = [];
       blocks.push(createHeader({ name: 'good.txt', size: content.length }));
@@ -586,17 +618,15 @@ describe('Coverage: Node API', () => {
       bad[1] = 'Y'.charCodeAt(0);
       bad[2] = 'Z'.charCodeAt(0);
       blocks.push(bad);
-
       blocks.push(createEndOfArchive());
 
       const archive = path.join(tempDir, 'corrupt.tar.xz');
       await saveAsXz(buildTarRaw(blocks), archive);
 
-      await expect(list({ file: archive })).rejects.toThrow('checksum');
+      await expect(listFile(archive)).rejects.toThrow('checksum');
     });
 
     it('detects truncated file content (unexpected end)', async () => {
-      // Header says size=200 but we only provide 50 bytes
       const blocks: Array<Buffer | Uint8Array> = [];
       blocks.push(createHeader({ name: 'truncated.txt', size: 200 }));
       blocks.push(Buffer.alloc(50)); // Only 50 of 200 bytes
@@ -606,38 +636,39 @@ describe('Coverage: Node API', () => {
 
       const dest = path.join(tempDir, 'dest');
       await fs.mkdir(dest);
-      await expect(extract({ file: archive, cwd: dest })).rejects.toThrow('Unexpected end');
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow('Unexpected end');
     });
   });
 
-  // --- extractToMemory ---
+  // --- In-memory extract (replaces extractToMemory) ---
 
-  describe('extractToMemory options', () => {
+  describe('in-memory extract via extract() stream', () => {
     it('supports filter', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(src);
-      await fs.writeFile(path.join(src, 'keep.txt'), 'Keep');
-      await fs.writeFile(path.join(src, 'skip.log'), 'Skip');
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['keep.txt', 'skip.log'] });
+      await createFile(archive, {
+        files: [
+          { name: 'keep.txt', source: Buffer.from('Keep') },
+          { name: 'skip.log', source: Buffer.from('Skip') },
+        ],
+      });
 
-      const entries = await extractToMemory(archive, {
+      const entries = await collectExtract(archive, {
         filter: (e) => e.name.endsWith('.txt'),
       });
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('keep.txt');
+      expect(entries[0]?.name).toBe('keep.txt');
     });
 
     it('supports strip', async () => {
-      const src = path.join(tempDir, 'src');
-      await fs.mkdir(path.join(src, 'prefix'), { recursive: true });
-      await fs.writeFile(path.join(src, 'prefix', 'file.txt'), 'Content');
-
       const archive = path.join(tempDir, 'archive.tar.xz');
-      await create({ file: archive, cwd: src, files: ['prefix'] });
+      await createFile(archive, {
+        files: [
+          { name: 'prefix/', source: new Uint8Array(0) },
+          { name: 'prefix/file.txt', source: Buffer.from('Content') },
+        ],
+      });
 
-      const entries = await extractToMemory(archive, { strip: 1 });
+      const entries = await collectExtract(archive, { strip: 1 });
       const fileEntry = entries.find((e) => e.name === 'file.txt');
       expect(fileEntry).toBeDefined();
       expect(fileEntry?.content.toString()).toBe('Content');

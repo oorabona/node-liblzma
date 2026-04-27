@@ -39,13 +39,13 @@ export function toAsyncIterable(input: TarInputNode): AsyncIterable<Uint8Array> 
     return webReadableToAsyncIterable(input as ReadableStream<Uint8Array>);
   }
 
-  // Sync iterable (Iterable<Uint8Array>)
-  if (input != null && typeof (input as Iterable<Uint8Array>)[Symbol.iterator] === 'function') {
-    const iterable = input as Iterable<Uint8Array>;
+  // Uint8Array (and Buffer, which is a Uint8Array subtype) — checked BEFORE
+  // Symbol.iterator because Uint8Array exposes a byte-yielding iterator that
+  // would be mis-dispatched as Iterable<Uint8Array> below.
+  if (input instanceof Uint8Array) {
+    const u8 = input;
     return (async function* () {
-      for (const chunk of iterable) {
-        yield chunk;
-      }
+      yield u8;
     })();
   }
 
@@ -57,11 +57,13 @@ export function toAsyncIterable(input: TarInputNode): AsyncIterable<Uint8Array> 
     })();
   }
 
-  // Uint8Array (and Buffer, which is a Uint8Array subtype)
-  if (input instanceof Uint8Array) {
-    const u8 = input;
+  // Sync iterable (Iterable<Uint8Array>) — chunks are Uint8Array, not numbers
+  if (input != null && typeof (input as Iterable<Uint8Array>)[Symbol.iterator] === 'function') {
+    const iterable = input as Iterable<Uint8Array>;
     return (async function* () {
-      yield u8;
+      for (const chunk of iterable) {
+        yield chunk;
+      }
     })();
   }
 
