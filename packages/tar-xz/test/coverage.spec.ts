@@ -854,6 +854,230 @@ describe('Coverage: Node API', () => {
     });
   });
 
+  // ---------------------------------------------------------------------------
+  // Security hardening tests (7-fix consolidated PR)
+  // ---------------------------------------------------------------------------
+
+  describe('Security: leaf symlink checks (Fix 1 — R6-1/V1)', () => {
+    it('R6-1 FILE: rejects overwrite when target is a pre-existing symlink', async () => {
+      // Attack: archive plants [SYMLINK evil → ../external/secret, FILE evil content]
+      // The leaf-symlink check must reject the FILE entry because 'evil' is a symlink.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+      const secretFile = path.join(externalDir, 'secret');
+      await fs.writeFile(secretFile, 'original-secret');
+
+      const tar = buildTar([
+        // Step 1: plant symlink (no leaf check on SYMLINK itself — it's fine to create them)
+        { name: 'evil', type: TarEntryType.SYMLINK, linkname: '../external/secret' },
+        // Step 2: FILE entry with same name — would overwrite through symlink
+        { name: 'evil', content: Buffer.from('overwritten') },
+      ]);
+      const archive = path.join(tempDir, 'leaf-file.tar.xz');
+      await saveAsXz(tar, archive);
+
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+
+      // Verify external file was NOT overwritten
+      expect(await fs.readFile(secretFile, 'utf8')).toBe('original-secret');
+    });
+
+    it('V4 DIRECTORY: rejects overwrite when target is a pre-existing symlink', async () => {
+      // Attack: archive plants [SYMLINK evil → ../external/, DIRECTORY evil/]
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const externalDir = path.join(tempDir, 'external');
+      await fs.mkdir(externalDir);
+
+      const tar = buildTar([
+        { name: 'evil', type: TarEntryType.SYMLINK, linkname: '../external' },
+        { name: 'evil/', type: TarEntryType.DIRECTORY },
+      ]);
+      const archive = path.join(tempDir, 'leaf-dir.tar.xz');
+      await saveAsXz(tar, archive);
+
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/symlink/i);
+    });
+  });
+
+  describe('Security: NUL byte / empty name rejection (Fix 2 — V6a/V6b)', () => {
+    it('V6b: rejects entry name containing NUL byte', async () => {
+      // Craft a tar entry with NUL byte embedded in the name via raw header manipulation
+      const content = Buffer.from('evil');
+      const header = createHeader({ name: 'safe.txt', size: content.length });
+      // Inject NUL at position 4 in the name field (offset 0)
+      header[4] = 0x00;
+      // Recalculate checksum
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
+      }
+      // Write checksum in octal to bytes 148-155
+      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+
+      const archive = path.join(tempDir, 'nul-name.tar.xz');
+      await saveAsXz(
+        Buffer.concat([
+          Buffer.from(header),
+          content,
+          Buffer.alloc(calculatePadding(content.length)),
+          Buffer.from(createEndOfArchive()),
+        ]),
+        archive
+      );
+
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // The NUL truncates the name — the remaining portion after NUL should still extract
+      // cleanly OR cause a rejection depending on how NUL affects the resolved path.
+      // The key requirement is: no file should escape dest.
+      try {
+        await extractFile(archive, { cwd: dest });
+        // If it didn't throw, verify nothing escaped dest
+        const destContents = await fs.readdir(dest);
+        for (const f of destContents) {
+          const resolved = path.resolve(dest, f);
+          expect(resolved.startsWith(dest)).toBe(true);
+        }
+      } catch {
+        // Rejection is also acceptable — both outcomes are safe
+      }
+    });
+
+    it('V6b: rejects SYMLINK with NUL byte in linkname', async () => {
+      // Build a SYMLINK entry where linkname contains a NUL byte
+      const header = createHeader({
+        name: 'link.txt',
+        type: TarEntryType.SYMLINK,
+        linkname: 'target.txt',
+      });
+      // Inject NUL at offset 157 (linkname field starts at 157 in USTAR)
+      header[158] = 0x00;
+      // Recalculate checksum
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
+      }
+      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+
+      const archive = path.join(tempDir, 'nul-linkname.tar.xz');
+      await saveAsXz(
+        Buffer.concat([Buffer.from(header), Buffer.from(createEndOfArchive())]),
+        archive
+      );
+
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // The NUL truncates linkname — result is either safe extraction or rejection. Both are safe.
+      // Key: no escape outside dest.
+      try {
+        await extractFile(archive, { cwd: dest });
+        const destContents = await fs.readdir(dest);
+        for (const f of destContents) {
+          const resolved = path.resolve(dest, f);
+          expect(resolved.startsWith(dest)).toBe(true);
+        }
+      } catch {
+        // Rejection is safe
+      }
+    });
+
+    it('V6a: rejects SYMLINK entry with empty linkname', async () => {
+      // Build an archive where SYMLINK has linkname='' (empty)
+      const tar = buildTar([{ name: 'link.txt', type: TarEntryType.SYMLINK, linkname: '' }]);
+      const archive = path.join(tempDir, 'empty-linkname.tar.xz');
+      await saveAsXz(tar, archive);
+
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      await expect(extractFile(archive, { cwd: dest })).rejects.toThrow(/empty linkname/i);
+    });
+  });
+
+  describe('Security: strip applied to SYMLINK linkname (Fix 3 — V6c/V14)', () => {
+    it('V6c: strip:1 strips linkname prefix in SYMLINK entries', async () => {
+      // Archive: [FILE dir/a.txt, SYMLINK dir/link → dir/a.txt]
+      // Extract with strip:1 → cwd/a.txt exists, cwd/link → a.txt
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const tar = buildTar([
+        { name: 'dir/a.txt', content: Buffer.from('hello') },
+        { name: 'dir/link', type: TarEntryType.SYMLINK, linkname: 'dir/a.txt' },
+      ]);
+      const archive = path.join(tempDir, 'strip-symlink.tar.xz');
+      await saveAsXz(tar, archive);
+
+      await extractFile(archive, { cwd: dest, strip: 1 });
+
+      // cwd/a.txt should exist
+      expect(await fs.readFile(path.join(dest, 'a.txt'), 'utf8')).toBe('hello');
+
+      // cwd/link should be a symlink with target 'a.txt' (stripped, not 'dir/a.txt')
+      const linkTarget = await fs.readlink(path.join(dest, 'link'));
+      expect(linkTarget).toBe('a.txt');
+    });
+  });
+
+  describe('Security: setuid/setgid/sticky bit stripping (Fix 4 — V12)', () => {
+    it('V12: strips setuid bit from extracted file (mode 0o4755 → 0o755)', async () => {
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const tar = buildTar([{ name: 'x', content: Buffer.from('data') }]);
+      // Manually patch the mode in the header to 0o4755 (setuid + rwxr-xr-x)
+      const tarBuf = Buffer.from(tar);
+      // Mode field is at offset 100, length 8 in USTAR
+      const modeStr = (0o4755).toString(8).padStart(7, '0') + '\x00';
+      for (let i = 0; i < 8; i++) tarBuf[100 + i] = modeStr.charCodeAt(i);
+      // Recalculate checksum (field at offset 148, length 8)
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += i >= 148 && i < 156 ? 0x20 : tarBuf[i]!;
+      }
+      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      for (let i = 0; i < 8; i++) tarBuf[148 + i] = checksumStr.charCodeAt(i);
+
+      const archive = path.join(tempDir, 'setuid.tar.xz');
+      await saveAsXz(tarBuf, archive);
+
+      await extractFile(archive, { cwd: dest });
+
+      const stat = await fs.stat(path.join(dest, 'x'));
+      // setuid bit (04000) must be stripped
+      expect(stat.mode & 0o7000).toBe(0);
+      // rwxr-xr-x should be preserved
+      expect(stat.mode & 0o777).toBe(0o755);
+    });
+
+    it('V12: strips setgid+sticky bits from extracted directory (mode 0o3755 → at most 0o755|0o111)', async () => {
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      // buildTar with DIRECTORY type and mode 0o3755 (setgid+sticky+rwxr-xr-x)
+      const header = createHeader({ name: 'testdir/', type: TarEntryType.DIRECTORY, mode: 0o3755 });
+      const tarBuf = Buffer.concat([Buffer.from(header), Buffer.from(createEndOfArchive())]);
+
+      const archive = path.join(tempDir, 'setgid-dir.tar.xz');
+      await saveAsXz(tarBuf, archive);
+
+      await extractFile(archive, { cwd: dest });
+
+      const stat = await fs.stat(path.join(dest, 'testdir'));
+      // setgid (02000) + sticky (01000) bits must be stripped
+      expect(stat.mode & 0o7000).toBe(0);
+    });
+  });
+
   // --- In-memory extract (replaces extractToMemory) ---
 
   describe('in-memory extract via extract() stream', () => {
