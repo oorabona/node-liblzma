@@ -52,7 +52,7 @@ jobs:
         uses: changesets/action@v1
         with:
           # Generates the "chore: version packages" commit on a managed branch
-          version: pnpm changeset version
+          version: pnpm exec changeset version
           commit: 'chore: version packages'
           title: 'chore: version packages'
           # No `publish:` — npm publication is handled by publish.yml
