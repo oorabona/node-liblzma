@@ -183,7 +183,9 @@ jobs:
   publish:
     name: Publish to npm
     needs: [release, build]
-    if: ${{ inputs.skip_npm != true }}
+    # always() so a skipped build (workspace target) doesn't auto-skip publish.
+    # We still gate on release succeeding and skip_npm being false.
+    if: ${{ always() && needs.release.result == 'success' && inputs.skip_npm != true }}
     runs-on: ubuntu-latest
     steps:
       - name: Trigger publish workflow (node-liblzma — includes tag)
