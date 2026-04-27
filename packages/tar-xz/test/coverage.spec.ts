@@ -715,6 +715,40 @@ describe('Coverage: Node API', () => {
       expect(hasBadFile).toBe(false);
     });
 
+    it('R4-2 regression: strip option applies to hardlink linkname (not just entry name)', async () => {
+      // Bug: extractFile applied 'strip' to entry.name (output path) but NOT to
+      // entry.linkname for HARDLINK entries. With strip: 1, archive entry
+      //   dir/link → linkname dir/a.txt
+      // would attempt link(cwd/a.txt, cwd/dir/a.txt) — failing because the
+      // unstripped 'dir/' prefix on linkname does not exist in the stripped output.
+      // Fix: apply strip to linkname before resolving.
+      const dest = path.join(tempDir, 'dest');
+      await fs.mkdir(dest);
+
+      const tar = buildTar([
+        { name: 'dir/a.txt', content: Buffer.from('content') },
+        { name: 'dir/link', type: TarEntryType.HARDLINK, linkname: 'dir/a.txt' },
+      ]);
+
+      const archive = path.join(tempDir, 'hl-strip.tar.xz');
+      await saveAsXz(tar, archive);
+
+      // strip: 1 → 'dir/a.txt' becomes 'a.txt', 'dir/link' becomes 'link',
+      //           and 'dir/a.txt' linkname must also become 'a.txt'
+      await extractFile(archive, { cwd: dest, strip: 1 });
+
+      // Both files exist at the stripped paths
+      const aPath = path.join(dest, 'a.txt');
+      const linkPath = path.join(dest, 'link');
+      expect(await fs.readFile(aPath, 'utf8')).toBe('content');
+      expect(await fs.readFile(linkPath, 'utf8')).toBe('content');
+
+      // Confirm hardlink semantics: same inode
+      const aStat = await fs.stat(aPath);
+      const linkStat = await fs.stat(linkPath);
+      expect(linkStat.ino).toBe(aStat.ino);
+    });
+
     it('raw extract() yields traversal entry without rejecting (caller responsibility)', async () => {
       const tar = buildTar([{ name: '../../../tmp/evil.txt', content: Buffer.from('evil') }]);
       const archivePath = path.join(tempDir, 'evil.tar.xz');

@@ -312,8 +312,8 @@ Metadata yielded by `list()` and attached to each `TarEntryWithData`:
 | Preset | WASM Memory | Speed | Ratio | Recommendation |
 |--------|------------|-------|-------|----------------|
 | 1 | ~10 MB | Fastest | Lowest | Batch of many small files |
-| 3 | ~20 MB | Fast | Good | Browser default |
-| 6 | ~100 MB | Medium | Very good | Node default |
+| 3 | ~20 MB | Fast | Good | Memory-constrained environments |
+| 6 | ~100 MB | Medium | Very good | Default (Node + Browser) |
 | 9 | ~700 MB | Slowest | Best | Archive longevity |
 
 ## Browser Limitations

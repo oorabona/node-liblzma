@@ -119,7 +119,7 @@ export async function extractFile(
     if (entry.type === TarEntryType.DIRECTORY) {
       // Ensure directory is traversable: always set execute bits (x) for user/group/other.
       // A directory with mode 0o644 (no execute) cannot be descended into.
-      const dirMode = (entry.mode || 0o755) | 0o111;
+      const dirMode = (entry.mode ?? 0o755) | 0o111;
       await mkdir(target, { recursive: true, mode: dirMode });
       continue;
     }
@@ -142,8 +142,16 @@ export async function extractFile(
     }
 
     if (entry.type === TarEntryType.HARDLINK) {
+      // R4-2: apply the same strip logic to linkname as to entry.name, so that
+      // hardlink targets are consistent with stripped extraction paths.
+      let strippedLinkname = entry.linkname;
+      if (options.strip && strippedLinkname) {
+        const parts = strippedLinkname.split('/').filter(Boolean);
+        strippedLinkname = parts.slice(options.strip).join('/');
+        if (!strippedLinkname) continue; // link target stripped away — skip entry
+      }
       // S2: validate linkname — it must not escape cwd (absolute paths or ".." segments).
-      const linkSource = resolve(cwd, entry.linkname);
+      const linkSource = resolve(cwd, strippedLinkname);
       const linkRel = relative(cwd, linkSource);
       if (linkRel === '..' || linkRel.startsWith('..' + sep) || isAbsolute(linkRel)) {
         throw new Error(`Refusing hardlink outside cwd: ${entry.linkname}`);
@@ -163,11 +171,11 @@ export async function extractFile(
       await mkdir(dirname(target), { recursive: true });
       await pipeline(
         Readable.from(entry.data),
-        createWriteStream(target, { mode: entry.mode || 0o644 })
+        createWriteStream(target, { mode: entry.mode ?? 0o644 })
       );
       // Restore file permissions (createWriteStream `mode` only sets at creation)
       try {
-        await chmod(target, entry.mode || 0o644);
+        await chmod(target, entry.mode ?? 0o644);
       } catch {
         // best effort
       }
