@@ -10,10 +10,19 @@ export default defineConfig(({ command }) => ({
     emptyOutDir: true,
   },
   resolve: {
-    alias: {
-      // Point to the browser entry directly (alias bypasses package.json export conditions)
-      'node-liblzma': resolve(__dirname, '../../../lib/lzma.browser.js'),
-    },
+    alias: [
+      // /wasm subpath FIRST (more specific than the bare package alias) — otherwise
+      // 'node-liblzma' replacement runs first and produces 'lib/lzma.browser.js/wasm'
+      // which is not a valid path. Subpath order matters here.
+      {
+        find: 'node-liblzma/wasm',
+        replacement: resolve(__dirname, '../../../lib/wasm/index.js'),
+      },
+      {
+        find: 'node-liblzma',
+        replacement: resolve(__dirname, '../../../lib/lzma.browser.js'),
+      },
+    ],
   },
   optimizeDeps: {
     // Exclude node-liblzma from pre-bundling so Vite serves the WASM file
