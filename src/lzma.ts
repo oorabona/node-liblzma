@@ -33,6 +33,7 @@ import {
   LZMAOptionsError,
   LZMAProgrammingError,
 } from './errors.js';
+import { validateMemlimit } from './wasm/bindings.js';
 import type {
   CheckType,
   CompressionCallback,
@@ -357,6 +358,13 @@ export abstract class XzStream extends Transform {
       clonedFilters = [filter.LZMA2];
     }
 
+    // Validate memlimit early for decoder streams so callers get LZMAOptionsError
+    // (not a raw RangeError) before any native object is allocated.
+    // Encoder streams pass memlimit through but it has no effect on the C side.
+    if (streamMode === liblzma.STREAM_DECODE && opts.memlimit !== undefined) {
+      validateMemlimit(opts.memlimit);
+    }
+
     this._opts = {
       check: opts.check ?? check.NONE,
       preset: opts.preset ?? preset.DEFAULT,
@@ -365,9 +373,8 @@ export abstract class XzStream extends Transform {
       threads: opts.threads ?? 1,
       chunkSize: opts.chunkSize ?? liblzma.BUFSIZ,
       flushFlag: opts.flushFlag ?? liblzma.LZMA_RUN,
-      // memlimit is genuinely optional in ResolvedLZMAOptions: the native binding ignores it
-      // (UINT64_MAX hardcoded; see TODO "[Native] Wire memlimit in src/bindings/node-liblzma.cpp").
-      // Only the WASM decompression APIs (unxz/unxzAsync/streamBufferDecode) honour this field. xzAsync is compression-only and ignores it.
+      // memlimit is passed through to the native binding for STREAM_DECODE.
+      // Validated above for decode streams. Ignored for encode streams.
       memlimit: opts.memlimit,
     };
 

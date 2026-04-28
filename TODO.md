@@ -11,15 +11,15 @@ _None_
 ## Pending - MEDIUM
 
 - [ ] [tar-xz] True streaming for Node `extract()`/`list()` — replace `Buffer.concat` accumulation (extract.ts:59,91 + list.ts:26) with incremental header→content parsing so memory stays O(largest entry) instead of O(archive). Public README v6.0.0 advertises this as a "planned optimization" — Priority: M
-- [ ] [Native] Wire `memlimit` in `src/bindings/node-liblzma.cpp` `InitializeDecoder` — currently hardcodes `UINT64_MAX`; should read `opts.memlimit` and call `lzma_stream_decoder(stream, memlimit, flags)`. WASM already supports it. — Priority: M
-- [→] [WASM] Wire `memlimit` through `LZMAOptions` and `unxzAsync` — moved to In Progress (2026-04-28) → ✅ completed (2026-04-28)
 
 ## Pending - LOW (Nice to Have)
 
-- [ ] [WASM] `validateMemlimit` symmetry — bigint branch has no UINT64_MAX upper-bound guard (only the `number` branch checks `MAX_SAFE_INTEGER`). Currently benign because native side hardcodes UINT64_MAX and `lzma_stream_decoder` reads `uint64_t` (so `2n ** 65n` would silently wrap to a benign-but-unintended ceiling, no security/leak/crash). Becomes load-bearing once `[Native] Wire memlimit` lands — fix together. Priority: L (defer until native parity work).
+- [ ] [Lint] Biome warnings sweep (6 total, all `pnpm exec biome lint` exits 0 — warnings only, ran via `rtk proxy biome lint` workaround on 2026-04-28). Two from PR #111: `test/wasm/decompress-memlimit.test.ts:30` (`useTemplate` — string concat → template literal, biome FIXABLE) + `test/wasm/decompress-memlimit.test.ts:141` (`noNonNullAssertion` on `result!` in callback success test, replace with assertion guard). Four pre-existing on master: `src/errors.ts:176` `noNonNullAssertion` (`messages[errno]!`), `src/lzma.ts:63` + `src/pool.ts:20` `noImportCycles` (lzma↔pool re-export cycle, already noted in MEMORY.md as "benign — ESM resolves at runtime"), `src/pool.ts:166` `noNonNullAssertion` (`this.queue.shift()!` after empty-check). Priority: L (cosmetic; can batch with another pass). Note: lint pipeline is silently broken until RTK biome bug fixes (workaround: `rtk proxy biome ...`).
 
 ## Completed
 
+- [x] ✅ [Native] Wire `memlimit` in `InitializeDecoder` — `.hpp` signature updated, `node-gyp rebuild` clean, 14/14 memlimit tests pass, 488+99+27=614 total tests pass (2026-04-28)
+- [x] ✅ [WASM] `validateMemlimit` symmetry — bigint UINT64_MAX upper-bound guard (closed alongside native memlimit PR) (2026-04-28)
 - [x] ✅ [WASM] PR #111 Round 3 Copilot fixes — C-3-001/2/3 duplicate JSDoc blocks removed from decoderInit/autoDecoderInit/validateMemlimit, C-3-004 stale xzAsync/unxzAsync comment fixed in lzma.ts:370; tsc+memlimit+full suite pass (2026-04-28)
 - [x] ✅ [WASM] PR #111 Round 2 Copilot fixes — C-2-001 TSDoc xzAsync removed from honored-by list, C-2-002 stale lzma.ts comment, C-2-003 LZMA_OPTIONS_ERROR constant replaces magic 8, C-2-004 MAX_SAFE_INTEGER guard + TSDoc, C-2-005 validateMemlimit lifted to decoderInit+autoDecoderInit; 12 new tests, 474+99+27=600 tests pass (2026-04-28)
 - [x] ✅ [WASM] PR #111 Round 1 review fixes — F-001 memlimit validation (NaN/Inf/frac/neg → LZMAOptionsError), F-002 ResolvedLZMAOptions internal type, C-001/C-002 async callback fixture pattern, C-003 byte-equality assertion, F-003 TSDoc reorder, F-004 stale comment, F-005 fixture comment magnitude, F-006 default-path caveat; 4 new tests (12 total in decompress-memlimit.test.ts), 458+99+27=584 tests pass (2026-04-28)

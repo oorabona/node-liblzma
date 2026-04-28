@@ -109,7 +109,7 @@ LZMA::LZMA(const Napi::CallbackInfo &info) : Napi::ObjectWrap<LZMA>(info), _stre
 	switch (mode)
 	{
 	case STREAM_DECODE:
-		success = InitializeDecoder(env);
+		success = InitializeDecoder(env, opts);
 		break;
 	case STREAM_ENCODE:
 		success = InitializeEncoder(opts, preset, check);
@@ -482,9 +482,41 @@ bool LZMA::InitializeEncoder(const Napi::Object &opts, uint32_t preset, lzma_che
 	return true;
 }
 
-bool LZMA::InitializeDecoder(const Napi::Env &env)
+bool LZMA::InitializeDecoder(const Napi::Env &env, const Napi::Object &opts)
 {
-	lzma_ret ret = lzma_stream_decoder(&this->_stream, UINT64_MAX, LZMA_CONCATENATED);
+	// Read optional memlimit from JS options object.
+	// If absent or undefined, use UINT64_MAX (no limit — preserves pre-fix behaviour).
+	uint64_t memlimit = UINT64_MAX;
+	Napi::Value optsMemlimit = opts.Get("memlimit");
+	if (!optsMemlimit.IsUndefined() && !optsMemlimit.IsNull())
+	{
+		if (optsMemlimit.IsBigInt())
+		{
+			// node-addon-api Napi::BigInt::Uint64Value: lossless=true when value fits uint64_t.
+			// JS-side validateMemlimit() already rejects values > UINT64_MAX, so lossless
+			// should always be true here. We check it defensively and fall back to UINT64_MAX
+			// (no limit) on truncation, which is safe and conservative.
+			bool lossless = false;
+			uint64_t val = optsMemlimit.As<Napi::BigInt>().Uint64Value(&lossless);
+			if (lossless)
+			{
+				memlimit = val;
+			}
+		}
+		else if (optsMemlimit.IsNumber())
+		{
+			// JS-side validateMemlimit() already rejects non-integer, negative, NaN, Infinity,
+			// and values above Number.MAX_SAFE_INTEGER (2^53-1), so a simple cast to uint64_t
+			// is safe here.
+			double d = optsMemlimit.ToNumber().DoubleValue();
+			if (d >= 0.0 && d <= static_cast<double>(UINT64_MAX))
+			{
+				memlimit = static_cast<uint64_t>(d);
+			}
+		}
+	}
+
+	lzma_ret ret = lzma_stream_decoder(&this->_stream, memlimit, LZMA_CONCATENATED);
 
 	// F-005: Throw exception on decoder init failure (consistent with InitializeEncoder)
 	if (ret != LZMA_OK)
