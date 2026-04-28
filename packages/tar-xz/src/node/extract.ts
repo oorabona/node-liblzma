@@ -39,19 +39,15 @@ function makeTarEntryWithData(
   // When the consumer calls `for await (const chunk of entry.data)`, the
   // wrapper sets `dataIterStarted = true` so that a subsequent `bytes()` call
   // can throw instead of silently returning incomplete bytes.
-  const dataWrapper: AsyncGenerator<Uint8Array> = {
-    next(...args) {
+  // Wrap dataGen behind a plain AsyncIterable so that:
+  //   1. `for await` iteration sets `dataIterStarted = true` (F-2 guard)
+  //   2. The type is `AsyncIterable<Uint8Array>` — matching TarEntryWithData.data
+  //      and avoiding the `[Symbol.asyncDispose]` requirement that TS/lib.esnext
+  //      adds to the full `AsyncGenerator` interface (Explicit Resource Management).
+  const dataWrapper: AsyncIterable<Uint8Array> = {
+    [Symbol.asyncIterator](): AsyncIterator<Uint8Array> {
       dataIterStarted = true;
-      return dataGen.next(...args);
-    },
-    return(value) {
-      return dataGen.return(value);
-    },
-    throw(err) {
-      return dataGen.throw(err);
-    },
-    [Symbol.asyncIterator]() {
-      return this;
+      return dataGen;
     },
   };
 
