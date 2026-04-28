@@ -30,17 +30,22 @@ import { toAsyncIterable, type TarInputNode } from '../internal/to-async-iterabl
 export function streamXz(input: TarInputNode): AsyncIterable<Uint8Array> {
   // Convert any supported input type to an AsyncIterable<Uint8Array>.
   const source = toAsyncIterable(input);
-  const unxzStream = createUnxz();
 
-  // Feed the source into the Transform via pipeline() so that errors from the
-  // input side (e.g. truncated readable) propagate and are not silently swallowed.
-  // We do NOT await pipelinePromise here — iteration drives consumption below.
-  const pipelinePromise = pipeline(Readable.from(source), unxzStream);
-
-  // Iterate the Transform's own Symbol.asyncIterator directly (spec §12.5:
-  // prefer this over Readable.from(transform) which adds another buffering layer).
-  // Node's Transform implements Symbol.asyncIterator natively since Node 10.
+  // Pipeline and Transform are created INSIDE the generator body so that no
+  // I/O starts until the consumer calls .next() for the first time (true lazy
+  // semantics). If the caller never iterates, neither the pipeline nor the
+  // Transform stream are ever created — no unhandled rejections, no resource leak.
   return (async function* () {
+    const unxzStream = createUnxz();
+
+    // Feed the source into the Transform via pipeline() so that errors from the
+    // input side (e.g. truncated readable) propagate and are not silently swallowed.
+    // We do NOT await pipelinePromise here — iteration drives consumption below.
+    const pipelinePromise = pipeline(Readable.from(source), unxzStream);
+
+    // Iterate the Transform's own Symbol.asyncIterator directly (spec §12.5:
+    // prefer this over Readable.from(transform) which adds another buffering layer).
+    // Node's Transform implements Symbol.asyncIterator natively since Node 10.
     try {
       for await (const chunk of unxzStream) {
         const buf = chunk as Buffer;

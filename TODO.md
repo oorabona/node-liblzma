@@ -10,6 +10,7 @@
   - [x] ✅ Cleanup: `collectAllChunks`, `decompressXz`, `runWritable` removed from `xz-helpers.ts` (zero callers verified); T-06 deprecated-helpers test removed from `xz-helpers.spec.ts`; all gates pass (2026-04-28)
   - [x] ✅ Block 5: security regression gate (`test/security.spec.ts` — 18 TOCTOU vectors + S-14 + S-15) + memory-shape CI gate (`test/memory-shape.spec.ts` — 3 high-water tests); vitest.config.ts pool=forks+--expose-gc; file.ts @security TSDoc; README security model subsection (2026-04-28)
   - [x] ✅ PR #113 Fix Round 1: 11 findings fixed (F-1 streamXz/parseTar early-termination cleanup; F-2 bytes()-after-iter throw guard; F-3 text() reverted to Buffer.toString for base64/hex/latin1 support; F-4 concurrent dataGen guard; F-5 stray-chunk TAR_PARSER_INVARIANT throw; F-6 memory-shape Test1 preset:6; F-7 vitest.memory.config.ts + test:memory script isolated; F-8 math comment fix; F-9 README wording; F-10 changeset wording; F-11 duplicate §12 header removed); 12 new tests; all 6 quality gates green (2026-04-28)
+  - [x] ✅ PR #113 Fix Round 2: CR2-1 (M) streamXz() lazy pipeline — moved pipeline()/createUnxz() inside async generator body so no I/O starts before first .next(); T-07 lazy test (readCount=0 + no unhandled rejection); CR2-2 (L) bytes() alloc-once via entry.size — single Uint8Array pre-alloc + in-place set() per chunk, throws TAR_PARSER_INVARIANT on overrun, special-cases entry.size===0; concatChunks() dead-code deleted; all 6 quality gates green: build=0 tsc=0 lint=0 test=0(151) memory=0(3) full=0(489) (2026-04-29)
 
 ## Pending - HIGH
 

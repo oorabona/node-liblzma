@@ -12,16 +12,6 @@ import { streamXz } from './xz-helpers.js';
  * Concatenate an array of Uint8Array chunks into a single Uint8Array.
  * @internal
  */
-function concatChunks(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((n, c) => n + c.byteLength, 0);
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    out.set(c, offset);
-    offset += c.byteLength;
-  }
-  return out;
-}
 
 /**
  * Wrap a TarEntry + a pull-callback for its content into a TarEntryWithData.
@@ -76,9 +66,35 @@ function makeTarEntryWithData(
         );
       }
       dataIterStarted = true;
-      const chunks: Uint8Array[] = [];
-      for await (const c of dataGen) chunks.push(c);
-      cachedBytes = concatChunks(chunks);
+
+      // Alloc-once optimisation: entry.size is known from the TAR header, so we
+      // pre-allocate a single buffer and set() each arriving chunk at its running
+      // offset. This halves peak memory vs the chunks-array-then-concat pattern
+      // (no intermediate array + final copy simultaneously resident).
+      if (entry.size === 0) {
+        cachedBytes = new Uint8Array(0);
+        return cachedBytes;
+      }
+
+      const buf = new Uint8Array(entry.size);
+      let offset = 0;
+      for await (const c of dataGen) {
+        if (offset + c.byteLength > entry.size) {
+          // Malformed archive: chunk would write past the declared entry size.
+          // Truncate at entry.size to avoid out-of-bounds writes and throw so
+          // callers know the data is corrupt. Code matches the TAR_PARSER_INVARIANT
+          // convention used in parseTar (corrupt archive detected at parse level).
+          throw Object.assign(
+            new Error(
+              `tar: entry "${entry.name}" declared size ${entry.size} but received more bytes (offset ${offset} + chunk ${c.byteLength} = ${offset + c.byteLength})`
+            ),
+            { code: 'TAR_PARSER_INVARIANT' }
+          );
+        }
+        buf.set(c, offset);
+        offset += c.byteLength;
+      }
+      cachedBytes = buf;
       return cachedBytes;
     },
     async text(encoding?: string): Promise<string> {

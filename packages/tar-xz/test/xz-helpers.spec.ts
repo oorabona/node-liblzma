@@ -44,6 +44,32 @@ async function collectIterable(iterable: AsyncIterable<Uint8Array>): Promise<Buf
 }
 
 // ---------------------------------------------------------------------------
+// T-07: Lazy pipeline — calling streamXz() without iterating must NOT start
+// consuming the input Readable and must NOT produce unhandled rejections.
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a mock Readable that counts how many times _read() is called, so we
+ * can assert the pipeline never touched the source when the generator was
+ * returned before first .next().
+ */
+function makeCountingReadable(data: Buffer): { readable: Readable; getReadCount: () => number } {
+  let readCount = 0;
+  let consumed = false;
+  const readable = new Readable({
+    read() {
+      readCount++;
+      if (!consumed) {
+        consumed = true;
+        this.push(data);
+        this.push(null);
+      }
+    },
+  });
+  return { readable, getReadCount: () => readCount };
+}
+
+// ---------------------------------------------------------------------------
 // T-01: streamXz(Uint8Array) decompresses correctly (full byte-equality)
 // ---------------------------------------------------------------------------
 
@@ -223,4 +249,36 @@ describe('streamXz', () => {
     // Sanity: decompressed bytes must cover the full payload (TAR overhead adds more).
     expect(totalBytes).toBeGreaterThanOrEqual(payloadSize);
   }, 30_000); // 30s timeout — compression of 5 MB takes a few seconds
+
+  // ---------------------------------------------------------------------------
+  // T-07: Lazy pipeline — pipeline must NOT start until first .next() call
+  // ---------------------------------------------------------------------------
+
+  it('T-07: pipeline does not start when the returned AsyncIterable is never iterated', async () => {
+    // Use a counting Readable so we can detect whether _read() was ever called.
+    // We give it valid XZ data (so if the pipeline DID start it would succeed),
+    // making read-count the only observable signal of eagerness.
+    const data = Buffer.from('T-07 lazy semantics check');
+    const compressed = xzSync(data);
+    const { readable, getReadCount } = makeCountingReadable(compressed);
+
+    const unhandledRejections: Error[] = [];
+    const handler = (err: Error) => unhandledRejections.push(err);
+    process.on('unhandledRejection', handler);
+
+    try {
+      // Obtain the iterable but do NOT iterate it.
+      const _iterable = streamXz(readable);
+
+      // Allow a microtask turn — enough for any eagerly-started pipeline to tick.
+      await new Promise((r) => setTimeout(r, 20));
+    } finally {
+      process.off('unhandledRejection', handler);
+    }
+
+    // (a) Pipeline must NOT have consumed the input — readable._read() never called.
+    expect(getReadCount()).toBe(0);
+    // (b) No unhandled rejections — lazy pipeline means no dangling promise.
+    expect(unhandledRejections).toHaveLength(0);
+  });
 });
