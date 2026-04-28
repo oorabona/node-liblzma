@@ -56,21 +56,23 @@ export interface LZMAOptions {
   /**
    * Memory usage limit for decompression, in bytes.
    *
-   * Accepted types: `number` or `bigint` (both are coerced to `bigint`
-   * before being passed to the WASM C ABI, which maps `uint64_t` to
-   * `BigInt`).
+   * **Honored only by `xzAsync`/`unxz`/`unxzAsync` (WASM Buffer API).**
+   * Currently **silently ignored** by native streams (`Xz`/`Unxz`/`createXz`/`createUnxz`) —
+   * see TODO `[Native] Wire memlimit in src/bindings/node-liblzma.cpp`.
    *
-   * Default: `BigInt(256 * 1024 * 1024)` (256 MiB).
+   * Accepted types: `number` or `bigint` (both are validated then coerced to
+   * `bigint` before being passed to the WASM C ABI, which maps `uint64_t` to
+   * `BigInt`). The `number` form must be a finite, non-negative integer; passing
+   * `NaN`, `Infinity`, a fractional value, or a negative number throws
+   * `LZMAOptionsError` before any decompression is attempted.
+   *
+   * WASM default: `BigInt(256 * 1024 * 1024)` (256 MiB).
+   * Native: ignored (UINT64_MAX hardcoded — see follow-up TODO above).
    *
    * When the compressed stream requires more memory than this limit,
    * decompression throws `LZMAMemoryLimitError` with
    * `code === LZMA_MEMLIMIT_ERROR` (numeric constant `6`, re-exported from
    * `src/errors.ts`).
-   *
-   * **Parity note (WASM only for now):** The native Node.js binding
-   * (`src/bindings/node-liblzma.cpp`) currently hardcodes `UINT64_MAX`
-   * and silently ignores this option. Native support is tracked in
-   * TODO.md: "[Native] Wire memlimit in src/bindings/node-liblzma.cpp".
    */
   memlimit?: number | bigint;
 }

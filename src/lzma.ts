@@ -301,8 +301,29 @@ export type {
  *
  * Emits `progress` event after each chunk with `{bytesRead, bytesWritten}` info.
  */
+
+/**
+ * Internal resolved options for XzStream instances.
+ *
+ * All fields are required (defaults applied in constructor) EXCEPT memlimit,
+ * which is genuinely optional: the native binding ignores it (UINT64_MAX
+ * hardcoded; see TODO "[Native] Wire memlimit in src/bindings/node-liblzma.cpp").
+ * Only the WASM Buffer API (xzAsync/unxz/unxzAsync) honours memlimit.
+ */
+interface ResolvedLZMAOptions {
+  check: number;
+  preset: number;
+  filters: number[];
+  mode: number;
+  threads: number;
+  chunkSize: number;
+  flushFlag: number;
+  /** Honoured only by the WASM Buffer API; native streams ignore this field. */
+  memlimit?: number | bigint;
+}
+
 export abstract class XzStream extends Transform {
-  protected _opts: Omit<Required<LZMAOptions>, 'memlimit'> & Pick<LZMAOptions, 'memlimit'>;
+  protected _opts: ResolvedLZMAOptions;
   protected _chunkSize: number;
   protected _flushFlag: number;
   protected lzma: NativeLZMA;
@@ -344,8 +365,9 @@ export abstract class XzStream extends Transform {
       threads: opts.threads ?? 1,
       chunkSize: opts.chunkSize ?? liblzma.BUFSIZ,
       flushFlag: opts.flushFlag ?? liblzma.LZMA_RUN,
-      // memlimit is WASM-only; native binding ignores it (hardcodes UINT64_MAX).
-      // Kept in Required<LZMAOptions> for type completeness; default undefined = no limit.
+      // memlimit is genuinely optional in ResolvedLZMAOptions: the native binding ignores it
+      // (UINT64_MAX hardcoded; see TODO "[Native] Wire memlimit in src/bindings/node-liblzma.cpp").
+      // Only the WASM Buffer API (xzAsync/unxz/unxzAsync) honours this field.
       memlimit: opts.memlimit,
     };
 

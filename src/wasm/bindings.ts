@@ -5,7 +5,7 @@
  * with proper memory management and error handling.
  */
 
-import { createLZMAError, LZMAError } from '../errors.js';
+import { createLZMAError, LZMAError, LZMAOptionsError } from '../errors.js';
 import { copyFromWasm, copyToWasm, type WasmLzmaStream, wasmAlloc, wasmFree } from './memory.js';
 import {
   LZMA_BUF_ERROR,
@@ -244,6 +244,41 @@ export function easyBufferEncode(
  * @returns Decompressed data
  * @throws LZMAError on decompression failure
  */
+
+/**
+ * Validate a memlimit value before coercion to BigInt.
+ *
+ * BigInt() throws a native RangeError for NaN, Infinity, and non-integer
+ * numbers (e.g. 1.5). Negative integers produce a huge unsigned value when
+ * interpreted by the C ABI (uint64_t wrap-around). Both cases are rejected
+ * here with LZMAOptionsError so callers always get an LZMAError subclass.
+ *
+ * @throws LZMAOptionsError if the value is invalid
+ */
+function validateMemlimit(memlimit: number | bigint): void {
+  if (typeof memlimit === 'bigint') {
+    if (memlimit < 0n) {
+      throw new LZMAOptionsError(8, 'memlimit must be a non-negative value');
+    }
+    return;
+  }
+  if (!Number.isFinite(memlimit)) {
+    throw new LZMAOptionsError(
+      8,
+      'memlimit must be a finite number (NaN and Infinity are not allowed)'
+    );
+  }
+  if (!Number.isInteger(memlimit)) {
+    throw new LZMAOptionsError(
+      8,
+      'memlimit must be an integer (fractional values are not allowed)'
+    );
+  }
+  if (memlimit < 0) {
+    throw new LZMAOptionsError(8, 'memlimit must be a non-negative value');
+  }
+}
+
 export function streamBufferDecode(
   input: Uint8Array,
   memlimit: number | bigint = DEFAULT_MEMLIMIT
@@ -261,6 +296,7 @@ export function streamBufferDecode(
   let outPtr = wasmAlloc(module, outSize);
 
   try {
+    validateMemlimit(memlimit);
     const limit = typeof memlimit === 'number' ? BigInt(memlimit) : memlimit;
     module.setValue(memlimitPtr, limit, 'i64');
 

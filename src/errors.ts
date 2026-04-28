@@ -66,8 +66,8 @@ export class LZMAFormatError extends LZMAError {
  * Options error - thrown when invalid or unsupported options are provided
  */
 export class LZMAOptionsError extends LZMAError {
-  constructor(errno: number) {
-    super('Invalid or unsupported options', errno);
+  constructor(errno: number, message?: string) {
+    super(message ?? 'Invalid or unsupported options', errno);
     this.name = 'LZMAOptionsError';
   }
 }
