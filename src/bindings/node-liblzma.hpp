@@ -81,7 +81,7 @@ private:
 	bool ValidateConstructorArgs(const Napi::CallbackInfo &info, uint32_t &mode, Napi::Object &opts);
 	bool InitializeFilters(const Napi::Object &opts, uint32_t preset);
 	bool InitializeEncoder(const Napi::Object &opts, uint32_t preset, lzma_check check);
-	bool InitializeDecoder(const Napi::Env &env);
+	bool InitializeDecoder(const Napi::Env &env, const Napi::Object &opts);
 
 	// Common cleanup operations for both sync and async completion
 	void AfterCommon(const Napi::Env &env);

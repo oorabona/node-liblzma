@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  **/
 
+#include <cmath>
 #include <node_buffer.h>
 #include <vector>
 #include "node-liblzma.hpp"
@@ -109,7 +110,7 @@ LZMA::LZMA(const Napi::CallbackInfo &info) : Napi::ObjectWrap<LZMA>(info), _stre
 	switch (mode)
 	{
 	case STREAM_DECODE:
-		success = InitializeDecoder(env);
+		success = InitializeDecoder(env, opts);
 		break;
 	case STREAM_ENCODE:
 		success = InitializeEncoder(opts, preset, check);
@@ -482,9 +483,66 @@ bool LZMA::InitializeEncoder(const Napi::Object &opts, uint32_t preset, lzma_che
 	return true;
 }
 
-bool LZMA::InitializeDecoder(const Napi::Env &env)
+bool LZMA::InitializeDecoder(const Napi::Env &env, const Napi::Object &opts)
 {
-	lzma_ret ret = lzma_stream_decoder(&this->_stream, UINT64_MAX, LZMA_CONCATENATED);
+	// Read optional memlimit from JS options object.
+	// If absent or undefined, use UINT64_MAX (no limit — preserves pre-fix behaviour).
+	uint64_t memlimit = UINT64_MAX;
+	Napi::Value optsMemlimit = opts.Get("memlimit");
+	if (!optsMemlimit.IsUndefined() && !optsMemlimit.IsNull())
+	{
+		if (optsMemlimit.IsBigInt())
+		{
+			// node-addon-api Napi::BigInt::Uint64Value: lossless=true when value fits uint64_t.
+			// JS-side validateMemlimit() already rejects values > UINT64_MAX, so lossless
+			// should always be true here. Throw on precision loss (defense-in-depth: a future
+			// direct-N-API consumer bypassing the JS guard must not silently get 'no limit').
+			bool lossless = false;
+			uint64_t val = optsMemlimit.As<Napi::BigInt>().Uint64Value(&lossless);
+			if (!lossless)
+			{
+				Napi::TypeError::New(env, "memlimit out of range or precision lost").ThrowAsJavaScriptException();
+				return false;
+			}
+			memlimit = val;
+		}
+		else if (optsMemlimit.IsNumber())
+		{
+			// JS-side validateMemlimit() already rejects non-integer, negative, NaN, Infinity,
+			// and values above Number.MAX_SAFE_INTEGER (2^53-1). Throw on any out-of-range
+			// value (defense-in-depth: direct-N-API consumers bypassing the JS guard get an
+			// error, not a silent UINT64_MAX 'no limit' coercion that inverts caller intent).
+			double d = optsMemlimit.ToNumber().DoubleValue();
+			if (d < 0.0 || !std::isfinite(d) || d != std::floor(d) || d > static_cast<double>(UINT64_MAX))
+			{
+				Napi::TypeError::New(env, "memlimit out of range or precision lost").ThrowAsJavaScriptException();
+				return false;
+			}
+			// Defense-in-depth: validateMemlimit() in JS rejects this first; native enforces
+			// independently for direct-N-API consumers.
+			// Number.MAX_SAFE_INTEGER = 2^53 - 1 = 9007199254740991. Any double above this
+			// threshold no longer represents an exact integer — caller intent is silently
+			// corrupted. Reject to mirror the JS-side guard.
+			if (d > 9007199254740991.0)
+			{
+				Napi::TypeError::New(env, "memlimit number exceeds MAX_SAFE_INTEGER (use bigint for values >= 2^53)").ThrowAsJavaScriptException();
+				return false;
+			}
+			memlimit = static_cast<uint64_t>(d);
+		}
+		else
+		{
+			// memlimit is present but is neither BigInt nor Number (e.g. string, object, array).
+			// Silently falling through to UINT64_MAX would disable the limit and invert caller
+			// intent. Throw explicitly to match how sibling options (threads) handle wrong types.
+			// Note: TypeScript declaration (number | bigint) blocks this at compile-time for TS
+			// callers; this guard protects direct-N-API and plain-JS consumers.
+			Napi::TypeError::New(env, "memlimit must be a Number or BigInt").ThrowAsJavaScriptException();
+			return false;
+		}
+	}
+
+	lzma_ret ret = lzma_stream_decoder(&this->_stream, memlimit, LZMA_CONCATENATED);
 
 	// F-005: Throw exception on decoder init failure (consistent with InitializeEncoder)
 	if (ret != LZMA_OK)

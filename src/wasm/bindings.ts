@@ -261,10 +261,16 @@ export function easyBufferEncode(
  *
  * @throws LZMAOptionsError if the value is invalid
  */
-function validateMemlimit(memlimit: number | bigint): void {
+export function validateMemlimit(memlimit: number | bigint): void {
   if (typeof memlimit === 'bigint') {
     if (memlimit < 0n) {
       throw new LZMAOptionsError(LZMA_OPTIONS_ERROR, 'memlimit must be a non-negative value');
+    }
+    if (memlimit > 18446744073709551615n) {
+      throw new LZMAOptionsError(
+        LZMA_OPTIONS_ERROR,
+        'memlimit bigint exceeds UINT64_MAX (2^64 - 1); use a smaller value (UINT64_MAX = no limit on native; WASM buffer APIs default to 256 MiB when omitted)'
+      );
     }
     return;
   }
