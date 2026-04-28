@@ -2,7 +2,8 @@
 
 ## In Progress
 
-_None_
+- [ ] 🟡 [tar-xz] True streaming for Node `extract()`/`list()` — Priority: M (started 2026-04-28, branch feat/tar-xz-streaming, story TAR-XZ-STREAMING-2026-04-28)
+  - [x] ✅ Block 1: `streamXz()` added to `xz-helpers.ts`, old helpers `@deprecated`-tagged, 9 tests in `test/xz-helpers.spec.ts` — all quality gates pass (2026-04-28)
 
 ## Pending - HIGH
 
@@ -10,7 +11,8 @@ _None_
 
 ## Pending - MEDIUM
 
-- [ ] [tar-xz] True streaming for Node `extract()`/`list()` — replace `Buffer.concat` accumulation (extract.ts:59,91 + list.ts:26) with incremental header→content parsing so memory stays O(largest entry) instead of O(archive). Public README v6.0.0 advertises this as a "planned optimization" — Priority: M
+- [ ] [tar-xz] True streaming for Node `extract()`/`list()` — replace `Buffer.concat` accumulation (extract.ts:59,91 + list.ts:26) with incremental header→content parsing so memory stays O(largest entry) instead of O(archive). Public README v6.0.0 advertises this as a "planned optimization" — Priority: M (now in progress as TAR-XZ-STREAMING-2026-04-28 / branch feat/tar-xz-streaming)
+- [ ] [Win32] Handle-based extraction (CreateFileW + FILE_FLAG_OPEN_REPARSE_POINT) for `tar-xz` Node `extractFile` — close the TOCTOU window on Windows surfaced by streaming refactor in PR #113. POSIX uses fd-based O_NOFOLLOW; Windows currently falls back to by-path `pipeline(Readable.from(entry.data), createWriteStream(target))` which exposes a wallclock-long symlink-swap window. Estimate ~1-2h. Match node-tar's gradual approach. Priority: M (post-#113).
 
 ## Pending - LOW (Nice to Have)
 

@@ -6,10 +6,60 @@
  */
 
 import { Readable, type Writable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { createUnxz } from 'node-liblzma';
 import { toAsyncIterable, type TarInputNode } from '../internal/to-async-iterable.js';
 
-/** Collect all chunks from any TarInputNode into a single Uint8Array. */
+/**
+ * Decompress an XZ-compressed input stream incrementally, yielding raw tar bytes
+ * as they arrive from the decompressor. No full-archive accumulation.
+ *
+ * Accepts any {@link TarInputNode}: `Uint8Array`, `Buffer`, `Readable`,
+ * `AsyncIterable<Uint8Array>`, `ReadableStream<Uint8Array>`, or `ArrayBuffer`.
+ *
+ * The returned `AsyncIterable` is single-use. Errors (corrupt XZ, truncated
+ * input) are thrown inside the `for await` loop.
+ *
+ * @example
+ * ```ts
+ * for await (const chunk of streamXz(input)) {
+ *   processChunk(chunk);
+ * }
+ * ```
+ */
+export function streamXz(input: TarInputNode): AsyncIterable<Uint8Array> {
+  // Convert any supported input type to an AsyncIterable<Uint8Array>.
+  const source = toAsyncIterable(input);
+  const unxzStream = createUnxz();
+
+  // Feed the source into the Transform via pipeline() so that errors from the
+  // input side (e.g. truncated readable) propagate and are not silently swallowed.
+  // We do NOT await pipelinePromise here — iteration drives consumption below.
+  const pipelinePromise = pipeline(Readable.from(source), unxzStream);
+
+  // Iterate the Transform's own Symbol.asyncIterator directly (spec §12.5:
+  // prefer this over Readable.from(transform) which adds another buffering layer).
+  // Node's Transform implements Symbol.asyncIterator natively since Node 10.
+  return (async function* () {
+    try {
+      for await (const chunk of unxzStream) {
+        const buf = chunk as Buffer;
+        yield new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+      }
+      // Surface any pipeline error (e.g. corrupt XZ, premature end of source).
+      await pipelinePromise;
+    } catch (err) {
+      // Ensure the pipeline promise is always settled to avoid unhandled rejections.
+      await pipelinePromise.catch(() => undefined);
+      throw err;
+    }
+  })();
+}
+
+/**
+ * @deprecated Use {@link streamXz} for O(largest entry) streaming. Will be removed
+ * once `extract.ts` and `list.ts` migrate to the streaming API (story TAR-XZ-STREAMING-2026-04-28).
+ */
 export async function collectAllChunks(input: TarInputNode): Promise<Uint8Array> {
   const iterable = toAsyncIterable(input);
   const chunks: Uint8Array[] = [];
@@ -26,7 +76,12 @@ export async function collectAllChunks(input: TarInputNode): Promise<Uint8Array>
   return out;
 }
 
-/** Decompress XZ data using the Node Transform stream. */
+/**
+ * @deprecated Use {@link streamXz} for O(largest entry) streaming. Will be removed
+ * once `extract.ts` and `list.ts` migrate to the streaming API (story TAR-XZ-STREAMING-2026-04-28).
+ *
+ * Decompress XZ data using the Node Transform stream.
+ */
 export async function decompressXz(data: Uint8Array): Promise<Uint8Array> {
   const unxzStream = createUnxz();
   const readable = Readable.from(
@@ -63,7 +118,12 @@ export async function decompressXz(data: Uint8Array): Promise<Uint8Array> {
   return result;
 }
 
-/** Feed a Uint8Array into a Writable and wait for finish. */
+/**
+ * @deprecated Use {@link streamXz} for O(largest entry) streaming. Will be removed
+ * once `extract.ts` and `list.ts` migrate to the streaming API (story TAR-XZ-STREAMING-2026-04-28).
+ *
+ * Feed a Uint8Array into a Writable and wait for finish.
+ */
 export async function runWritable(writable: Writable, data: Uint8Array): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     writable.on('finish', resolve);
