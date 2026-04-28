@@ -201,7 +201,7 @@ symlink swap during this window.
 the calling process. Do not extract user-supplied archives into shared,
 world-writable, or `TEMP`-like directories on Windows.
 
-As of v6.1.1 this gap is closed: the Windows path uses `open(target, 'wx')` (atomic
+This gap is now closed: the Windows path uses `open(target, 'wx')` (atomic
 exclusive create) with an unlink+retry pattern for legitimate overwrites. If a symlink
 is injected between the unlink and the retry-open, extraction fails with a security error.
 All writes and metadata operations are fd-based. See [SECURITY.md](./SECURITY.md#windows-symlink-swap-toctou)

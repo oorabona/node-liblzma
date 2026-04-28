@@ -354,7 +354,13 @@ export async function extractFile(
         } catch (firstErr) {
           if ((firstErr as NodeJS.ErrnoException).code !== 'EEXIST') throw firstErr;
           // Target exists — legitimate overwrite: unlink then retry.
-          await unlink(target);
+          // If the target disappears between the failed open() and unlink(), ignore
+          // ENOENT and still retry the atomic exclusive create.
+          try {
+            await unlink(target);
+          } catch (unlinkErr) {
+            if ((unlinkErr as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkErr;
+          }
           try {
             handle = await open(target, 'wx', fileMode);
           } catch (retryErr) {
@@ -362,8 +368,8 @@ export async function extractFile(
               // A symlink (or junction) was injected between our unlink and our open.
               // Fail-closed: do NOT write through the symlink.
               throw new Error(
-                `Security error: symlink-swap race detected for '${entry.name}' — ` +
-                  `a symlink was injected at the target path between unlink and open`
+                `Security error: target still exists on retry for '${entry.name}' — ` +
+                  `possible symlink/junction injection or concurrent creation at the target path between unlink and open`
               );
             }
             throw retryErr;

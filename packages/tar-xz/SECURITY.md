@@ -10,11 +10,11 @@ kernel refuses to open a symlink at the leaf path, closing the symlink-swap
 attack window from the moment the file handle is opened.
 
 On Windows, `O_NOFOLLOW` is not available (libuv/Win32 does not expose it).
-Prior to v6.1.1, the Windows path used `createWriteStream(target)` — a
+Prior to this hardening, the Windows path used `createWriteStream(target)` — a
 by-path operation that could be redirected by a symlink injected between the
 upstream safety check and the final write.
 
-### What changed in v6.1.1
+### What changed in this hardening
 
 The Windows extraction path now uses `open(target, 'wx', mode)` — the `'wx'`
 flag maps to `O_CREAT | O_EXCL` in libuv, an atomic "create or fail" syscall.
