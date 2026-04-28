@@ -1,8 +1,11 @@
 ---
 doc-meta:
-  status: draft
+  status: canonical
   story_id: TAR-XZ-STREAMING-2026-04-28
   created: 2026-04-28
+  finalized: 2026-04-29
+  merged_pr: 113
+  merged_sha: 06a9937
   adversarial_applied: true
   adversarial_date: 2026-04-28
   llm_consensus_applied: true

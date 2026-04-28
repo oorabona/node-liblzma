@@ -1,10 +1,12 @@
 ---
 doc-meta:
-  status: draft
+  status: canonical
   scope: native-bindings
   type: research
   created: 2026-03-01
   updated: 2026-03-01
+  finalized: 2026-04-29
+  conclusion: no-migration
 ---
 
 # Native Binding Migration: Research & Analysis
