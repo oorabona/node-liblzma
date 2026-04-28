@@ -308,7 +308,7 @@ export type {
  * All fields are required (defaults applied in constructor) EXCEPT memlimit,
  * which is genuinely optional: the native binding ignores it (UINT64_MAX
  * hardcoded; see TODO "[Native] Wire memlimit in src/bindings/node-liblzma.cpp").
- * Only the WASM Buffer API (xzAsync/unxz/unxzAsync) honours memlimit.
+ * Only the WASM Buffer API decompression paths (unxz/unxzAsync/streamBufferDecode) honour memlimit; xzAsync is compression-only and ignores this field.
  */
 interface ResolvedLZMAOptions {
   check: number;

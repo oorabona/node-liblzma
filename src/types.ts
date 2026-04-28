@@ -56,7 +56,8 @@ export interface LZMAOptions {
   /**
    * Memory usage limit for decompression, in bytes.
    *
-   * **Honored only by `xzAsync`/`unxz`/`unxzAsync` (WASM Buffer API).**
+   * **Honored only by `unxz`/`unxzAsync` (WASM Buffer API decompression).**
+   * `xzAsync` is compression-only and does not read `memlimit`.
    * Currently **silently ignored** by native streams (`Xz`/`Unxz`/`createXz`/`createUnxz`) —
    * see TODO `[Native] Wire memlimit in src/bindings/node-liblzma.cpp`.
    *
@@ -65,6 +66,9 @@ export interface LZMAOptions {
    * `BigInt`). The `number` form must be a finite, non-negative integer; passing
    * `NaN`, `Infinity`, a fractional value, or a negative number throws
    * `LZMAOptionsError` before any decompression is attempted.
+   * For values ≥ `Number.MAX_SAFE_INTEGER` (2^53 - 1), use `bigint` to avoid
+   * precision loss on coercion; passing a `number` above this threshold also
+   * throws `LZMAOptionsError`.
    *
    * WASM default: `BigInt(256 * 1024 * 1024)` (256 MiB).
    * Native: ignored (UINT64_MAX hardcoded — see follow-up TODO above).
