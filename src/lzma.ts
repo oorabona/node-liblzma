@@ -367,7 +367,7 @@ export abstract class XzStream extends Transform {
       flushFlag: opts.flushFlag ?? liblzma.LZMA_RUN,
       // memlimit is genuinely optional in ResolvedLZMAOptions: the native binding ignores it
       // (UINT64_MAX hardcoded; see TODO "[Native] Wire memlimit in src/bindings/node-liblzma.cpp").
-      // Only the WASM Buffer API (xzAsync/unxz/unxzAsync) honours this field.
+      // Only the WASM decompression APIs (unxz/unxzAsync/streamBufferDecode) honour this field. xzAsync is compression-only and ignores it.
       memlimit: opts.memlimit,
     };
 

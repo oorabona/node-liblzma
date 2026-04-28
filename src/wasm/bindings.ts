@@ -116,13 +116,6 @@ export function encoderInit(
  *
  * @param stream - Allocated WasmLzmaStream
  * @param memlimit - Memory limit in bytes (default: 256MB)
- * @throws LZMAError on initialization failure
- */
-/**
- * Initialize a stream decoder on the given lzma_stream.
- *
- * @param stream - Allocated WasmLzmaStream
- * @param memlimit - Memory limit in bytes (default: 256MB)
  * @throws LZMAOptionsError if memlimit is invalid
  * @throws LZMAError on initialization failure
  */
@@ -141,13 +134,6 @@ export function decoderInit(
   /* v8 ignore stop */
 }
 
-/**
- * Initialize an auto decoder (detects format) on the given lzma_stream.
- *
- * @param stream - Allocated WasmLzmaStream
- * @param memlimit - Memory limit in bytes (default: 256MB)
- * @throws LZMAError on initialization failure
- */
 /**
  * Initialize an auto decoder (detects format) on the given lzma_stream.
  *
@@ -263,16 +249,6 @@ export function easyBufferEncode(
  * @throws LZMAError on decompression failure
  */
 
-/**
- * Validate a memlimit value before coercion to BigInt.
- *
- * BigInt() throws a native RangeError for NaN, Infinity, and non-integer
- * numbers (e.g. 1.5). Negative integers produce a huge unsigned value when
- * interpreted by the C ABI (uint64_t wrap-around). Both cases are rejected
- * here with LZMAOptionsError so callers always get an LZMAError subclass.
- *
- * @throws LZMAOptionsError if the value is invalid
- */
 /**
  * Validate a memlimit value before coercion to BigInt.
  *
