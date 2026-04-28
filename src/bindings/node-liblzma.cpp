@@ -518,7 +518,27 @@ bool LZMA::InitializeDecoder(const Napi::Env &env, const Napi::Object &opts)
 				Napi::TypeError::New(env, "memlimit out of range or precision lost").ThrowAsJavaScriptException();
 				return false;
 			}
+			// Defense-in-depth: validateMemlimit() in JS rejects this first; native enforces
+			// independently for direct-N-API consumers.
+			// Number.MAX_SAFE_INTEGER = 2^53 - 1 = 9007199254740991. Any double above this
+			// threshold no longer represents an exact integer — caller intent is silently
+			// corrupted. Reject to mirror the JS-side guard.
+			if (d > 9007199254740991.0)
+			{
+				Napi::TypeError::New(env, "memlimit number exceeds MAX_SAFE_INTEGER (use bigint for values >= 2^53)").ThrowAsJavaScriptException();
+				return false;
+			}
 			memlimit = static_cast<uint64_t>(d);
+		}
+		else
+		{
+			// memlimit is present but is neither BigInt nor Number (e.g. string, object, array).
+			// Silently falling through to UINT64_MAX would disable the limit and invert caller
+			// intent. Throw explicitly to match how sibling options (threads) handle wrong types.
+			// Note: TypeScript declaration (number | bigint) blocks this at compile-time for TS
+			// callers; this guard protects direct-N-API and plain-JS consumers.
+			Napi::TypeError::New(env, "memlimit must be a Number or BigInt").ThrowAsJavaScriptException();
+			return false;
 		}
 	}
 
