@@ -10,7 +10,9 @@ _None_
 
 ## Pending - MEDIUM
 
-_None_
+- [ ] [tar-xz] True streaming for Node `extract()`/`list()` — replace `Buffer.concat` accumulation (extract.ts:59,91 + list.ts:26) with incremental header→content parsing so memory stays O(largest entry) instead of O(archive). Public README v6.0.0 advertises this as a "planned optimization" — Priority: M
+- [ ] [Native] Wire `memlimit` in `src/bindings/node-liblzma.cpp` `InitializeDecoder` — currently hardcodes `UINT64_MAX`; should read `opts.memlimit` and call `lzma_stream_decoder(stream, memlimit, flags)`. WASM already supports it. — Priority: M
+- [→] [WASM] Wire `memlimit` through `LZMAOptions` and `unxzAsync` — moved to In Progress (2026-04-28) → ✅ completed (2026-04-28)
 
 ## Pending - LOW (Nice to Have)
 
@@ -18,6 +20,7 @@ _None_
 
 ## Completed
 
+- [x] ✅ [WASM] Wire `memlimit` through `LZMAOptions` → `unxzAsync`/`unxz` — `LZMAMemoryLimitError` thrown when limit exceeded; 8 new tests in `test/wasm/decompress-memlimit.test.ts`; TSDoc with parity note (2026-04-28)
 - [x] ✅ [tar-xz v6] Universal stream-first redesign: `create()`/`extract()`/`list()` with `AsyncIterable<Uint8Array>`, identical Node/Browser signatures, `tar-xz/file` subpath for fs helpers — published as `tar-xz@6.0.0` + `nxz-cli@6.0.0` (2026-04-27)
 - [x] ✅ [tar-xz v6] Security hardening: 18 path/symlink TOCTOU vectors audited and closed (leaf check, ENOENT walk, hardlink linkSource, NUL/empty rejection, setuid mask, fd-based fs ops with O_NOFOLLOW, pipeline error propagation) — 8 Copilot review rounds + 1 consolidated audit (2026-04-27)
 - [x] ✅ [Infra] Independent versioning per workspace package: `release.yml`/`publish.yml` accept `target_package` input, no cross-package version sync; proven in prod — `tar-xz@6.0.0` published without bumping `node-liblzma` (still at 5.0.0) (2026-04-27)

@@ -302,7 +302,7 @@ export type {
  * Emits `progress` event after each chunk with `{bytesRead, bytesWritten}` info.
  */
 export abstract class XzStream extends Transform {
-  protected _opts: Required<LZMAOptions>;
+  protected _opts: Omit<Required<LZMAOptions>, 'memlimit'> & Pick<LZMAOptions, 'memlimit'>;
   protected _chunkSize: number;
   protected _flushFlag: number;
   protected lzma: NativeLZMA;
@@ -344,6 +344,9 @@ export abstract class XzStream extends Transform {
       threads: opts.threads ?? 1,
       chunkSize: opts.chunkSize ?? liblzma.BUFSIZ,
       flushFlag: opts.flushFlag ?? liblzma.LZMA_RUN,
+      // memlimit is WASM-only; native binding ignores it (hardcodes UINT64_MAX).
+      // Kept in Required<LZMAOptions> for type completeness; default undefined = no limit.
+      memlimit: opts.memlimit,
     };
 
     this._chunkSize = this._opts.chunkSize;

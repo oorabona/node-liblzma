@@ -53,6 +53,26 @@ export interface LZMAOptions {
   chunkSize?: number;
   /** Flush flag to use */
   flushFlag?: number;
+  /**
+   * Memory usage limit for decompression, in bytes.
+   *
+   * Accepted types: `number` or `bigint` (both are coerced to `bigint`
+   * before being passed to the WASM C ABI, which maps `uint64_t` to
+   * `BigInt`).
+   *
+   * Default: `BigInt(256 * 1024 * 1024)` (256 MiB).
+   *
+   * When the compressed stream requires more memory than this limit,
+   * decompression throws `LZMAMemoryLimitError` with
+   * `code === LZMA_MEMLIMIT_ERROR` (numeric constant `6`, re-exported from
+   * `src/errors.ts`).
+   *
+   * **Parity note (WASM only for now):** The native Node.js binding
+   * (`src/bindings/node-liblzma.cpp`) currently hardcodes `UINT64_MAX`
+   * and silently ignores this option. Native support is tracked in
+   * TODO.md: "[Native] Wire memlimit in src/bindings/node-liblzma.cpp".
+   */
+  memlimit?: number | bigint;
 }
 
 /**
