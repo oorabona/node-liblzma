@@ -4,6 +4,11 @@
 
 - [ ] 🟡 [tar-xz] True streaming for Node `extract()`/`list()` — Priority: M (started 2026-04-28, branch feat/tar-xz-streaming, story TAR-XZ-STREAMING-2026-04-28)
   - [x] ✅ Block 1: `streamXz()` added to `xz-helpers.ts`, old helpers `@deprecated`-tagged, 9 tests in `test/xz-helpers.spec.ts` — all quality gates pass (2026-04-28)
+  - [x] ✅ Block 2: `parseTar()` AsyncGenerator + `ParseEvent` type added to `tar-parser.ts`; v8-ignore removed from lines 86-89/148-153/169-174 (now hot paths); 8 tests in `test/tar-parser-stream.spec.ts` covering 128-byte chunking, PAX split (S-05), PAX_GLOBAL split (L-M-03), EOA detection, truncation (S-09), list/no-chunk, auto-drain, TAR_PARSER_INVARIANT (D-5); MAX_PAX_HEADER_BYTES=1MB DoS guard (A-07); all gates pass (2026-04-28)
+  - [x] ✅ Block 3: `extract.ts` rewritten — `TarUnpack` class replaced by lean async generator using `parseTar`; `makeTarEntryWithData` accepts pull-callback with bytes() memoization (D-3); lookahead buffer pattern for correct event routing; S-08 auto-drain + S-08b consumer-break + memoization tests added to `coverage.spec.ts`; all gates pass (2026-04-28)
+  - [x] ✅ Block 4: `list.ts` rewritten — `TarList` class replaced by 4-line generator using `parseTar(xzStream, 'list')`; S-12 placeholder test added; all gates pass (2026-04-28)
+  - [x] ✅ Cleanup: `collectAllChunks`, `decompressXz`, `runWritable` removed from `xz-helpers.ts` (zero callers verified); T-06 deprecated-helpers test removed from `xz-helpers.spec.ts`; all gates pass (2026-04-28)
+  - [ ] 🟡 Block 5: security regression tests + memory-shape CI gate (separate dispatch)
 
 ## Pending - HIGH
 

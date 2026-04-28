@@ -82,11 +82,9 @@ export type HeaderParseResult = NeedMoreData | EndOfArchive | PaxConsumed | Entr
  */
 export function parseNextHeader(state: HeaderParserState): HeaderParseResult {
   // Need a full block for the header
-  /* v8 ignore start - streaming edge case: chunk boundary splits a 512-byte block */
   if (state.buffer.length < BLOCK_SIZE) {
     return { action: 'need-more-data' };
   }
-  /* v8 ignore stop */
 
   const headerBlock = state.buffer.subarray(0, BLOCK_SIZE);
 
@@ -106,11 +104,9 @@ export function parseNextHeader(state: HeaderParserState): HeaderParseResult {
 
   // Parse header
   const raw = parseHeader(headerBlock);
-  /* v8 ignore start - dead code: empty blocks filtered above, parseHeader only returns null for empty */
   if (!raw) {
     return { action: 'pax-consumed' };
   }
-  /* v8 ignore stop */
 
   // PAX extended header — read data blocks and store attributes
   if (raw.type === TarEntryType.PAX_HEADER) {
@@ -145,13 +141,11 @@ function consumePaxHeader(
   const paxPadding = calculatePadding(paxSize);
   const totalNeeded = paxSize + paxPadding;
 
-  /* v8 ignore start - streaming edge case: PAX data split across XZ chunks */
   if (state.buffer.length < totalNeeded) {
     // Put the header block back — we'll retry when more data arrives
     state.buffer = Buffer.concat([headerBlock, state.buffer]);
     return { action: 'need-more-data' };
   }
-  /* v8 ignore stop */
 
   const paxData = state.buffer.subarray(0, paxSize);
   state.buffer = state.buffer.subarray(paxSize + paxPadding);
@@ -166,13 +160,213 @@ function consumePaxGlobal(
 ): HeaderParseResult {
   const skipSize = entry.size + calculatePadding(entry.size);
 
-  /* v8 ignore start - streaming edge case: global PAX data split across XZ chunks */
   if (state.buffer.length < skipSize) {
     state.buffer = Buffer.concat([headerBlock, state.buffer]);
     return { action: 'need-more-data' };
   }
-  /* v8 ignore stop */
 
   state.buffer = state.buffer.subarray(skipSize);
   return { action: 'pax-consumed' };
+}
+
+// ---------------------------------------------------------------------------
+// Streaming parser
+// ---------------------------------------------------------------------------
+
+/** Maximum PAX header payload size (DoS guard — A-07/A-08). */
+const MAX_PAX_HEADER_BYTES = 1024 * 1024; // 1 MB
+
+/**
+ * Discriminated union emitted by {@link parseTar}.
+ *
+ * - `entry` — a new TAR entry header was parsed
+ * - `chunk` — raw content bytes for the current entry (only in `'extract'` mode)
+ * - `end`   — end-of-archive sentinel (two consecutive empty blocks consumed)
+ */
+export type ParseEvent =
+  | { kind: 'entry'; entry: TarEntry }
+  | { kind: 'chunk'; data: Uint8Array }
+  | { kind: 'end' };
+
+/**
+ * Streaming TAR parser generator.
+ *
+ * Processes decompressed TAR bytes arriving as `Uint8Array` chunks from
+ * `source` (typically the output of {@link streamXz}) without holding the
+ * full archive in memory.
+ *
+ * In `'extract'` mode the generator emits `kind:'entry'` followed by zero or
+ * more `kind:'chunk'` events containing the raw entry content, then moves to
+ * the next entry.
+ *
+ * In `'list'` mode the generator emits only `kind:'entry'` events; content
+ * bytes are consumed internally without being yielded.
+ *
+ * The generator ALWAYS emits a final `kind:'end'` event before returning.
+ * If the stream ends before the end-of-archive marker is seen, an `Error` with
+ * message `"Unexpected end of archive"` is thrown.
+ *
+ * @param source - Decompressed TAR byte stream (single-use).
+ * @param mode   - `'extract'` yields content chunks; `'list'` skips them.
+ */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: streaming state machine — inherently complex; subdividing would break the phase-transition flow
+export async function* parseTar(
+  source: AsyncIterable<Uint8Array>,
+  mode: 'extract' | 'list'
+): AsyncGenerator<ParseEvent> {
+  const state: HeaderParserState = {
+    buffer: Buffer.alloc(0),
+    paxAttrs: null,
+    emptyBlockCount: 0,
+  };
+
+  // HEADER | CONTENT | SKIP | PADDING
+  type Phase = 'HEADER' | 'CONTENT' | 'SKIP' | 'PADDING';
+  let phase: Phase = 'HEADER';
+  let bytesRemaining = 0;
+  let paddingRemaining = 0;
+
+  /** Pull next chunk from source and append to state.buffer. */
+  const iter = source[Symbol.asyncIterator]();
+
+  async function pullChunk(): Promise<boolean> {
+    const { value, done } = await iter.next();
+    if (done) return false;
+    const chunk = value as Uint8Array;
+    if (state.buffer.length + chunk.length > MAX_PAX_HEADER_BYTES && phase === 'HEADER') {
+      const err = new Error(`PAX header exceeds maximum size (${MAX_PAX_HEADER_BYTES / 1024} KB)`);
+      (err as Error & { code: string }).code = 'TAR_PARSER_INVARIANT';
+      throw err;
+    }
+    state.buffer = Buffer.concat([state.buffer, Buffer.from(chunk)]);
+    return true;
+  }
+
+  while (true) {
+    if (phase === 'HEADER') {
+      // Pull at least one chunk initially so the buffer has data.
+      if (state.buffer.length === 0) {
+        const got = await pullChunk();
+        if (!got) {
+          throw new Error('Unexpected end of archive');
+        }
+      }
+
+      // Try to parse headers; pull more data when needed.
+      while (true) {
+        const result = parseNextHeader(state);
+
+        if (result.action === 'need-more-data') {
+          const got = await pullChunk();
+          if (!got) {
+            throw new Error('Unexpected end of archive');
+          }
+          continue;
+        }
+
+        if (result.action === 'end-of-archive') {
+          yield { kind: 'end' };
+          return;
+        }
+
+        if (result.action === 'pax-consumed') {
+          continue;
+        }
+
+        // action === 'entry'
+        const entry = result.entry;
+        yield { kind: 'entry', entry };
+
+        if (mode === 'list' || entry.size === 0) {
+          // For list mode or empty entries, skip content + padding together.
+          if (entry.size > 0) {
+            bytesRemaining = entry.size + calculatePadding(entry.size);
+            phase = 'SKIP';
+          } else {
+            phase = 'HEADER';
+          }
+        } else {
+          // Extract mode with content.
+          bytesRemaining = entry.size;
+          paddingRemaining = calculatePadding(entry.size);
+          phase = 'CONTENT';
+        }
+        break;
+      }
+
+      continue;
+    }
+
+    if (phase === 'CONTENT') {
+      // Yield content bytes, splitting at entry boundary.
+      if (bytesRemaining === 0) {
+        phase = 'PADDING';
+        continue;
+      }
+
+      if (state.buffer.length === 0) {
+        const got = await pullChunk();
+        if (!got) {
+          throw new Error('Unexpected end of archive');
+        }
+      }
+
+      const take = Math.min(bytesRemaining, state.buffer.length);
+      const chunk = state.buffer.subarray(0, take);
+      state.buffer = state.buffer.subarray(take);
+      bytesRemaining -= take;
+      yield {
+        kind: 'chunk',
+        data: new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength),
+      };
+      continue;
+    }
+
+    if (phase === 'SKIP') {
+      // Silently consume skip bytes (list mode or zero-size entries).
+      if (bytesRemaining === 0) {
+        phase = 'HEADER';
+        continue;
+      }
+
+      if (state.buffer.length === 0) {
+        const got = await pullChunk();
+        if (!got) {
+          throw new Error('Unexpected end of archive');
+        }
+      }
+
+      const skip = Math.min(bytesRemaining, state.buffer.length);
+      state.buffer = state.buffer.subarray(skip);
+      bytesRemaining -= skip;
+      continue;
+    }
+
+    if (phase === 'PADDING') {
+      // Silently consume padding bytes.
+      if (paddingRemaining === 0) {
+        phase = 'HEADER';
+        continue;
+      }
+
+      if (state.buffer.length === 0) {
+        const got = await pullChunk();
+        if (!got) {
+          // Padding missing at end-of-stream is tolerable if we already know
+          // the archive ended (previous end-of-archive detection covers the
+          // normal case). If we're here the EOA hasn't been seen yet — throw.
+          throw new Error('Unexpected end of archive');
+        }
+      }
+
+      const skip = Math.min(paddingRemaining, state.buffer.length);
+      state.buffer = state.buffer.subarray(skip);
+      paddingRemaining -= skip;
+      continue;
+    }
+
+    // Unreachable — all phases handled above.
+    /* v8 ignore next */
+    break;
+  }
 }

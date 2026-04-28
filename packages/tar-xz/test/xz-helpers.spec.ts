@@ -9,7 +9,7 @@ import { Readable } from 'node:stream';
 import { xzSync } from 'node-liblzma';
 import { describe, expect, it } from 'vitest';
 import { create } from '../src/node/create.js';
-import { collectAllChunks, decompressXz, runWritable, streamXz } from '../src/node/xz-helpers.js';
+import { streamXz } from '../src/node/xz-helpers.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -191,38 +191,4 @@ describe('streamXz', () => {
     // Sanity: decompressed bytes must cover the full payload (TAR overhead adds more).
     expect(totalBytes).toBeGreaterThanOrEqual(payloadSize);
   }, 30_000); // 30s timeout — compression of 5 MB takes a few seconds
-
-  // ---------------------------------------------------------------------------
-  // T-06: @deprecated tags exist on the three old helpers
-  // ---------------------------------------------------------------------------
-
-  it('T-06: deprecated helpers still work (backward compat until callers migrated)', async () => {
-    const rawData = Buffer.from('deprecated-helpers-test-payload');
-    const compressed = xzSync(rawData);
-
-    // collectAllChunks — collects raw bytes from any TarInputNode as-is (no decompression).
-    // Feed it raw (uncompressed) bytes and verify it round-trips them unchanged.
-    const collected = await collectAllChunks(rawData);
-    expect(Buffer.from(collected.buffer, collected.byteOffset, collected.byteLength)).toEqual(
-      rawData
-    );
-
-    // decompressXz — tagged @deprecated but functional: decompresses XZ → original bytes.
-    const decompressed = await decompressXz(compressed);
-    expect(
-      Buffer.from(decompressed.buffer, decompressed.byteOffset, decompressed.byteLength)
-    ).toEqual(rawData);
-
-    // runWritable — tagged @deprecated; verify it writes without throwing.
-    const { Writable } = await import('node:stream');
-    const written: Buffer[] = [];
-    const sink = new Writable({
-      write(chunk: Buffer, _enc: string, cb: () => void) {
-        written.push(chunk);
-        cb();
-      },
-    });
-    await runWritable(sink, rawData);
-    expect(Buffer.concat(written)).toEqual(rawData);
-  });
 });
