@@ -9,7 +9,7 @@
  */
 
 import { createReadStream, createWriteStream, constants as fsConstants } from 'node:fs';
-import { chmod, link, lstat, mkdir, open, symlink, unlink, utimes } from 'node:fs/promises';
+import { link, lstat, mkdir, open, symlink, unlink } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -159,17 +159,20 @@ export async function createFile(path: string, options: CreateOptions): Promise<
  * is bounded to the gap between `ensureSafeTarget` and the `open()` call —
  * effectively zero in practice.
  *
- * **Windows:** `O_NOFOLLOW` is not available. The Windows path falls back to
- * `pipeline(Readable.from(entry.data), createWriteStream(target))` — a
- * **by-path** operation. With streaming extraction (v6.1.0), the wallclock
- * window between `ensureSafeTarget` and the last byte written now scales with
- * entry size (one XZ chunk per `await`). A co-tenant process that can write to
- * `cwd` could swap a symlink during this window.
+ * **Windows:** `O_NOFOLLOW` is not available. The Windows path uses
+ * `open(target, 'wx', mode)` (atomic exclusive create — `O_CREAT | O_EXCL`).
+ * If the target exists (`EEXIST`), it is unlinked and the open is retried.
+ * If the retry also fails with `EEXIST`, a symlink was injected between the
+ * unlink and the retry-open (symlink-swap race) and extraction fails closed
+ * with a security error. All write/chmod/utimes ops are fd-based (via
+ * `FileHandle`) so no by-path symlink follow can occur after the open.
+ * The residual race is limited to the `open()` syscall itself (sub-microsecond).
+ * See `SECURITY.md§"Windows symlink-swap TOCTOU"` for the full reparse-tag
+ * coverage table and user mitigations.
  *
  * **Windows recommendation:** extract to a directory owned exclusively by the
  * calling process — do not extract user-supplied archives into shared or
- * world-writable directories. Follow-up: TODO `[Win32] handle-based extraction`
- * (CreateFileW + FILE_FLAG_OPEN_REPARSE_POINT) to close this gap.
+ * world-writable directories. For untrusted archives on Windows, prefer WSL.
  *
  * @param archivePath - Path to the `.tar.xz` file to extract
  * @param options     - Extraction options (`strip`, `filter`, `cwd`)
@@ -326,22 +329,59 @@ export async function extractFile(
           await handle.close();
         }
       } else {
-        // Windows: O_NOFOLLOW is not available. Rely on the leaf-symlink check (Fix 1)
-        // as the primary defense, then fall back to by-path operations.
-        await pipeline(Readable.from(entry.data), createWriteStream(target, { mode: fileMode }));
-        // Restore file permissions
+        // Windows: O_NOFOLLOW is not available.
+        //
+        // Threat model (W1-W4 per WIN32-TOCTOU-2026-04-29 §3):
+        //   W1: lstat check → open()    ~ms    (atomic-create succeeds or EEXIST)
+        //   W2: open() → last byte      per-chunk streaming window → CLOSED by 'wx' fd
+        //   W3: last byte → chmod       ~ms    CLOSED: fd-based handle.chmod()
+        //   W4: chmod → utimes          ~ms    CLOSED: fd-based handle.utimes()
+        //
+        // Strategy: open with 'wx' (O_CREAT | O_EXCL — atomic exclusive create).
+        //   • If target does not exist  → open succeeds, proceed normally.
+        //   • If target exists (EEXIST) → legitimate overwrite: unlink then retry 'wx'.
+        //     - If retry also fails with EEXIST, an attacker won the race between our
+        //       unlink and our retry-open (injected a symlink). Throw security error.
+        //   • Write, chmod, utimes all via fd (FileHandle) — immune to by-path swap.
+        //
+        // Residual race: the 'wx' open() syscall itself (atomic, sub-microsecond).
+        // A junction (IO_REPARSE_TAG_MOUNT_POINT) at the target path makes 'wx' fail
+        // with EEXIST → unlink → retry → EEXIST (attacker re-injects) → security error.
+        // See SECURITY.md§"Windows symlink-swap TOCTOU" for the full reparse-tag table.
+        let handle: Awaited<ReturnType<typeof open>>;
         try {
-          await chmod(target, fileMode);
-        } catch {
-          // best effort
-        }
-        // Restore mtime
-        if (entry.mtime > 0) {
+          handle = await open(target, 'wx', fileMode);
+        } catch (firstErr) {
+          if ((firstErr as NodeJS.ErrnoException).code !== 'EEXIST') throw firstErr;
+          // Target exists — legitimate overwrite: unlink then retry.
+          await unlink(target);
           try {
-            await utimes(target, entry.mtime, entry.mtime);
-          } catch {
-            // best effort
+            handle = await open(target, 'wx', fileMode);
+          } catch (retryErr) {
+            if ((retryErr as NodeJS.ErrnoException).code === 'EEXIST') {
+              // A symlink (or junction) was injected between our unlink and our open.
+              // Fail-closed: do NOT write through the symlink.
+              throw new Error(
+                `Security error: symlink-swap race detected for '${entry.name}' — ` +
+                  `a symlink was injected at the target path between unlink and open`
+              );
+            }
+            throw retryErr;
           }
+        }
+        try {
+          // Write all chunks via fd — by-path swap after open() cannot redirect writes.
+          for await (const chunk of entry.data) {
+            await handle.write(chunk as Uint8Array);
+          }
+          // fd-based chmod and utimes to avoid any by-path follow after write.
+          await handle.chmod(fileMode);
+          if (entry.mtime > 0) {
+            const mt = new Date(entry.mtime * 1000);
+            await handle.utimes(mt, mt);
+          }
+        } finally {
+          await handle.close();
         }
       }
     }
