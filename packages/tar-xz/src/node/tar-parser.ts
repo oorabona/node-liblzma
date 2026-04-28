@@ -242,131 +242,137 @@ export async function* parseTar(
     return true;
   }
 
-  while (true) {
-    if (phase === 'HEADER') {
-      // Pull at least one chunk initially so the buffer has data.
-      if (state.buffer.length === 0) {
-        const got = await pullChunk();
-        if (!got) {
-          throw new Error('Unexpected end of archive');
-        }
-      }
-
-      // Try to parse headers; pull more data when needed.
-      while (true) {
-        const result = parseNextHeader(state);
-
-        if (result.action === 'need-more-data') {
+  try {
+    while (true) {
+      if (phase === 'HEADER') {
+        // Pull at least one chunk initially so the buffer has data.
+        if (state.buffer.length === 0) {
           const got = await pullChunk();
           if (!got) {
             throw new Error('Unexpected end of archive');
           }
-          continue;
         }
 
-        if (result.action === 'end-of-archive') {
-          yield { kind: 'end' };
-          return;
-        }
+        // Try to parse headers; pull more data when needed.
+        while (true) {
+          const result = parseNextHeader(state);
 
-        if (result.action === 'pax-consumed') {
-          continue;
-        }
-
-        // action === 'entry'
-        const entry = result.entry;
-        yield { kind: 'entry', entry };
-
-        if (mode === 'list' || entry.size === 0) {
-          // For list mode or empty entries, skip content + padding together.
-          if (entry.size > 0) {
-            bytesRemaining = entry.size + calculatePadding(entry.size);
-            phase = 'SKIP';
-          } else {
-            phase = 'HEADER';
+          if (result.action === 'need-more-data') {
+            const got = await pullChunk();
+            if (!got) {
+              throw new Error('Unexpected end of archive');
+            }
+            continue;
           }
-        } else {
-          // Extract mode with content.
-          bytesRemaining = entry.size;
-          paddingRemaining = calculatePadding(entry.size);
-          phase = 'CONTENT';
+
+          if (result.action === 'end-of-archive') {
+            yield { kind: 'end' };
+            return;
+          }
+
+          if (result.action === 'pax-consumed') {
+            continue;
+          }
+
+          // action === 'entry'
+          const entry = result.entry;
+          yield { kind: 'entry', entry };
+
+          if (mode === 'list' || entry.size === 0) {
+            // For list mode or empty entries, skip content + padding together.
+            if (entry.size > 0) {
+              bytesRemaining = entry.size + calculatePadding(entry.size);
+              phase = 'SKIP';
+            } else {
+              phase = 'HEADER';
+            }
+          } else {
+            // Extract mode with content.
+            bytesRemaining = entry.size;
+            paddingRemaining = calculatePadding(entry.size);
+            phase = 'CONTENT';
+          }
+          break;
         }
-        break;
-      }
 
-      continue;
-    }
-
-    if (phase === 'CONTENT') {
-      // Yield content bytes, splitting at entry boundary.
-      if (bytesRemaining === 0) {
-        phase = 'PADDING';
         continue;
       }
 
-      if (state.buffer.length === 0) {
-        const got = await pullChunk();
-        if (!got) {
-          throw new Error('Unexpected end of archive');
+      if (phase === 'CONTENT') {
+        // Yield content bytes, splitting at entry boundary.
+        if (bytesRemaining === 0) {
+          phase = 'PADDING';
+          continue;
         }
-      }
 
-      const take = Math.min(bytesRemaining, state.buffer.length);
-      const chunk = state.buffer.subarray(0, take);
-      state.buffer = state.buffer.subarray(take);
-      bytesRemaining -= take;
-      yield {
-        kind: 'chunk',
-        data: new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength),
-      };
-      continue;
-    }
+        if (state.buffer.length === 0) {
+          const got = await pullChunk();
+          if (!got) {
+            throw new Error('Unexpected end of archive');
+          }
+        }
 
-    if (phase === 'SKIP') {
-      // Silently consume skip bytes (list mode or zero-size entries).
-      if (bytesRemaining === 0) {
-        phase = 'HEADER';
+        const take = Math.min(bytesRemaining, state.buffer.length);
+        const chunk = state.buffer.subarray(0, take);
+        state.buffer = state.buffer.subarray(take);
+        bytesRemaining -= take;
+        yield {
+          kind: 'chunk',
+          data: new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength),
+        };
         continue;
       }
 
-      if (state.buffer.length === 0) {
-        const got = await pullChunk();
-        if (!got) {
-          throw new Error('Unexpected end of archive');
+      if (phase === 'SKIP') {
+        // Silently consume skip bytes (list mode or zero-size entries).
+        if (bytesRemaining === 0) {
+          phase = 'HEADER';
+          continue;
         }
-      }
 
-      const skip = Math.min(bytesRemaining, state.buffer.length);
-      state.buffer = state.buffer.subarray(skip);
-      bytesRemaining -= skip;
-      continue;
-    }
+        if (state.buffer.length === 0) {
+          const got = await pullChunk();
+          if (!got) {
+            throw new Error('Unexpected end of archive');
+          }
+        }
 
-    if (phase === 'PADDING') {
-      // Silently consume padding bytes.
-      if (paddingRemaining === 0) {
-        phase = 'HEADER';
+        const skip = Math.min(bytesRemaining, state.buffer.length);
+        state.buffer = state.buffer.subarray(skip);
+        bytesRemaining -= skip;
         continue;
       }
 
-      if (state.buffer.length === 0) {
-        const got = await pullChunk();
-        if (!got) {
-          // Padding missing at end-of-stream is tolerable if we already know
-          // the archive ended (previous end-of-archive detection covers the
-          // normal case). If we're here the EOA hasn't been seen yet — throw.
-          throw new Error('Unexpected end of archive');
+      if (phase === 'PADDING') {
+        // Silently consume padding bytes.
+        if (paddingRemaining === 0) {
+          phase = 'HEADER';
+          continue;
         }
+
+        if (state.buffer.length === 0) {
+          const got = await pullChunk();
+          if (!got) {
+            // Padding missing at end-of-stream is tolerable if we already know
+            // the archive ended (previous end-of-archive detection covers the
+            // normal case). If we're here the EOA hasn't been seen yet — throw.
+            throw new Error('Unexpected end of archive');
+          }
+        }
+
+        const skip = Math.min(paddingRemaining, state.buffer.length);
+        state.buffer = state.buffer.subarray(skip);
+        paddingRemaining -= skip;
+        continue;
       }
 
-      const skip = Math.min(paddingRemaining, state.buffer.length);
-      state.buffer = state.buffer.subarray(skip);
-      paddingRemaining -= skip;
-      continue;
+      // Unreachable — all phases handled above.
+      /* v8 ignore next */
+      break;
     }
-
-    // Unreachable — all phases handled above.
-    /* v8 ignore next */
-    break;
+  } finally {
+    // If the consumer called generator.return() early, propagate cleanup to the
+    // source iterator so upstream (streamXz) can destroy its pipeline.
+    await iter.return?.();
   }
 }

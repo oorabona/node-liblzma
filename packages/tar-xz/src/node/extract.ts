@@ -30,30 +30,62 @@ function concatChunks(chunks: Uint8Array[]): Uint8Array {
  * backed by the outer `parseTar` generator. It is single-use — consuming it
  * twice yields nothing on the second pass (JS AsyncGenerator default).
  *
- * `bytes()` and `text()` memoize their result on first call (D-3). Holding
- * a reference to the returned entry also holds the cached bytes; release the
- * entry to allow GC.
+ * `bytes()` throws if `entry.data` was already iterated — call `bytes()` before
+ * iterating `entry.data` if you need the full content (D-3 / F-2 contract).
+ * `text()` uses `Buffer.toString()` and accepts any `BufferEncoding` (including
+ * `'base64'`, `'hex'`, `'latin1'`) — same contract as the pre-v6.1.0 behavior.
+ * Holding a reference to the returned entry also holds the cached bytes; release
+ * the entry to allow GC.
  */
 function makeTarEntryWithData(
   entry: TarEntry,
   dataPull: () => AsyncGenerator<Uint8Array>
 ): TarEntryWithData {
   let cachedBytes: Uint8Array | null = null;
+  let dataIterStarted = false;
   const dataGen = dataPull(); // single-use generator
+
+  // Wrap dataGen so that direct iteration of `entry.data` is detected.
+  // When the consumer calls `for await (const chunk of entry.data)`, the
+  // wrapper sets `dataIterStarted = true` so that a subsequent `bytes()` call
+  // can throw instead of silently returning incomplete bytes.
+  const dataWrapper: AsyncGenerator<Uint8Array> = {
+    next(...args) {
+      dataIterStarted = true;
+      return dataGen.next(...args);
+    },
+    return(value) {
+      return dataGen.return(value);
+    },
+    throw(err) {
+      return dataGen.throw(err);
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    },
+  };
 
   return {
     ...entry,
-    data: dataGen,
+    data: dataWrapper,
     async bytes(): Promise<Uint8Array> {
       if (cachedBytes !== null) return cachedBytes;
+      if (dataIterStarted) {
+        throw new Error(
+          'entry.data already iterated; bytes() cannot recover full content — call bytes() before iterating entry.data'
+        );
+      }
+      dataIterStarted = true;
       const chunks: Uint8Array[] = [];
       for await (const c of dataGen) chunks.push(c);
       cachedBytes = concatChunks(chunks);
       return cachedBytes;
     },
     async text(encoding?: string): Promise<string> {
-      const bytes = await this.bytes();
-      return new TextDecoder(encoding ?? 'utf-8').decode(bytes);
+      const raw = await this.bytes();
+      return Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength).toString(
+        (encoding ?? 'utf8') as BufferEncoding
+      );
     },
   };
 }
@@ -121,8 +153,10 @@ export async function* extract(
 
       if (ev.kind === 'end') break;
       if (ev.kind === 'chunk') {
-        // Stray chunk — consume and continue (shouldn't normally happen).
-        continue;
+        // Stray chunk at outer-loop level is a parser invariant violation (D-5).
+        const err = new Error('parser invariant: chunk emitted before entry');
+        (err as Error & { code: string }).code = 'TAR_PARSER_INVARIANT';
+        throw err;
       }
 
       // ev.kind === 'entry'
@@ -143,18 +177,27 @@ export async function* extract(
       // When chunks are exhausted it stores the next 'entry'/'end' in `lookahead`.
       // The outer generator is suspended at `yield entryWithData` while the consumer
       // iterates this — natural backpressure.
+      let dataGenInFlight = false;
       function makeDataGen(): AsyncGenerator<Uint8Array> {
+        if (dataGenInFlight) {
+          throw new Error('concurrent entry.data iteration is not supported');
+        }
+        dataGenInFlight = true;
         return (async function* () {
-          while (true) {
-            const r = await parser.next();
-            if (r.done) return;
-            if (r.value.kind === 'chunk') {
-              yield r.value.data;
-            } else {
-              // 'entry' or 'end' — store for outer loop.
-              lookahead = r.value;
-              return;
+          try {
+            while (true) {
+              const r = await parser.next();
+              if (r.done) return;
+              if (r.value.kind === 'chunk') {
+                yield r.value.data;
+              } else {
+                // 'entry' or 'end' — store for outer loop.
+                lookahead = r.value;
+                return;
+              }
             }
+          } finally {
+            dataGenInFlight = false;
           }
         })();
       }

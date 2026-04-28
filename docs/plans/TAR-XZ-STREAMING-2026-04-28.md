@@ -678,13 +678,6 @@ desired, `/llm --llm gemini` can be re-tried after gemini quota resets.
 User-validated decisions BEFORE adversarial review (each via separate AskUserQuestion with
 concrete chiffrage):
 
----
-
-## §12 Locked Design Decisions (2026-04-28)
-
-User-validated decisions BEFORE adversarial review (each via separate AskUserQuestion with
-concrete chiffrage):
-
 ### D-1 — Chunk pass-through (no coalescing)
 
 XZ decompressor output passes through to `parseTar` directly. No minimum-chunk buffering.

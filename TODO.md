@@ -9,6 +9,7 @@
   - [x] ✅ Block 4: `list.ts` rewritten — `TarList` class replaced by 4-line generator using `parseTar(xzStream, 'list')`; S-12 placeholder test added; all gates pass (2026-04-28)
   - [x] ✅ Cleanup: `collectAllChunks`, `decompressXz`, `runWritable` removed from `xz-helpers.ts` (zero callers verified); T-06 deprecated-helpers test removed from `xz-helpers.spec.ts`; all gates pass (2026-04-28)
   - [x] ✅ Block 5: security regression gate (`test/security.spec.ts` — 18 TOCTOU vectors + S-14 + S-15) + memory-shape CI gate (`test/memory-shape.spec.ts` — 3 high-water tests); vitest.config.ts pool=forks+--expose-gc; file.ts @security TSDoc; README security model subsection (2026-04-28)
+  - [x] ✅ PR #113 Fix Round 1: 11 findings fixed (F-1 streamXz/parseTar early-termination cleanup; F-2 bytes()-after-iter throw guard; F-3 text() reverted to Buffer.toString for base64/hex/latin1 support; F-4 concurrent dataGen guard; F-5 stray-chunk TAR_PARSER_INVARIANT throw; F-6 memory-shape Test1 preset:6; F-7 vitest.memory.config.ts + test:memory script isolated; F-8 math comment fix; F-9 README wording; F-10 changeset wording; F-11 duplicate §12 header removed); 12 new tests; all 6 quality gates green (2026-04-28)
 
 ## Pending - HIGH
 

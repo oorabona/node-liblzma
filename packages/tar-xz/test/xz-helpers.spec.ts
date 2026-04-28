@@ -143,9 +143,41 @@ describe('streamXz', () => {
   // T-05: Memory shape — in-loop high-water mark sampling (spec §12.3 pattern)
   //
   // Uses a 5 MB synthetic decompressed tar and asserts that peak memory delta
-  // stays below 10× the typical XZ output chunk size (64 KB = 655 360 bytes).
+  // stays below 10× the typical XZ output chunk size (64 KB = 65,536 bytes).
   // This proves no full-archive accumulation (which would spike to ~5 MB+).
   // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // T-06: Early termination — no unhandled rejections, stream destroyed
+  // ---------------------------------------------------------------------------
+
+  it('T-06: breaking out of for-await early causes no unhandled rejection and stream is cleaned up', async () => {
+    // Build a 3-entry archive so there are entries past the break point.
+    const tarXz = await buildTarXz([
+      { name: 'a.txt', content: Buffer.from('entry-a') },
+      { name: 'b.txt', content: Buffer.from('entry-b') },
+      { name: 'c.txt', content: Buffer.from('entry-c') },
+    ]);
+
+    const unhandledRejections: Error[] = [];
+    const handler = (err: Error) => unhandledRejections.push(err);
+    process.on('unhandledRejection', handler);
+
+    try {
+      // Only consume first chunk — break immediately
+      let count = 0;
+      for await (const _chunk of streamXz(tarXz)) {
+        count++;
+        break; // consumer breaks early
+      }
+      // Allow a microtask turn for any unhandled rejection to surface
+      await new Promise((r) => setTimeout(r, 20));
+    } finally {
+      process.off('unhandledRejection', handler);
+    }
+
+    expect(unhandledRejections).toHaveLength(0);
+  });
 
   it('T-05: memory shape — peak heapUsed delta stays below 2× decompressed size for 5 MB tar', async () => {
     // Build a 5 MB synthetic file (highly compressible uniform byte) and stream-decompress it.

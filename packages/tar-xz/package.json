@@ -28,7 +28,7 @@
     "build:demo": "vite build --config demo/vite.config.ts",
     "dev:demo": "vite --config demo/vite.config.ts",
     "test": "vitest run",
-    "test:memory": "vitest run test/memory-shape.spec.ts",
+    "test:memory": "vitest run --config vitest.memory.config.ts test/memory-shape.spec.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",

@@ -12,7 +12,7 @@ function names in both environments.
 ## Features
 
 - **Unified API** — `create`, `extract`, `list` work identically in Node.js and browsers
-- **Stream-shaped API** — all functions return `AsyncIterable<…>`; stream-shaped inputs accepted. Node `extract()`/`list()` are now O(largest entry) streaming as of v6.1.0 — the previous buffered behavior was the v6.0.0 "planned optimization" delivery
+- **Stream-shaped API** — all functions return `AsyncIterable<…>`; stream-shaped inputs accepted. Node `extract()`/`list()` now stream chunks as XZ decompresses them — memory stays O(largest single entry). v6.0.0 introduced the stream-first API contract; v6.1.0 delivers the planned optimization that fulfills it.
 - **Flexible input** — `extract()` and `list()` accept `AsyncIterable`, `Uint8Array`,
   `ArrayBuffer`, Web `ReadableStream`, or Node `ReadableStream`
 - **Flexible source** — `create()` accepts fs paths (Node), `Buffer`/`Uint8Array`, or

@@ -49,7 +49,8 @@ function makeSampler(): { sample: () => void; peak: () => number; baseline: numb
  * Returns a Uint8Array of the compressed archive.
  */
 async function buildArchive(
-  files: Array<{ name: string; size: number; byte?: number }>
+  files: Array<{ name: string; size: number; byte?: number }>,
+  preset = 1
 ): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
   for await (const chunk of create({
@@ -57,7 +58,7 @@ async function buildArchive(
       name: f.name,
       source: Buffer.alloc(f.size, f.byte ?? 0xab),
     })),
-    preset: 1, // Fast preset for test speed; O(N) memory shape holds at all presets
+    preset, // Default fast preset; callers may pass 6 when testing preset-6 dictionary slack
   })) {
     chunks.push(chunk);
   }
@@ -90,7 +91,8 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
       const ENTRY_SIZE = 50 * 1024 * 1024; // 50 MB
       const THRESHOLD = 2 * ENTRY_SIZE + 16 * 1024 * 1024; // 116 MB
 
-      const archive = await buildArchive([{ name: 'big.bin', size: ENTRY_SIZE }]);
+      // preset: 6 matches the 16 MB slack rationale (XZ preset-6 dictionary ≈ 8 MB)
+      const archive = await buildArchive([{ name: 'big.bin', size: ENTRY_SIZE }], 6);
 
       gc!();
       const sampler = makeSampler();

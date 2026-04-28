@@ -52,6 +52,15 @@ export function streamXz(input: TarInputNode): AsyncIterable<Uint8Array> {
       // Ensure the pipeline promise is always settled to avoid unhandled rejections.
       await pipelinePromise.catch(() => undefined);
       throw err;
+    } finally {
+      // If the consumer stopped iterating early (generator.return() was called),
+      // destroy the Transform stream so the pipeline does not keep running.
+      // destroy() is idempotent — safe to call even if the stream already ended.
+      if (!unxzStream.destroyed) {
+        unxzStream.destroy();
+      }
+      // Swallow any subsequent pipeline rejection caused by the destroy() above.
+      await pipelinePromise.catch(() => undefined);
     }
   })();
 }
