@@ -40,6 +40,18 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 // ---------------------------------------------------------------------------
 
 /** Build a minimal TAR buffer with a single regular-file entry. */
+
+/** Stubs process.platform to 'win32' via Object.create so non-enumerable
+ *  Node.js APIs (EventEmitter, env, argv, etc.) remain intact on the stub. */
+function stubWin32Platform(): void {
+  const processStub = Object.create(process) as NodeJS.Process;
+  Object.defineProperty(processStub, 'platform', {
+    value: 'win32',
+    configurable: true,
+  });
+  vi.stubGlobal('process', processStub);
+}
+
 function buildSingleFileTar(name: string, content: Buffer): Buffer {
   const blocks: Buffer[] = [];
   const header = createHeader({ name, size: content.length });
@@ -87,8 +99,9 @@ describe('Win32 extractFile fail-closed under symlink-swap race', () => {
     tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'tar-xz-win32-'));
     archivePath = path.join(tmp, 'archive.tar.xz');
     // Stub process.platform to 'win32' so the new Win32 branch is exercised
-    // on all CI platforms (Linux, macOS, Windows).
-    vi.stubGlobal('process', { ...process, platform: 'win32' });
+    // on all CI platforms (Linux, macOS, Windows), while preserving the
+    // original process object's non-enumerable properties and methods.
+    stubWin32Platform();
   });
 
   afterEach(async () => {

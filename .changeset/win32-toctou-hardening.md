@@ -10,9 +10,8 @@ the unlink and the retry-open (symlink-swap race), extraction rejects with a
 security error instead of writing through the symlink.
 
 ```ts
-// Race-injected symlink now throws instead of writing through it:
-// Error: Security error: symlink-swap race detected for 'victim.txt' —
-//   a symlink was injected at the target path between unlink and open
+// Race-injected symlink now throws a security error instead of writing
+// through the target path.
 ```
 
 ## What changed
