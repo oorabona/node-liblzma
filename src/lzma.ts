@@ -307,9 +307,9 @@ export type {
  * Internal resolved options for XzStream instances.
  *
  * All fields are required (defaults applied in constructor) EXCEPT memlimit,
- * which is genuinely optional: the native binding ignores it (UINT64_MAX
- * hardcoded; see TODO "[Native] Wire memlimit in src/bindings/node-liblzma.cpp").
- * Only the WASM Buffer API decompression paths (unxz/unxzAsync/streamBufferDecode) honour memlimit; xzAsync is compression-only and ignores this field.
+ * which is genuinely optional: validated by validateMemlimit() at the XzStream
+ * constructor for decode streams; passed through to both the native N-API decoder
+ * and the WASM Buffer API. xzAsync is compression-only and ignores this field.
  */
 interface ResolvedLZMAOptions {
   check: number;
@@ -319,7 +319,7 @@ interface ResolvedLZMAOptions {
   threads: number;
   chunkSize: number;
   flushFlag: number;
-  /** Honoured only by the WASM Buffer API; native streams ignore this field. */
+  /** Optional memlimit. Validated at the public XzStream constructor; passed through to the decoder backend (native or WASM). */
   memlimit?: number | bigint;
 }
 

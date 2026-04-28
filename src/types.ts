@@ -59,9 +59,10 @@ export interface LZMAOptions {
    * **Honored by all decoder APIs** (`unxz`, `unxzAsync`, `Unxz`, `createUnxz` — both native
    * and WASM paths). `xzAsync` is compression-only and does not read `memlimit`.
    *
-   * Accepted types: `number` or `bigint` (both are validated then coerced to
-   * `bigint` before being passed to the C ABI, which maps `uint64_t` to
-   * `BigInt`). The `number` form must be a finite, non-negative integer; passing
+   * Accepted types: `number` or `bigint`. Both are validated before reaching the
+   * decoder. The native binding accepts either type directly via N-API; the WASM
+   * Buffer API coerces to `bigint` for the C ABI. The `number` form must be a
+   * finite, non-negative integer; passing
    * `NaN`, `Infinity`, a fractional value, or a negative number throws
    * `LZMAOptionsError` before any decompression is attempted.
    * For values ≥ `Number.MAX_SAFE_INTEGER` (2^53 - 1), use `bigint` to avoid

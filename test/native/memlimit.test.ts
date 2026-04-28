@@ -16,7 +16,7 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { LZMA_MEMLIMIT_ERROR, LZMAMemoryLimitError, LZMAOptionsError } from '../../src/errors.js';
-import { createUnxz, Unxz, xzAsync } from '../../src/lzma.js';
+import { createUnxz, Unxz, Xz, xzAsync } from '../../src/lzma.js';
 
 /** Compress a small payload at preset 6 to produce a fixture .xz buffer.
  *
@@ -141,6 +141,15 @@ describe('Native Unxz — memlimit option', () => {
     it('throws LZMAOptionsError for bigint above UINT64_MAX', () => {
       // 18446744073709551616n = 2n**64n — one past UINT64_MAX, would truncate in C ABI
       expect(() => new Unxz({ memlimit: 18446744073709551616n })).toThrow(LZMAOptionsError);
+    });
+  });
+
+  describe('Encoder (Xz) — memlimit is silently ignored', () => {
+    it('does NOT throw when NaN memlimit is passed to Xz (encoder ignores memlimit)', () => {
+      // The JS-side guard only fires for STREAM_DECODE. Encoder paths forward memlimit
+      // into _opts for type uniformity but the C side ignores it entirely.
+      // This test locks the contract: invalid memlimit values do NOT throw for encoders.
+      expect(() => new Xz({ memlimit: Number.NaN })).not.toThrow();
     });
   });
 });

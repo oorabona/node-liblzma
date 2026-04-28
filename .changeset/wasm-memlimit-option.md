@@ -15,4 +15,4 @@ When the compressed stream would require more memory than the limit, the promise
 **Accepted types:** `number | bigint` (both coerced to `bigint` for the WASM C ABI).
 **Default:** `BigInt(256 * 1024 * 1024)` (256 MiB — unchanged from existing behaviour).
 
-**Native parity:** Wired in the same release — see the native-memlimit changeset below for `Unxz`/`createUnxz` coverage.
+**Native parity:** Wired in the same release — see the native-memlimit changeset for `Unxz`/`createUnxz` coverage.

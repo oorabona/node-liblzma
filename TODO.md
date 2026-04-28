@@ -18,6 +18,7 @@ _None_
 
 ## Completed
 
+- [x] ✅ [Native] PR #112 Round 1 Copilot fixes — F-3/C-1/C-2 C++ defense-in-depth throw on lossless=false/out-of-range (was silent UINT64_MAX fallback), C-3 error message context-neutral, C-6 TSDoc coercion wording, F-1 ResolvedLZMAOptions stale TSDoc, F-2 encoder memlimit comment, C-4/C-5 changeset wording; GAP test encoder ignores memlimit; gyp+tsc+lint+15 native+full suite pass (2026-04-28)
 - [x] ✅ [Native] Wire `memlimit` in `InitializeDecoder` — `.hpp` signature updated, `node-gyp rebuild` clean, 14/14 memlimit tests pass, 488+99+27=614 total tests pass (2026-04-28)
 - [x] ✅ [WASM] `validateMemlimit` symmetry — bigint UINT64_MAX upper-bound guard (closed alongside native memlimit PR) (2026-04-28)
 - [x] ✅ [WASM] PR #111 Round 3 Copilot fixes — C-3-001/2/3 duplicate JSDoc blocks removed from decoderInit/autoDecoderInit/validateMemlimit, C-3-004 stale xzAsync/unxzAsync comment fixed in lzma.ts:370; tsc+memlimit+full suite pass (2026-04-28)
