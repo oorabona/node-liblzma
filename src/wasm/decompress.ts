@@ -19,12 +19,11 @@ import { toUint8Array } from './utils.js';
  */
 export async function unxzAsync(
   buffer: Uint8Array | ArrayBuffer | string,
-  _opts?: LZMAOptions
+  opts?: LZMAOptions
 ): Promise<Uint8Array> {
   await initModule();
   const input = toUint8Array(buffer);
-  // TODO: pass opts.memlimit when LZMAOptions supports it
-  return streamBufferDecode(input);
+  return streamBufferDecode(input, opts?.memlimit);
 }
 
 /**

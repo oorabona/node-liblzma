@@ -53,6 +53,32 @@ export interface LZMAOptions {
   chunkSize?: number;
   /** Flush flag to use */
   flushFlag?: number;
+  /**
+   * Memory usage limit for decompression, in bytes.
+   *
+   * **Honored only by `unxz`/`unxzAsync` (WASM Buffer API decompression).**
+   * `xzAsync` is compression-only and does not read `memlimit`.
+   * Currently **silently ignored** by native streams (`Xz`/`Unxz`/`createXz`/`createUnxz`) —
+   * see TODO `[Native] Wire memlimit in src/bindings/node-liblzma.cpp`.
+   *
+   * Accepted types: `number` or `bigint` (both are validated then coerced to
+   * `bigint` before being passed to the WASM C ABI, which maps `uint64_t` to
+   * `BigInt`). The `number` form must be a finite, non-negative integer; passing
+   * `NaN`, `Infinity`, a fractional value, or a negative number throws
+   * `LZMAOptionsError` before any decompression is attempted.
+   * For values ≥ `Number.MAX_SAFE_INTEGER` (2^53 - 1), use `bigint` to avoid
+   * precision loss on coercion; passing a `number` above this threshold also
+   * throws `LZMAOptionsError`.
+   *
+   * WASM default: `BigInt(256 * 1024 * 1024)` (256 MiB).
+   * Native: ignored (UINT64_MAX hardcoded — see follow-up TODO above).
+   *
+   * When the compressed stream requires more memory than this limit,
+   * decompression throws `LZMAMemoryLimitError` with
+   * `code === LZMA_MEMLIMIT_ERROR` (numeric constant `6`, re-exported from
+   * `src/errors.ts`).
+   */
+  memlimit?: number | bigint;
 }
 
 /**
