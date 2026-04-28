@@ -149,9 +149,27 @@ export async function createFile(path: string, options: CreateOptions): Promise<
  *
  * Threat model: assumes `cwd` is exclusively owned by this process for the
  * duration of the call. Race conditions where a concurrent attacker process
- * swaps ancestors during extraction are OUT OF SCOPE — POSIX does not
- * expose `openat2(RESOLVE_BENEATH)` via Node, so bulletproof TOCTOU defense
- * is impossible without giving up the high-level fs API.
+ * swaps ancestors during extraction are mitigated differently per platform:
+ *
+ * @security
+ * **POSIX (Linux, macOS):** FILE entries are written via
+ * `open(O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW)` + fd-based `write()` /
+ * `chmod()` / `utimes()`. `O_NOFOLLOW` prevents opening a symlink at the leaf
+ * path. The fd is held open for the entire content write, so the TOCTOU window
+ * is bounded to the gap between `ensureSafeTarget` and the `open()` call —
+ * effectively zero in practice.
+ *
+ * **Windows:** `O_NOFOLLOW` is not available. The Windows path falls back to
+ * `pipeline(Readable.from(entry.data), createWriteStream(target))` — a
+ * **by-path** operation. With streaming extraction (v6.1.0), the wallclock
+ * window between `ensureSafeTarget` and the last byte written now scales with
+ * entry size (one XZ chunk per `await`). A co-tenant process that can write to
+ * `cwd` could swap a symlink during this window.
+ *
+ * **Windows recommendation:** extract to a directory owned exclusively by the
+ * calling process — do not extract user-supplied archives into shared or
+ * world-writable directories. Follow-up: TODO `[Win32] handle-based extraction`
+ * (CreateFileW + FILE_FLAG_OPEN_REPARSE_POINT) to close this gap.
  *
  * @param archivePath - Path to the `.tar.xz` file to extract
  * @param options     - Extraction options (`strip`, `filter`, `cwd`)

@@ -235,6 +235,119 @@ describe('Node.js file API (v6)', () => {
     });
   });
 
+  describe('entry helpers (bytes / text)', () => {
+    it('F-2: bytes() throws when entry.data was already iterated', async () => {
+      const { create } = await import('../src/node/create.js');
+      const { extract } = await import('../src/node/extract.js');
+
+      const archive = create({
+        files: [{ name: 'test.txt', source: Buffer.from('hello') }],
+      });
+
+      for await (const entry of extract(archive)) {
+        // Partially consume entry.data first
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: intentional drain
+        for await (const _ of entry.data) {
+          /* drain */
+        }
+        // Now bytes() must throw since dataGen is consumed
+        await expect(entry.bytes()).rejects.toThrow(/entry\.data already iterated/);
+      }
+    });
+
+    it('F-2: bytes() works fine when entry.data was NOT iterated', async () => {
+      const { create } = await import('../src/node/create.js');
+      const { extract } = await import('../src/node/extract.js');
+
+      const content = Buffer.from('hello world');
+      const archive = create({
+        files: [{ name: 'test.txt', source: content }],
+      });
+
+      for await (const entry of extract(archive)) {
+        const result = await entry.bytes();
+        expect(Buffer.from(result)).toEqual(content);
+      }
+    });
+
+    it('F-3: text() with utf8 encoding decodes correctly', async () => {
+      const { create } = await import('../src/node/create.js');
+      const { extract } = await import('../src/node/extract.js');
+
+      const content = 'Hello, World!';
+      const archive = create({
+        files: [{ name: 'test.txt', source: Buffer.from(content, 'utf8') }],
+      });
+
+      for await (const entry of extract(archive)) {
+        expect(await entry.text()).toBe(content);
+        expect(await entry.text('utf8')).toBe(content);
+      }
+    });
+
+    it('F-3: text("base64") base64-encodes the content (Buffer.toString contract)', async () => {
+      const { create } = await import('../src/node/create.js');
+      const { extract } = await import('../src/node/extract.js');
+
+      const content = Buffer.from('binary data');
+      const expected = content.toString('base64');
+
+      const archive = create({
+        files: [{ name: 'data.bin', source: content }],
+      });
+
+      for await (const entry of extract(archive)) {
+        expect(await entry.text('base64')).toBe(expected);
+      }
+    });
+
+    it('F-3: text("hex") hex-encodes the content (Buffer.toString contract)', async () => {
+      const { create } = await import('../src/node/create.js');
+      const { extract } = await import('../src/node/extract.js');
+
+      const content = Buffer.from([0xde, 0xad, 0xbe, 0xef]);
+      const expected = content.toString('hex');
+
+      const archive = create({
+        files: [{ name: 'bytes.bin', source: content }],
+      });
+
+      for await (const entry of extract(archive)) {
+        expect(await entry.text('hex')).toBe(expected);
+      }
+    });
+
+    it('F-1: breaking out of extract() early causes no unhandled rejection', async () => {
+      const { create } = await import('../src/node/create.js');
+      const { extract } = await import('../src/node/extract.js');
+
+      const archive = create({
+        files: [
+          { name: 'a.txt', source: Buffer.from('entry-a') },
+          { name: 'b.txt', source: Buffer.from('entry-b') },
+          { name: 'c.txt', source: Buffer.from('entry-c') },
+        ],
+      });
+
+      const unhandledRejections: Error[] = [];
+      const handler = (err: Error) => unhandledRejections.push(err);
+      process.on('unhandledRejection', handler);
+
+      try {
+        for await (const entry of extract(archive)) {
+          expect(entry.name).toBe('a.txt');
+          break; // consumer breaks after first entry
+        }
+        // Allow a microtask turn for any unhandled rejection to surface
+        await new Promise((r) => setTimeout(r, 20));
+      } finally {
+        process.off('unhandledRejection', handler);
+      }
+
+      expect(unhandledRejections).toHaveLength(0);
+    });
+  });
+
   describe('streaming (in-memory)', () => {
     it('create() yields compressed chunks without disk I/O', async () => {
       const { create } = await import('../src/node/create.js');

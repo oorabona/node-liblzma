@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Use threads pool (default) for fast parallel execution.
+    // Memory-shape tests that require --expose-gc have their own config:
+    // vitest.memory.config.ts (pool: 'forks') — run via pnpm test:memory.
     include: ['test/**/*.spec.ts'],
     coverage: {
       provider: 'v8',

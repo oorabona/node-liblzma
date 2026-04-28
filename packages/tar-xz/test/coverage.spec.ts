@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { extract } from '../src/node/index.js';
+import { extract, list } from '../src/node/index.js';
 import { create } from '../src/node/create.js';
 import { createFile, extractFile, listFile } from '../src/node/file.js';
 import { parseOctal } from '../src/tar/checksum.js';
@@ -1161,5 +1161,146 @@ describe('Coverage: Node API', () => {
       expect(fileEntry).toBeDefined();
       expect(fileEntry?.content.toString()).toBe('Content');
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Block 3 — extract() streaming-specific tests (S-08, D-3, S-08b)
+// ---------------------------------------------------------------------------
+
+describe('extract() streaming behaviours (Block 3)', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tar-xz-b3-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  async function buildAndSaveArchive(
+    files: Array<{ name: string; content: Buffer }>
+  ): Promise<string> {
+    const archive = path.join(tempDir, 'archive.tar.xz');
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of create({
+      files: files.map((f) => ({ name: f.name, source: f.content })),
+    })) {
+      chunks.push(chunk);
+    }
+    await fs.writeFile(archive, Buffer.concat(chunks.map((c) => Buffer.from(c))));
+    return archive;
+  }
+
+  it('S-08: consumer skips entry.data — next entry yields correct content', async () => {
+    const archive = await buildAndSaveArchive([
+      { name: 'skip-me.bin', content: Buffer.alloc(102400, 0xaa) }, // 100 KB
+      { name: 'read-me.txt', content: Buffer.from('hello-streaming') },
+    ]);
+
+    const entries: Array<{ name: string; content: string }> = [];
+    for await (const entry of extract(createReadStream(archive))) {
+      if (entry.name === 'skip-me.bin') {
+        // Deliberately do NOT call entry.bytes() or iterate entry.data.
+        continue; // auto-drain kicks in
+      }
+      entries.push({ name: entry.name, content: await entry.text() });
+    }
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.name).toBe('read-me.txt');
+    expect(entries[0]?.content).toBe('hello-streaming');
+  });
+
+  it('D-3: bytes() memoization — second call returns same buffer instance', async () => {
+    const archive = await buildAndSaveArchive([
+      { name: 'file.txt', content: Buffer.from('memoize-me') },
+    ]);
+
+    for await (const entry of extract(createReadStream(archive))) {
+      const first = await entry.bytes();
+      const second = await entry.bytes();
+      expect(first).toBe(second); // same reference — memoized
+      expect(Buffer.from(first).toString()).toBe('memoize-me');
+    }
+  });
+
+  it('D-3: data iterated AFTER bytes() yields nothing', async () => {
+    const archive = await buildAndSaveArchive([
+      { name: 'file.txt', content: Buffer.from('once-only') },
+    ]);
+
+    for await (const entry of extract(createReadStream(archive))) {
+      await entry.bytes(); // consumes the data generator
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of entry.data) {
+        chunks.push(chunk);
+      }
+      // Generator is exhausted; second iteration yields nothing.
+      expect(chunks).toHaveLength(0);
+    }
+  });
+
+  it('S-08b consumer-break (D-2): for-await break does NOT surface errors from skipped data', async () => {
+    const archive = await buildAndSaveArchive([
+      { name: 'a.txt', content: Buffer.from('first') },
+      { name: 'b.txt', content: Buffer.from('second') },
+      { name: 'c.txt', content: Buffer.from('third') },
+    ]);
+
+    const names: string[] = [];
+    // Break after first entry — should not throw.
+    for await (const entry of extract(createReadStream(archive))) {
+      names.push(entry.name);
+      break; // consumer-break — triggers generator finally
+    }
+
+    expect(names).toHaveLength(1);
+    expect(names[0]).toBe('a.txt');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Block 4 — list() streaming-specific tests (S-12 placeholder)
+// ---------------------------------------------------------------------------
+
+describe('list() streaming behaviours (Block 4)', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tar-xz-b4-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('S-12 placeholder: list() yields all entries with correct metadata', async () => {
+    const archive = path.join(tempDir, 'archive.tar.xz');
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of create({
+      files: [
+        { name: 'alpha.txt', source: Buffer.from('alpha') },
+        { name: 'beta.txt', source: Buffer.from('beta-content-here') },
+        { name: 'gamma.txt', source: Buffer.from('g') },
+      ],
+    })) {
+      chunks.push(chunk);
+    }
+    await fs.writeFile(archive, Buffer.concat(chunks.map((c) => Buffer.from(c))));
+
+    const entries: TarEntry[] = [];
+    for await (const entry of list(createReadStream(archive))) {
+      entries.push(entry);
+    }
+
+    expect(entries).toHaveLength(3);
+    expect(entries[0]?.name).toBe('alpha.txt');
+    expect(entries[0]?.size).toBe(5);
+    expect(entries[1]?.name).toBe('beta.txt');
+    expect(entries[1]?.size).toBe(17);
+    expect(entries[2]?.name).toBe('gamma.txt');
+    expect(entries[2]?.size).toBe(1);
   });
 });

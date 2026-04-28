@@ -12,7 +12,7 @@ function names in both environments.
 ## Features
 
 - **Unified API** — `create`, `extract`, `list` work identically in Node.js and browsers
-- **Stream-shaped API** — all functions return `AsyncIterable<…>`; stream-shaped inputs accepted. Note: current Node `extract()`/`list()` implementations buffer internally — true streaming is a planned optimization
+- **Stream-shaped API** — all functions return `AsyncIterable<…>`; stream-shaped inputs accepted. Node `extract()`/`list()` now stream chunks as XZ decompresses them — memory stays O(largest single entry). v6.0.0 introduced the stream-first API contract; v6.1.0 delivers the planned optimization that fulfills it.
 - **Flexible input** — `extract()` and `list()` accept `AsyncIterable`, `Uint8Array`,
   `ArrayBuffer`, Web `ReadableStream`, or Node `ReadableStream`
 - **Flexible source** — `create()` accepts fs paths (Node), `Buffer`/`Uint8Array`, or
@@ -177,6 +177,32 @@ for (const entry of entries) {
 
 Do not import `tar-xz/file` in browser bundles — it imports `node:fs` and will
 fail at runtime. Use `create`/`extract`/`list` directly in browser code.
+
+## Security model
+
+`extractFile` enforces layered path-safety checks before writing any bytes to
+disk: traversal detection (`..` and absolute paths), leaf-symlink rejection
+(`O_NOFOLLOW` on POSIX), ancestor-symlink TOCTOU guard, hardlink validation,
+NUL/empty name rejection, and setuid/setgid/sticky-bit stripping.
+
+The TOCTOU mitigation differs by platform:
+
+**POSIX (Linux, macOS):** FILE entries are written through a file descriptor
+opened with `O_NOFOLLOW`. The fd is held open for the entire streaming write,
+so the window between the safety check and the last write is effectively zero.
+
+**Windows:** `O_NOFOLLOW` is not available. Extraction falls back to by-path
+stream operations (`createWriteStream`). With streaming delivery (v6.1.0), the
+window between the initial safety check and the last written byte scales with
+the entry's size — a co-tenant process that can modify `cwd` could race a
+symlink swap during this window.
+
+**Windows recommendation:** always extract to a directory owned exclusively by
+the calling process. Do not extract user-supplied archives into shared,
+world-writable, or `TEMP`-like directories on Windows.
+
+A tracked follow-up (`[Win32] handle-based extraction via CreateFileW +
+FILE_FLAG_OPEN_REPARSE_POINT`) will close this gap in a future minor release.
 
 ## Streaming Patterns
 
