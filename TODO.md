@@ -8,7 +8,7 @@
   - [x] ✅ Block 3: `extract.ts` rewritten — `TarUnpack` class replaced by lean async generator using `parseTar`; `makeTarEntryWithData` accepts pull-callback with bytes() memoization (D-3); lookahead buffer pattern for correct event routing; S-08 auto-drain + S-08b consumer-break + memoization tests added to `coverage.spec.ts`; all gates pass (2026-04-28)
   - [x] ✅ Block 4: `list.ts` rewritten — `TarList` class replaced by 4-line generator using `parseTar(xzStream, 'list')`; S-12 placeholder test added; all gates pass (2026-04-28)
   - [x] ✅ Cleanup: `collectAllChunks`, `decompressXz`, `runWritable` removed from `xz-helpers.ts` (zero callers verified); T-06 deprecated-helpers test removed from `xz-helpers.spec.ts`; all gates pass (2026-04-28)
-  - [ ] 🟡 Block 5: security regression tests + memory-shape CI gate (separate dispatch)
+  - [x] ✅ Block 5: security regression gate (`test/security.spec.ts` — 18 TOCTOU vectors + S-14 + S-15) + memory-shape CI gate (`test/memory-shape.spec.ts` — 3 high-water tests); vitest.config.ts pool=forks+--expose-gc; file.ts @security TSDoc; README security model subsection (2026-04-28)
 
 ## Pending - HIGH
 
