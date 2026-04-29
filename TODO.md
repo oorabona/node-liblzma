@@ -2,7 +2,7 @@
 
 ## In Progress
 
-_None_
+- [ ] 🟡 [Refactor] REFACTOR-BIOME-2026-04-29 (branch `fix/biome-warnings-sweep`, 8 commits) — 63→1 biome warnings (-98.4%). Phases 1-5b-2 all green: pre-push opus senior-review pending then push + PR + Copilot. Started 2026-04-29.
 
 ## Pending - HIGH
 
@@ -14,7 +14,7 @@ _None._
 
 ## Pending - LOW (Nice to Have)
 
-- [ ] [Lint] Biome warnings sweep (6 total, all `pnpm exec biome lint` exits 0 — warnings only, ran via `rtk proxy biome lint` workaround on 2026-04-28). Two from PR #111: `test/wasm/decompress-memlimit.test.ts:30` (`useTemplate` — string concat → template literal, biome FIXABLE) + `test/wasm/decompress-memlimit.test.ts:141` (`noNonNullAssertion` on `result!` in callback success test, replace with assertion guard). Four pre-existing on master: `src/errors.ts:176` `noNonNullAssertion` (`messages[errno]!`), `src/lzma.ts:63` + `src/pool.ts:20` `noImportCycles` (lzma↔pool re-export cycle, already noted in MEMORY.md as "benign — ESM resolves at runtime"), `src/pool.ts:166` `noNonNullAssertion` (`this.queue.shift()!` after empty-check). Priority: L (cosmetic; can batch with another pass). Note: lint pipeline is silently broken until RTK biome bug fixes (workaround: `rtk proxy biome ...`).
+- [ ] [Lint] Single residual biome warning: `test/node-api.spec.ts:249` (`suppressions/unused` — pre-existing biome-ignore that no longer suppresses anything). Cosmetic 1-line cleanup for a future PR.
 
 ## Completed
 
