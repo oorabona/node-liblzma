@@ -381,10 +381,21 @@ export async function extractFile(
             await handle.write(chunk as Uint8Array);
           }
           // fd-based chmod and utimes to avoid any by-path follow after write.
-          await handle.chmod(fileMode);
+          // On Windows these metadata updates are best-effort: some filesystems can
+          // reject them (for example with EPERM) even when the file contents were
+          // written successfully.
+          try {
+            await handle.chmod(fileMode);
+          } catch {
+            // Best-effort on Windows.
+          }
           if (entry.mtime > 0) {
             const mt = new Date(entry.mtime * 1000);
-            await handle.utimes(mt, mt);
+            try {
+              await handle.utimes(mt, mt);
+            } catch {
+              // Best-effort on Windows.
+            }
           }
         } finally {
           await handle.close();

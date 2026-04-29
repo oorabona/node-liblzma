@@ -9,9 +9,10 @@ Replaces the by-path `createWriteStream` Windows fallback with an fd-based
 the unlink and the retry-open (symlink-swap race), extraction rejects with a
 security error instead of writing through the symlink.
 
-```ts
-// Race-injected symlink now throws a security error instead of writing
-// through the target path.
+```typescript
+await expect(extractFile(archive, target)).rejects.toThrow(
+  /security error/i
+)
 ```
 
 ## What changed

@@ -193,6 +193,12 @@ describe('Win32 extractFile fail-closed under symlink-swap race', () => {
       // not follow it. Use path.normalize for cross-platform path comparison.
       const linkTarget = await fsp.readlink(target);
       expect(path.normalize(linkTarget)).toBe(path.normalize(attackerTarget));
+
+      // Critical: the attacker-controlled target file must remain unchanged.
+      // If extraction ever follows the swapped symlink and writes through it,
+      // this assertion will fail and make the regression observable.
+      const attackerContent = await fsp.readFile(attackerTarget, 'utf8');
+      expect(attackerContent).toBe('attacker content');
     }
   );
 
