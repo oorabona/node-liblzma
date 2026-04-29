@@ -2,16 +2,7 @@
 
 ## In Progress
 
-- [ ] 🟡 [tar-xz] True streaming for Node `extract()`/`list()` — Priority: M (started 2026-04-28, branch feat/tar-xz-streaming, story TAR-XZ-STREAMING-2026-04-28)
-  - [x] ✅ Block 1: `streamXz()` added to `xz-helpers.ts`, old helpers `@deprecated`-tagged, 9 tests in `test/xz-helpers.spec.ts` — all quality gates pass (2026-04-28)
-  - [x] ✅ Block 2: `parseTar()` AsyncGenerator + `ParseEvent` type added to `tar-parser.ts`; v8-ignore removed from lines 86-89/148-153/169-174 (now hot paths); 8 tests in `test/tar-parser-stream.spec.ts` covering 128-byte chunking, PAX split (S-05), PAX_GLOBAL split (L-M-03), EOA detection, truncation (S-09), list/no-chunk, auto-drain, TAR_PARSER_INVARIANT (D-5); MAX_PAX_HEADER_BYTES=1MB DoS guard (A-07); all gates pass (2026-04-28)
-  - [x] ✅ Block 3: `extract.ts` rewritten — `TarUnpack` class replaced by lean async generator using `parseTar`; `makeTarEntryWithData` accepts pull-callback with bytes() memoization (D-3); lookahead buffer pattern for correct event routing; S-08 auto-drain + S-08b consumer-break + memoization tests added to `coverage.spec.ts`; all gates pass (2026-04-28)
-  - [x] ✅ Block 4: `list.ts` rewritten — `TarList` class replaced by 4-line generator using `parseTar(xzStream, 'list')`; S-12 placeholder test added; all gates pass (2026-04-28)
-  - [x] ✅ Cleanup: `collectAllChunks`, `decompressXz`, `runWritable` removed from `xz-helpers.ts` (zero callers verified); T-06 deprecated-helpers test removed from `xz-helpers.spec.ts`; all gates pass (2026-04-28)
-  - [x] ✅ Block 5: security regression gate (`test/security.spec.ts` — 18 TOCTOU vectors + S-14 + S-15) + memory-shape CI gate (`test/memory-shape.spec.ts` — 3 high-water tests); vitest.config.ts pool=forks+--expose-gc; file.ts @security TSDoc; README security model subsection (2026-04-28)
-  - [x] ✅ PR #113 Fix Round 1: 11 findings fixed (F-1 streamXz/parseTar early-termination cleanup; F-2 bytes()-after-iter throw guard; F-3 text() reverted to Buffer.toString for base64/hex/latin1 support; F-4 concurrent dataGen guard; F-5 stray-chunk TAR_PARSER_INVARIANT throw; F-6 memory-shape Test1 preset:6; F-7 vitest.memory.config.ts + test:memory script isolated; F-8 math comment fix; F-9 README wording; F-10 changeset wording; F-11 duplicate §12 header removed); 12 new tests; all 6 quality gates green (2026-04-28)
-  - [x] ✅ PR #113 Fix Round 2: CR2-1 (M) streamXz() lazy pipeline — moved pipeline()/createUnxz() inside async generator body so no I/O starts before first .next(); T-07 lazy test (readCount=0 + no unhandled rejection); CR2-2 (L) bytes() alloc-once via entry.size — single Uint8Array pre-alloc + in-place set() per chunk, throws TAR_PARSER_INVARIANT on overrun, special-cases entry.size===0; concatChunks() dead-code deleted; all 6 quality gates green: build=0 tsc=0 lint=0 test=0(151) memory=0(3) full=0(489) (2026-04-29)
-  - [x] ✅ PR #113 CI hotfix: dataWrapper retyped from `AsyncGenerator<Uint8Array>` to `AsyncIterable<Uint8Array>` in extract.ts:makeTarEntryWithData — avoids the `[Symbol.asyncDispose]` requirement TS 6 added to AsyncGenerator (lib.esnext Explicit Resource Management). Wrapper restructured: pure AsyncIterable whose `[Symbol.asyncIterator]()` sets dataIterStarted flag and returns dataGen directly (smaller surface, exactly matches public TarEntryWithData.data type). All 6 gates green. (2026-04-29)
+- [ ] 🟡 [tar-xz] Win32 handle-based extraction (story WIN32-TOCTOU-2026-04-29 / branch `fix/tar-xz-win32-toctou`) — JS-pure `'wx'` + retry fail-closed, fd-based ops. Closes the TOCTOU window left open by node-tar's documented stance. Started 2026-04-29.
 
 ## Pending - HIGH
 
@@ -19,8 +10,7 @@ _None_
 
 ## Pending - MEDIUM
 
-- [ ] [tar-xz] True streaming for Node `extract()`/`list()` — replace `Buffer.concat` accumulation (extract.ts:59,91 + list.ts:26) with incremental header→content parsing so memory stays O(largest entry) instead of O(archive). Public README v6.0.0 advertises this as a "planned optimization" — Priority: M (now in progress as TAR-XZ-STREAMING-2026-04-28 / branch feat/tar-xz-streaming)
-- [ ] [Win32] Handle-based extraction (CreateFileW + FILE_FLAG_OPEN_REPARSE_POINT) for `tar-xz` Node `extractFile` — close the TOCTOU window on Windows surfaced by streaming refactor in PR #113. POSIX uses fd-based O_NOFOLLOW; Windows currently falls back to by-path `pipeline(Readable.from(entry.data), createWriteStream(target))` which exposes a wallclock-long symlink-swap window. Estimate ~1-2h. Match node-tar's gradual approach. Priority: M (post-#113).
+_None — Win32 hardening moved to In Progress (story WIN32-TOCTOU-2026-04-29). Original "match node-tar" framing invalidated by recon: node-tar is pure JS and does NOT protect Windows either (PR #456 explicitly Unix-only). Adopting JS-pure `'wx'` + retry fail-closed (better than node-tar)._
 
 ## Pending - LOW (Nice to Have)
 
@@ -28,6 +18,7 @@ _None_
 
 ## Completed
 
+- [x] ✅ [tar-xz] **True streaming for Node `extract()`/`list()` — story TAR-XZ-STREAMING-2026-04-28 closed** (PR #113 squash `06a9937`, 2026-04-29). Memory now O(largest single entry) instead of O(archive). 5 vertical blocks: streamXz foundation, parseTar AsyncGenerator core (3 v8-ignore paths now exercised), extract/list rewrites, security regression gate (18 TOCTOU + S-14/S-15 PAX bomb), memory-shape gate. 26 new tests + opus adversarial (13 findings) + LLM-spec consensus (Codex/Copilot, 9 findings) + 4 Copilot review rounds (round 1 = 0, round 2 post-restart = 9, round 3 = 2, round 4 = 0) + 2 pre-push opus (both SAFE-TO-PUSH) + 1 CI hotfix (TS 6 lib.esnext AsyncGenerator drift). MAX_PAX_HEADER_BYTES=1MB DoS guard. tar-xz 6.1.0 minor bump. Closes "planned optimization" advertised by README v6.0.0.
 - [x] ✅ [Native] PR #112 Round 2 Copilot fixes — C-2-001 MAX_SAFE_INTEGER guard in Number branch (d > 9007199254740991.0 → TypeError, defense-in-depth comment), C-2-002 else-branch for wrong-type memlimit (string/object/array → TypeError "memlimit must be a Number or BigInt"); sibling pattern: InitializeEncoder uses if(!IsNumber){throw} — same strictest pattern mirrored; gyp+tsc+lint+15 native+full suite pass (2026-04-28)
 - [x] ✅ [Native] PR #112 Round 1 Copilot fixes — F-3/C-1/C-2 C++ defense-in-depth throw on lossless=false/out-of-range (was silent UINT64_MAX fallback), C-3 error message context-neutral, C-6 TSDoc coercion wording, F-1 ResolvedLZMAOptions stale TSDoc, F-2 encoder memlimit comment, C-4/C-5 changeset wording; GAP test encoder ignores memlimit; gyp+tsc+lint+15 native+full suite pass (2026-04-28)
 - [x] ✅ [Native] Wire `memlimit` in `InitializeDecoder` — `.hpp` signature updated, `node-gyp rebuild` clean, 14/14 memlimit tests pass, 488+99+27=614 total tests pass (2026-04-28)
@@ -81,14 +72,12 @@ _None_
 | Priority | Count | Status |
 |----------|-------|--------|
 | HIGH | 0 | Cleared |
-| MEDIUM | 0 | Cleared |
-| LOW | 0 | Cleared |
+| MEDIUM | 1 | [Win32 handle-based extraction TOCTOU follow-up to PR #113] |
+| LOW | 1 | Biome warnings sweep (6 warnings) |
 
-**Backlog vide.**
-
-**Last release:** `tar-xz@6.0.0` + `nxz-cli@6.0.0` (2026-04-27) — stream-first universal API redesign, security hardening
-**Last audit:** symlink/path TOCTOU exhaustive audit (18 vectors closed in single commit) (2026-04-27)
-**Last story:** tar-xz v6 redesign — independent versioning proven in prod (`node-liblzma` still at 5.0.0) (2026-04-27)
+**Last merge:** PR #113 squash `06a9937` (2026-04-29) — Node `extract()`/`list()` true streaming O(largest entry), closing v6.0.0 "planned optimization" promise. **Pending publish:** `tar-xz@6.1.0` (changeset accumulated, awaits release workflow run).
+**Last audit:** opus adversarial + Codex/Copilot LLM-spec consensus on TAR-XZ-STREAMING spec (22 findings folded) + 4 Copilot review rounds + 2 pre-push opus on PR #113 (2026-04-28/29).
+**Last story:** TAR-XZ-STREAMING-2026-04-28 — 5 vertical blocks, 26 new tests, ~5h35 wall-clock, 11 agent dispatches.
 
 **Independent versioning matrix (npm):**
 

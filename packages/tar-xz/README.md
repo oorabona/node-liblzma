@@ -201,8 +201,11 @@ symlink swap during this window.
 the calling process. Do not extract user-supplied archives into shared,
 world-writable, or `TEMP`-like directories on Windows.
 
-A tracked follow-up (`[Win32] handle-based extraction via CreateFileW +
-FILE_FLAG_OPEN_REPARSE_POINT`) will close this gap in a future minor release.
+This gap is now closed: the Windows path uses `open(target, 'wx')` (atomic
+exclusive create) with an unlink+retry pattern for legitimate overwrites. If a symlink
+is injected between the unlink and the retry-open, extraction fails with a security error.
+All writes and metadata operations are fd-based. See [SECURITY.md](./SECURITY.md#windows-symlink-swap-toctou)
+for the full reparse-tag coverage table and user mitigations.
 
 ## Streaming Patterns
 
