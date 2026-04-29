@@ -774,6 +774,22 @@ function resolveArchiveCwd(
 /**
  * Collect all files to include in a tar archive, relative to cwd.
  */
+
+/**
+ * Build the relative archive path for a directory entry.
+ */
+function buildEntryPath(
+  entry: { parentPath: string; name: string },
+  dirAbsPath: string,
+  dirRelative: string
+): string {
+  const entryPath =
+    entry.parentPath === dirAbsPath
+      ? entry.name
+      : `${entry.parentPath.slice(dirAbsPath.length + 1)}/${entry.name}`;
+  return dirRelative ? `${dirRelative}/${entryPath}` : entryPath;
+}
+
 async function collectArchiveFiles(
   resolvedFiles: string[],
   cwd: string,
@@ -787,11 +803,7 @@ async function collectArchiveFiles(
       const dirRelative = pathModule.relative(cwd, file);
       for (const entry of entries) {
         if (entry.isFile()) {
-          const entryPath =
-            entry.parentPath === file
-              ? entry.name
-              : `${entry.parentPath.slice(file.length + 1)}/${entry.name}`;
-          filesToArchive.push(dirRelative ? `${dirRelative}/${entryPath}` : entryPath);
+          filesToArchive.push(buildEntryPath(entry, file, dirRelative));
         }
       }
     } else {

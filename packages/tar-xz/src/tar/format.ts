@@ -224,6 +224,25 @@ export interface CreateHeaderOptions {
  * @param options - Header options
  * @returns 512-byte header block
  */
+
+/**
+ * Split a long TAR name into a prefix + name pair using the USTAR 155/100 fields.
+ * Throws if the name cannot be split to fit.
+ */
+function splitLongName(fullName: string): { prefix: string; name: string } {
+  const maxPrefix = LENGTHS.prefix;
+  const splitIdx = fullName.lastIndexOf('/', maxPrefix);
+
+  if (splitIdx > 0 && fullName.length - splitIdx - 1 <= LENGTHS.name) {
+    return {
+      prefix: fullName.substring(0, splitIdx),
+      name: fullName.substring(splitIdx + 1),
+    };
+  }
+
+  throw new Error(`File name too long for TAR format: ${fullName} (use PAX for names > 255 chars)`);
+}
+
 export function createHeader(options: CreateHeaderOptions): Uint8Array {
   const header = new Uint8Array(BLOCK_SIZE);
 
@@ -236,18 +255,7 @@ export function createHeader(options: CreateHeaderOptions): Uint8Array {
   // Handle long names using prefix field
   let prefix = '';
   if (name.length > LENGTHS.name) {
-    // Find a good split point (at a path separator)
-    const maxPrefix = LENGTHS.prefix;
-    const splitIdx = name.lastIndexOf('/', maxPrefix);
-
-    if (splitIdx > 0 && name.length - splitIdx - 1 <= LENGTHS.name) {
-      prefix = name.substring(0, splitIdx);
-      name = name.substring(splitIdx + 1);
-    } else {
-      throw new Error(
-        `File name too long for TAR format: ${options.name} (use PAX for names > 255 chars)`
-      );
-    }
+    ({ prefix, name } = splitLongName(name));
   }
 
   // Default mode based on type

@@ -25,6 +25,35 @@ import {
 /**
  * Parse TAR data into entries
  */
+
+/**
+ * Handle a PAX_HEADER block: parse its attributes and advance the offset.
+ * Returns the updated offset and the parsed PAX attributes.
+ */
+function parsePaxHeaderBlock(
+  data: Uint8Array,
+  offset: number,
+  size: number
+): { offset: number; paxAttrs: PaxAttributes } {
+  const paxData = data.subarray(offset, offset + size);
+  const newOffset = offset + size + calculatePadding(size);
+  return { offset: newOffset, paxAttrs: parsePaxData(paxData) };
+}
+
+/**
+ * Extract entry content bytes and advance the offset past the content + padding.
+ * Returns the updated offset and the content Uint8Array.
+ */
+function extractEntryContent(
+  data: Uint8Array,
+  offset: number,
+  size: number
+): { offset: number; contentData: Uint8Array } {
+  const contentData = size > 0 ? data.subarray(offset, offset + size) : new Uint8Array(0);
+  const newOffset = offset + size + calculatePadding(size);
+  return { offset: newOffset, contentData };
+}
+
 function parseTar(data: Uint8Array): Array<TarEntry & { data: Uint8Array }> {
   const entries: Array<TarEntry & { data: Uint8Array }> = [];
   let offset = 0;
@@ -54,10 +83,7 @@ function parseTar(data: Uint8Array): Array<TarEntry & { data: Uint8Array }> {
 
     // Handle PAX headers
     if (entry.type === TarEntryType.PAX_HEADER) {
-      const paxSize = entry.size;
-      const paxData = data.subarray(offset, offset + paxSize);
-      offset += paxSize + calculatePadding(paxSize);
-      paxAttrs = parsePaxData(paxData);
+      ({ offset, paxAttrs } = parsePaxHeaderBlock(data, offset, entry.size));
       continue;
     }
 
@@ -73,10 +99,8 @@ function parseTar(data: Uint8Array): Array<TarEntry & { data: Uint8Array }> {
     }
 
     // Extract content
-    const contentData =
-      entry.size > 0 ? data.subarray(offset, offset + entry.size) : new Uint8Array(0);
-
-    offset += entry.size + calculatePadding(entry.size);
+    let contentData: Uint8Array;
+    ({ offset, contentData } = extractEntryContent(data, offset, entry.size));
 
     entries.push({ ...entry, data: contentData });
   }
