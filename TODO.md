@@ -2,7 +2,7 @@
 
 ## In Progress
 
-- [ ] 🟡 [tar-xz] Win32 handle-based extraction (story WIN32-TOCTOU-2026-04-29 / branch `fix/tar-xz-win32-toctou`) — JS-pure `'wx'` + retry fail-closed, fd-based ops. Closes the TOCTOU window left open by node-tar's documented stance. Started 2026-04-29.
+_None_
 
 ## Pending - HIGH
 
@@ -10,7 +10,7 @@ _None_
 
 ## Pending - MEDIUM
 
-_None — Win32 hardening moved to In Progress (story WIN32-TOCTOU-2026-04-29). Original "match node-tar" framing invalidated by recon: node-tar is pure JS and does NOT protect Windows either (PR #456 explicitly Unix-only). Adopting JS-pure `'wx'` + retry fail-closed (better than node-tar)._
+_None._
 
 ## Pending - LOW (Nice to Have)
 
@@ -18,6 +18,7 @@ _None — Win32 hardening moved to In Progress (story WIN32-TOCTOU-2026-04-29). 
 
 ## Completed
 
+- [x] ✅ [tar-xz] **Win32 symlink-swap TOCTOU hardening — story WIN32-TOCTOU-2026-04-29 closed** (PR #114 squash `b24040d`, 2026-04-29). JS-pure `'wx'`+retry fail-closed pattern in `extractFile` Win32 branch (no native addon expansion). fd-based `chmod`/`utimes` (best-effort wrap on Win32 to preserve master's FAT32/cloud-share semantics). Recon invalidated original "match node-tar with CreateFileW" framing — node-tar is pure JS and explicitly Unix-only (PR #456). 4 BDD scenarios + observable-proof byte-equality assertion + reparse-tag coverage table (SYMLINK / MOUNT_POINT / CLOUD_FILES) in SECURITY.md. Adversarial pass on 5 Win32 vectors (1 M folded, 4 L/None confirmed). 6 Copilot review rounds, **21 findings folded** (3 M → 1 M → 0 M for code; remainder L/cosmetic). 155/0 tests, 0 lint, 0 typecheck. Total wall-clock ~150 min, 6 implementer dispatches + 1 senior-review opus.
 - [x] ✅ [tar-xz] **True streaming for Node `extract()`/`list()` — story TAR-XZ-STREAMING-2026-04-28 closed** (PR #113 squash `06a9937`, 2026-04-29). Memory now O(largest single entry) instead of O(archive). 5 vertical blocks: streamXz foundation, parseTar AsyncGenerator core (3 v8-ignore paths now exercised), extract/list rewrites, security regression gate (18 TOCTOU + S-14/S-15 PAX bomb), memory-shape gate. 26 new tests + opus adversarial (13 findings) + LLM-spec consensus (Codex/Copilot, 9 findings) + 4 Copilot review rounds (round 1 = 0, round 2 post-restart = 9, round 3 = 2, round 4 = 0) + 2 pre-push opus (both SAFE-TO-PUSH) + 1 CI hotfix (TS 6 lib.esnext AsyncGenerator drift). MAX_PAX_HEADER_BYTES=1MB DoS guard. tar-xz 6.1.0 minor bump. Closes "planned optimization" advertised by README v6.0.0.
 - [x] ✅ [Native] PR #112 Round 2 Copilot fixes — C-2-001 MAX_SAFE_INTEGER guard in Number branch (d > 9007199254740991.0 → TypeError, defense-in-depth comment), C-2-002 else-branch for wrong-type memlimit (string/object/array → TypeError "memlimit must be a Number or BigInt"); sibling pattern: InitializeEncoder uses if(!IsNumber){throw} — same strictest pattern mirrored; gyp+tsc+lint+15 native+full suite pass (2026-04-28)
 - [x] ✅ [Native] PR #112 Round 1 Copilot fixes — F-3/C-1/C-2 C++ defense-in-depth throw on lossless=false/out-of-range (was silent UINT64_MAX fallback), C-3 error message context-neutral, C-6 TSDoc coercion wording, F-1 ResolvedLZMAOptions stale TSDoc, F-2 encoder memlimit comment, C-4/C-5 changeset wording; GAP test encoder ignores memlimit; gyp+tsc+lint+15 native+full suite pass (2026-04-28)
@@ -72,12 +73,12 @@ _None_
 | Priority | Count | Status |
 |----------|-------|--------|
 | HIGH | 0 | Cleared |
-| MEDIUM | 1 | [Win32 handle-based extraction TOCTOU follow-up to PR #113] |
+| MEDIUM | 0 | Cleared (Win32 TOCTOU shipped via PR #114) |
 | LOW | 1 | Biome warnings sweep (6 warnings) |
 
-**Last merge:** PR #113 squash `06a9937` (2026-04-29) — Node `extract()`/`list()` true streaming O(largest entry), closing v6.0.0 "planned optimization" promise. **Pending publish:** `tar-xz@6.1.0` (changeset accumulated, awaits release workflow run).
-**Last audit:** opus adversarial + Codex/Copilot LLM-spec consensus on TAR-XZ-STREAMING spec (22 findings folded) + 4 Copilot review rounds + 2 pre-push opus on PR #113 (2026-04-28/29).
-**Last story:** TAR-XZ-STREAMING-2026-04-28 — 5 vertical blocks, 26 new tests, ~5h35 wall-clock, 11 agent dispatches.
+**Last merge:** PR #114 squash `b24040d` (2026-04-29) — Win32 extractFile symlink-swap TOCTOU hardening (JS-pure `'wx'`+retry fail-closed). **Pending publish:** `tar-xz@6.1.0` (streaming + Win32-TOCTOU changesets accumulated, awaits release workflow run).
+**Last audit:** opus senior-review SAFE-TO-MERGE + 5 Copilot review rounds (21 findings folded total: 3 M → 1 M → 0 M for code, remainder L/cosmetic) + 1 focused adversarial on 5 Win32 vectors on PR #114 (2026-04-29).
+**Last story:** WIN32-TOCTOU-2026-04-29 — 1 vertical block, 6 implementer dispatches, ~150 min wall-clock, 21 Copilot findings folded.
 
 **Independent versioning matrix (npm):**
 
