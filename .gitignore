@@ -96,6 +96,8 @@ deps/*
 
 # Claude Code local settings
 .claude/
+.claude-recovery.md
+.workflow-state.json
 
 # Serena MCP cache
 .serena/
