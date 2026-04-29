@@ -1024,9 +1024,15 @@ async function main(): Promise<void> {
     process.exit(exitCode);
   }
 
-  // Check for tar-create mode: -T with files that aren't .tar.xz archives
-  // options.files.length > 0 is guaranteed by the stdin check above
-  const firstFile = options.files[0] ?? '';
+  // Check for tar-create mode: -T with files that aren't .tar.xz archives.
+  // The stdin check above already exits when files.length === 0, so reaching
+  // here means files[0] is defined. Fail-fast on a future invariant breach
+  // (e.g. argument-parsing changes) instead of silently dispatching with an
+  // empty filename.
+  const firstFile = options.files[0];
+  if (firstFile === undefined) {
+    throw new Error('Internal error: expected at least one input file after stdin handling');
+  }
   const mode = determineMode(options, firstFile);
   if (mode === 'tar-create') {
     const exitCode = await createTarFile(options.files, options);

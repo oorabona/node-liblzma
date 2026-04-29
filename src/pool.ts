@@ -165,7 +165,13 @@ export class LZMAPool extends EventEmitter {
     }
 
     const item = this.queue.shift();
-    if (item === undefined) return; // invariant: queue was non-empty above
+    if (item === undefined) {
+      // The `processQueue.length > 0` guard above means shift() must return a
+      // value. Returning silently here would let queued tasks stall on a
+      // future invariant breach (re-entrancy, refactor, etc.). Throw so the
+      // bug surfaces at the breach instead of as a hung pool.
+      throw new Error('Invariant violation: queue was non-empty but shift() returned undefined');
+    }
 
     this.metrics.active++;
     this.metrics.queued = this.queue.length;
