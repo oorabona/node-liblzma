@@ -105,7 +105,8 @@ jobs:
           PKG_NAME: ${{ inputs.target_package }}
         run: |
           cd "$PKG_DIR"
-          pnpm exec release-it-preset default \
+          # Scope CHANGELOG to commits touching only this package subtree via GIT_CHANGELOG_PATH (release-it-preset v0.11.0+)
+          GIT_CHANGELOG_PATH=. pnpm exec release-it-preset default \
             --no-git.tag --no-git.push \
             --no-github.release --no-npm.publish \
             --ci --increment "$INCREMENT"

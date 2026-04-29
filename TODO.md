@@ -2,7 +2,9 @@
 
 ## In Progress
 
-_None_
+- [ ] 🟡 [Release] **#25 — Per-package CHANGELOG scoping (release-it)** (2026-04-29). Pollution observed in `packages/tar-xz/CHANGELOG.md` v6.1.0: node-liblzma commits leak (#111 wasm, #112 native), ~30 Dependabot lockfile refreshes, repo-wide CI tweaks, commit-body fragments parsed as entries. Root cause: `populate-unreleased-changelog.ts` git log has no path filter. Decision 2026-04-29: opt-in env var in `@oorabona/release-it-preset` (single source of truth, ~5 LOC upstream + ~15 LOC test). Resolves "changesets vs release-it" architecture question (originally raised 2026-04-27 commit `adfbc99` → cleanup `4d24fde` left the noise problem unsolved).
+  - [x] ✅ **Phase 1** — `oorabona/release-it-preset` v0.11.0 shipped (2026-04-29, upstream commit `0b4f857` tag `v0.11.0`, npm published). `GIT_CHANGELOG_PATH` env var wired in `dist/scripts/populate-unreleased-changelog.js:184` via existing `deps.getEnv()` DI pattern. 9 vitest cases covering path scoping + security validation (rejects `../` traversal + absolute paths — bonus security hardening not in original spec). Multi-line commit body parser issue tracked separately as v0.11+ "Out-of-scope follow-up" in preset's TODO.
+  - [ ] 🟡 **Phase 2** — node-liblzma (this repo): bump `@oorabona/release-it-preset` 0.9.0 → 0.11.0, set `GIT_CHANGELOG_PATH=. (relative to cwd after cd "$PKG_DIR") inline on the workspace bump step in release.yml — same env var per package since the cwd is per-package`. Remove dormant changesets pipeline: `.github/workflows/changesets.yml` (62 LOC), `.changeset/` dir (config.json + README.md only post-cleanup), `@changesets/cli`+`@changesets/changelog-github` devDeps (~90 transitive lockfile entries). Dry-run `release.yml` for tar-xz to verify CHANGELOG no longer captures node-liblzma/Dependabot commits before merge.
 
 ## Pending - HIGH
 
@@ -14,6 +16,7 @@ _None._
 
 ## Pending - LOW (Nice to Have)
 
+- [ ] [Release] **#26 — nxz-cli 6.0.0 → 6.1.0 visibility bump** — blocked on #25 Phase 2. 0 nxz-specific code changes since v6.0.0 verified (`git log -- packages/nxz/` between `adfbc99` and HEAD `9f37d1a`); npm `nxz-cli@6.0.0` already pulls `tar-xz@6.1.0` transitively via `^6.0.0`. Bump is metadata-only for CHANGELOG/lockfile signal. Trigger: `gh workflow run release.yml -f target_package=nxz-cli -f increment=patch` after Phase 2 publishes. Sequencing rationale: avoid creating a polluted nxz CHANGELOG entry that #25 fix would otherwise have to revert/rewrite.
 - [ ] [Lint] Single residual biome warning: `test/node-api.spec.ts:249` (`suppressions/unused` — pre-existing biome-ignore that no longer suppresses anything). Cosmetic 1-line cleanup for a future PR.
 <!-- F-002 (HARDLINK + undefined linkname → TypeError) DROPPED 2026-04-29 by Copilot round-2 review on PR #115: TarEntry.linkname is typed as required string (parser returns '' for empty fields), and ensureSafeLinkname → ensureSafeName already rejects '' with "empty linkname" before reaching resolve(). The original concern was mischaracterized — there is no path where resolve(cwd, undefined) gets called with undefined. -->
 
@@ -76,8 +79,8 @@ _None_
 | Priority | Count | Status |
 |----------|-------|--------|
 | HIGH | 0 | Cleared |
-| MEDIUM | 0 | Cleared (Win32 TOCTOU shipped via PR #114) |
-| LOW | 1 | Biome warnings sweep (6 warnings) |
+| MEDIUM | 1 (in progress) | #25 release-it CHANGELOG scoping — Phase 1 ✅ shipped (preset v0.11.0); Phase 2 ready to start |
+| LOW | 2 | #26 nxz-cli visibility bump (blocked on #25); biome residual |
 
 **Last merge:** PR #115 squash `ad2e18f` (2026-04-29) — Biome warnings sweep + cognitive-complexity extract-method (63→1 warnings, pure refactor, behavior-preserving).
 **Last audit:** opus pre-push SAFE-TO-PUSH + 6 Copilot review rounds (13 findings folded; last 3 = L-only comment precision) on PR #115 (2026-04-29).
