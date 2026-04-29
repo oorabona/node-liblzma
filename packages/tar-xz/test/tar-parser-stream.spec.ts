@@ -14,8 +14,73 @@ import { TarEntryType } from '../src/types.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: test helper covering PAX/regular/global entries
 /** Build a raw TAR buffer with end-of-archive blocks. */
+
+/** Append a PAX_GLOBAL block for the given attributes into `blocks`. */
+function buildGlobalPaxBlock(attrs: Record<string, string>, blocks: Buffer[]): void {
+  const paxData = Object.entries(attrs)
+    .map(([k, v]) => {
+      const line = ` ${k}=${v}\n`;
+      const len = String(line.length + 1).length + line.length;
+      return `${len}${line}`;
+    })
+    .join('');
+  const paxBuf = Buffer.from(paxData);
+  const paxPad = calculatePadding(paxBuf.length);
+  const gHeader = createHeader({
+    name: '././@PaxHeader',
+    size: paxBuf.length,
+    type: 'g' as '0',
+  });
+  blocks.push(Buffer.from(gHeader));
+  blocks.push(paxBuf);
+  if (paxPad > 0) blocks.push(Buffer.alloc(paxPad));
+}
+
+/** Append TAR blocks for a single regular or PAX entry into `blocks`. */
+function buildEntryBlocks(
+  entry: {
+    name: string;
+    content?: Buffer;
+    type?: string;
+    linkname?: string;
+    usePax?: boolean;
+  },
+  blocks: Buffer[]
+): void {
+  const content = entry.content ?? Buffer.alloc(0);
+  const type = (entry.type ?? TarEntryType.FILE) as string;
+  const isDir = type === TarEntryType.DIRECTORY;
+  const isLink = type === TarEntryType.SYMLINK || type === TarEntryType.HARDLINK;
+  const size = isDir || isLink ? 0 : content.length;
+
+  let headerName = entry.name;
+
+  if (entry.usePax || headerName.length > 99) {
+    const paxBlocks = createPaxHeaderBlocks(headerName, {
+      path: headerName,
+      size,
+      linkpath: entry.linkname,
+    });
+    for (const block of paxBlocks) blocks.push(Buffer.from(block));
+    headerName = headerName.slice(-99);
+  }
+
+  const header = createHeader({
+    name: headerName,
+    size,
+    type: type as '0',
+    linkname: entry.linkname,
+  });
+  blocks.push(Buffer.from(header));
+
+  if (size > 0) {
+    blocks.push(content);
+    const pad = calculatePadding(size);
+    if (pad > 0) blocks.push(Buffer.alloc(pad));
+  }
+}
+
 function buildTar(
   entries: Array<{
     name: string;
@@ -28,66 +93,13 @@ function buildTar(
   }>
 ): Buffer {
   const blocks: Buffer[] = [];
-
   for (const entry of entries) {
-    const content = entry.content ?? Buffer.alloc(0);
-    const type = (entry.type ?? TarEntryType.FILE) as string;
-    const isDir = type === TarEntryType.DIRECTORY;
-    const isLink = type === TarEntryType.SYMLINK || type === TarEntryType.HARDLINK;
-    const size = isDir || isLink ? 0 : content.length;
-
     if (entry.globalPax && entry.globalAttrs) {
-      // Build a PAX_GLOBAL block manually.
-      const attrs = entry.globalAttrs;
-      const paxData = Object.entries(attrs)
-        .map(([k, v]) => {
-          const line = ` ${k}=${v}\n`;
-          const len = String(line.length + 1).length + line.length;
-          return `${len}${line}`;
-        })
-        .join('');
-      const paxBuf = Buffer.from(paxData);
-      const paxPad = calculatePadding(paxBuf.length);
-      const gHeader = createHeader({
-        name: '././@PaxHeader',
-        size: paxBuf.length,
-        type: 'g' as '0',
-      });
-      blocks.push(Buffer.from(gHeader));
-      blocks.push(paxBuf);
-      if (paxPad > 0) blocks.push(Buffer.alloc(paxPad));
-      continue;
-    }
-
-    let headerName = entry.name;
-
-    if (entry.usePax || headerName.length > 99) {
-      const paxBlocks = createPaxHeaderBlocks(headerName, {
-        path: headerName,
-        size,
-        linkpath: entry.linkname,
-      });
-      for (const block of paxBlocks) {
-        blocks.push(Buffer.from(block));
-      }
-      headerName = headerName.slice(-99);
-    }
-
-    const header = createHeader({
-      name: headerName,
-      size,
-      type: type as '0',
-      linkname: entry.linkname,
-    });
-    blocks.push(Buffer.from(header));
-
-    if (size > 0) {
-      blocks.push(content);
-      const pad = calculatePadding(size);
-      if (pad > 0) blocks.push(Buffer.alloc(pad));
+      buildGlobalPaxBlock(entry.globalAttrs, blocks);
+    } else {
+      buildEntryBlocks(entry, blocks);
     }
   }
-
   blocks.push(Buffer.from(createEndOfArchive()));
   return Buffer.concat(blocks);
 }

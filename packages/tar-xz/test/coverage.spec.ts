@@ -33,6 +33,61 @@ import { TarEntryType } from '../src/types.js';
 // ---------------------------------------------------------------------------
 
 /** Build raw TAR buffer from entry descriptors */
+
+/** Recalculate and write the USTAR checksum into bytes 148-155 of a 512-byte header. */
+function recalculateChecksum(header: Uint8Array): void {
+  let checksum = 0;
+  for (let i = 0; i < 512; i++) {
+    checksum += i >= 148 && i < 156 ? 0x20 : (header[i] ?? 0);
+  }
+  const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
+  for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+}
+
+/** Append TAR blocks for a single entry descriptor into `blocks`. */
+function buildEntryBlocks(
+  entry: {
+    name: string;
+    content?: Buffer;
+    type?: string;
+    linkname?: string;
+    usePax?: boolean;
+  },
+  blocks: Buffer[]
+): void {
+  const content = entry.content ?? Buffer.alloc(0);
+  const type = (entry.type ?? TarEntryType.FILE) as string;
+  const isDir = type === TarEntryType.DIRECTORY;
+  const isLink = type === TarEntryType.SYMLINK || type === TarEntryType.HARDLINK;
+  const size = isDir || isLink ? 0 : content.length;
+
+  let headerName = entry.name;
+
+  if (entry.usePax || headerName.length > 255) {
+    const paxBlocks = createPaxHeaderBlocks(headerName, {
+      path: headerName,
+      size,
+      linkpath: entry.linkname,
+    });
+    for (const block of paxBlocks) blocks.push(Buffer.from(block));
+    headerName = headerName.slice(-99);
+  }
+
+  const header = createHeader({
+    name: headerName,
+    size,
+    type: type as '0',
+    linkname: entry.linkname,
+  });
+  blocks.push(Buffer.from(header));
+
+  if (size > 0) {
+    blocks.push(content);
+    const pad = calculatePadding(size);
+    if (pad > 0) blocks.push(Buffer.alloc(pad));
+  }
+}
+
 function buildTar(
   entries: Array<{
     name: string;
@@ -43,43 +98,7 @@ function buildTar(
   }>
 ): Buffer {
   const blocks: Buffer[] = [];
-
-  for (const entry of entries) {
-    const content = entry.content ?? Buffer.alloc(0);
-    const type = (entry.type ?? TarEntryType.FILE) as string;
-    const isDir = type === TarEntryType.DIRECTORY;
-    const isLink = type === TarEntryType.SYMLINK || type === TarEntryType.HARDLINK;
-    const size = isDir || isLink ? 0 : content.length;
-
-    let headerName = entry.name;
-
-    if (entry.usePax || headerName.length > 255) {
-      const paxBlocks = createPaxHeaderBlocks(headerName, {
-        path: headerName,
-        size,
-        linkpath: entry.linkname,
-      });
-      for (const block of paxBlocks) {
-        blocks.push(Buffer.from(block));
-      }
-      headerName = headerName.slice(-99);
-    }
-
-    const header = createHeader({
-      name: headerName,
-      size,
-      type: type as '0',
-      linkname: entry.linkname,
-    });
-    blocks.push(Buffer.from(header));
-
-    if (size > 0) {
-      blocks.push(content);
-      const pad = calculatePadding(size);
-      if (pad > 0) blocks.push(Buffer.alloc(pad));
-    }
-  }
-
+  for (const entry of entries) buildEntryBlocks(entry, blocks);
   blocks.push(Buffer.from(createEndOfArchive()));
   return Buffer.concat(blocks);
 }
@@ -911,14 +930,7 @@ describe('Coverage: Node API', () => {
       const header = createHeader({ name: 'safe.txt', size: content.length });
       // Inject NUL at position 4 in the name field (offset 0)
       header[4] = 0x00;
-      // Recalculate checksum
-      let checksum = 0;
-      for (let i = 0; i < 512; i++) {
-        checksum += i >= 148 && i < 156 ? 0x20 : (header[i] ?? 0);
-      }
-      // Write checksum in octal to bytes 148-155
-      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
-      for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+      recalculateChecksum(header);
 
       const archive = path.join(tempDir, 'nul-name.tar.xz');
       await saveAsXz(
@@ -959,13 +971,7 @@ describe('Coverage: Node API', () => {
       });
       // Inject NUL at offset 157 (linkname field starts at 157 in USTAR)
       header[158] = 0x00;
-      // Recalculate checksum
-      let checksum = 0;
-      for (let i = 0; i < 512; i++) {
-        checksum += i >= 148 && i < 156 ? 0x20 : (header[i] ?? 0);
-      }
-      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
-      for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
+      recalculateChecksum(header);
 
       const archive = path.join(tempDir, 'nul-linkname.tar.xz');
       await saveAsXz(
@@ -1039,13 +1045,7 @@ describe('Coverage: Node API', () => {
       // Mode field is at offset 100, length 8 in USTAR
       const modeStr = `${(0o4755).toString(8).padStart(7, '0')}\x00`;
       for (let i = 0; i < 8; i++) tarBuf[100 + i] = modeStr.charCodeAt(i);
-      // Recalculate checksum (field at offset 148, length 8)
-      let checksum = 0;
-      for (let i = 0; i < 512; i++) {
-        checksum += i >= 148 && i < 156 ? 0x20 : (tarBuf[i] ?? 0);
-      }
-      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
-      for (let i = 0; i < 8; i++) tarBuf[148 + i] = checksumStr.charCodeAt(i);
+      recalculateChecksum(tarBuf);
 
       const archive = path.join(tempDir, 'setuid.tar.xz');
       await saveAsXz(tarBuf, archive);
