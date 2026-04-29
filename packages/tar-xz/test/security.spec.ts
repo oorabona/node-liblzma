@@ -453,7 +453,7 @@ describe('Security regression gate', () => {
       // Recalculate checksum
       let checksum = 0;
       for (let i = 0; i < 512; i++) {
-        checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
+        checksum += i >= 148 && i < 156 ? 0x20 : (header[i] ?? 0);
       }
       const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
@@ -489,7 +489,7 @@ describe('Security regression gate', () => {
       // Recalculate checksum
       let checksum = 0;
       for (let i = 0; i < 512; i++) {
-        checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
+        checksum += i >= 148 && i < 156 ? 0x20 : (header[i] ?? 0);
       }
       const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
@@ -538,7 +538,7 @@ describe('Security regression gate', () => {
       // Recalculate checksum
       let checksum = 0;
       for (let i = 0; i < 512; i++) {
-        checksum += i >= 148 && i < 156 ? 0x20 : tarBuf[i]!;
+        checksum += i >= 148 && i < 156 ? 0x20 : (tarBuf[i] ?? 0);
       }
       const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) tarBuf[148 + i] = checksumStr.charCodeAt(i);

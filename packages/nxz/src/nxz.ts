@@ -111,7 +111,8 @@ function parseCliArgs(args: string[]): CliOptions {
   for (const arg of args) {
     const presetMatch = arg.match(/^-(\d)$/);
     if (presetMatch) {
-      presetLevel = Number.parseInt(presetMatch[1]!, 10);
+      const digit = presetMatch[1];
+      presetLevel = digit !== undefined ? Number.parseInt(digit, 10) : 6;
     } else {
       filteredArgs.push(arg);
     }
@@ -707,14 +708,19 @@ async function listTarFile(filename: string, options: CliOptions): Promise<numbe
  */
 function findCommonParent(paths: string[]): string {
   if (paths.length === 0) return process.cwd();
-  if (paths.length === 1) return paths[0]!;
+  if (paths.length === 1) {
+    const p = paths[0];
+    if (p === undefined) return process.cwd();
+    return p;
+  }
   const parts = paths.map((p) => p.split('/'));
   const common: string[] = [];
-  const first = parts[0]!;
+  const first = parts[0];
+  if (first === undefined) return process.cwd();
   for (let i = 0; i < first.length; i++) {
     const segment = first[i];
-    if (parts.every((p) => p[i] === segment)) {
-      common.push(segment!);
+    if (segment !== undefined && parts.every((p) => p[i] === segment)) {
+      common.push(segment);
     } else {
       break;
     }
@@ -733,7 +739,8 @@ function resolveTarOutput(
 ): string | null {
   let outputFile = options.output;
   if (!outputFile) {
-    const base = pathModule.basename(files[0]!).replace(/\/$/, '');
+    const firstFile = files[0] ?? '';
+    const base = pathModule.basename(firstFile).replace(/\/$/, '');
     outputFile = `${base}.tar.xz`;
   }
 
@@ -752,11 +759,16 @@ function resolveArchiveCwd(
   resolvedFiles: string[],
   pathModule: typeof import('node:path')
 ): string {
-  if (resolvedFiles.length === 1 && statSync(resolvedFiles[0]!).isDirectory()) {
-    return resolvedFiles[0]!;
+  const firstFile = resolvedFiles[0];
+  if (resolvedFiles.length === 1 && firstFile !== undefined && statSync(firstFile).isDirectory()) {
+    return firstFile;
   }
   const parents = resolvedFiles.map((f) => (statSync(f).isDirectory() ? f : pathModule.dirname(f)));
-  return parents.length === 1 ? parents[0]! : findCommonParent(parents);
+  if (parents.length === 1) {
+    const parent = parents[0];
+    return parent !== undefined ? parent : findCommonParent(resolvedFiles);
+  }
+  return findCommonParent(parents);
 }
 
 /**
@@ -992,7 +1004,9 @@ async function main(): Promise<void> {
   }
 
   // Check for tar-create mode: -T with files that aren't .tar.xz archives
-  const mode = determineMode(options, options.files[0]!);
+  // options.files.length > 0 is guaranteed by the stdin check above
+  const firstFile = options.files[0] ?? '';
+  const mode = determineMode(options, firstFile);
   if (mode === 'tar-create') {
     const exitCode = await createTarFile(options.files, options);
     process.exit(exitCode);

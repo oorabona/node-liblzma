@@ -29,7 +29,7 @@ export function calculateChecksum(header: Uint8Array): number {
     if (i >= CHECKSUM_OFFSET && i < CHECKSUM_OFFSET + CHECKSUM_LENGTH) {
       sum += 0x20;
     } else {
-      sum += header[i]!;
+      sum += header[i] ?? 0;
     }
   }
 
@@ -85,11 +85,11 @@ export function parseOctal(header: Uint8Array, offset: number, length: number): 
 
   for (let i = 0; i < length; i++) {
     const byte = header[offset + i];
-    // Stop at null or space
-    if (byte === 0 || byte === 0x20) {
+    // Stop at null, space, or out-of-bounds (undefined)
+    if (byte === undefined || byte === 0 || byte === 0x20) {
       break;
     }
-    str += String.fromCharCode(byte!);
+    str += String.fromCharCode(byte);
   }
 
   if (str.length === 0) {

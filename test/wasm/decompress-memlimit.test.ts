@@ -138,7 +138,8 @@ describe('WASM unxzAsync — memlimit option', () => {
             expect(err).toBeNull();
             expect(result).toBeDefined();
             // Verify decompressed bytes equal the original, not merely that something was returned.
-            expect(Array.from(result!)).toEqual(Array.from(original));
+            if (result === undefined) throw new Error('result is undefined — test setup failed');
+            expect(Array.from(result)).toEqual(Array.from(original));
             resolve();
           } catch (e) {
             reject(e);

@@ -17,6 +17,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+// biome-ignore lint/suspicious/noImportCycles: intentional ESM cycle resolved at runtime; LZMAPool re-exports from lzma.ts to keep public surface flat
 import { type LZMAOptions, unxzAsync, xzAsync } from './lzma.js';
 
 /**
@@ -163,7 +164,8 @@ export class LZMAPool extends EventEmitter {
       return;
     }
 
-    const item = this.queue.shift()!;
+    const item = this.queue.shift();
+    if (item === undefined) return; // invariant: queue was non-empty above
 
     this.metrics.active++;
     this.metrics.queued = this.queue.length;

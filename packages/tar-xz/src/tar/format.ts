@@ -97,7 +97,9 @@ function writeString(header: Uint8Array, offset: number, length: number, value: 
   const writeLen = Math.min(bytes.length, length);
 
   for (let i = 0; i < writeLen; i++) {
-    header[offset + i] = bytes[i]!;
+    const b = bytes[i];
+    if (b === undefined) break;
+    header[offset + i] = b;
   }
 
   // Null-terminate if there's room
@@ -122,8 +124,8 @@ function writeOctal(header: Uint8Array, offset: number, length: number, value: n
  * Check if a header block is empty (end of archive marker)
  */
 export function isEmptyBlock(block: Uint8Array): boolean {
-  for (let i = 0; i < block.length; i++) {
-    if (block[i] !== 0) {
+  for (const byte of block) {
+    if (byte !== 0) {
       return false;
     }
   }
@@ -165,7 +167,8 @@ export function parseHeader(header: Uint8Array): TarEntry | null {
   }
 
   // Parse type flag
-  const typeFlagChar = String.fromCharCode(header[OFFSETS.typeflag]!);
+  const typeFlag = header[OFFSETS.typeflag] ?? 0;
+  const typeFlagChar = String.fromCharCode(typeFlag);
 
   // Handle legacy type (null or empty = regular file)
   const type: TarEntryTypeValue =
