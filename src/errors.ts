@@ -173,5 +173,7 @@ function getErrorMessage(errno: number): string {
   if (errno < 0 || errno >= messages.length) {
     return `Unknown LZMA error code: ${errno}`;
   }
-  return messages[errno]!;
+  const msg = messages[errno];
+  if (msg === undefined) return `Unknown LZMA error code: ${errno}`;
+  return msg;
 }

@@ -17,6 +17,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+// biome-ignore lint/suspicious/noImportCycles: intentional ESM cycle resolved at runtime; LZMAPool re-exports from lzma.ts to keep public surface flat
 import { type LZMAOptions, unxzAsync, xzAsync } from './lzma.js';
 
 /**
@@ -163,7 +164,14 @@ export class LZMAPool extends EventEmitter {
       return;
     }
 
-    const item = this.queue.shift()!;
+    const item = this.queue.shift();
+    if (item === undefined) {
+      // The `this.queue.length === 0` early-return guard above means shift()
+      // must return a value here. Returning silently would let queued tasks
+      // stall on a future invariant breach (re-entrancy, refactor, etc.).
+      // Throw so the bug surfaces at the breach instead of as a hung pool.
+      throw new Error('Invariant violation: queue was non-empty but shift() returned undefined');
+    }
 
     this.metrics.active++;
     this.metrics.queued = this.queue.length;

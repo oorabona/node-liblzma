@@ -13,7 +13,7 @@ import { link, lstat, mkdir, open, symlink, unlink } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { CreateOptions, ExtractOptions, TarEntry } from '../types.js';
+import type { CreateOptions, ExtractOptions, TarEntry, TarEntryWithData } from '../types.js';
 import { TarEntryType } from '../types.js';
 import { create } from './create.js';
 import { extract } from './extract.js';
@@ -43,6 +43,21 @@ function ensureSafeName(s: string | undefined, label: string): void {
   const normalized = s.replace(/\\/g, '/').replace(/\/+$/, '');
   if (normalized === '.' || normalized === '..') {
     throw new Error(`Refusing entry: ${label} is a dot-segment placeholder ('${s}')`);
+  }
+}
+
+/**
+ * V6b: Validate `entry.linkname` for SYMLINK and HARDLINK entries.
+ *
+ * `TarEntry.linkname` is always present as a string (parser sets `''` for
+ * empty link fields). Only SYMLINK and HARDLINK entries are required to have
+ * non-empty linknames — other entry types may legitimately carry an empty
+ * linkname. Delegates to `ensureSafeName` for the actual rejection logic
+ * (empty-string + NUL-byte + dot-segment guards).
+ */
+function ensureSafeLinkname(entry: TarEntry): void {
+  if (entry.type === TarEntryType.SYMLINK || entry.type === TarEntryType.HARDLINK) {
+    ensureSafeName(entry.linkname, 'linkname');
   }
 }
 
@@ -97,7 +112,7 @@ async function ensureSafeTarget(
   // F-001: safe traversal check — only reject when the relative path IS '..' or
   // starts with '../' (POSIX) / '..\' (Windows). Dotfiles like '..gitignore' are fine.
   const rel = relative(cwd, target);
-  if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
     throw new Error(`Refusing to extract entry outside cwd: ${entryName}`);
   }
   // F-002: TOCTOU guard — reject if any ancestor directory is a symlink.
@@ -118,6 +133,277 @@ async function ensureSafeTarget(
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     }
+  }
+}
+
+/**
+ * Write a SYMLINK entry to `target`.
+ *
+ * Applies `strip` to linkname if requested (V6c / V14), removes an existing
+ * symlink if present (allow re-extract), then creates the new symlink.
+ * Skips silently when strip removes the entire linkname (caller should
+ * continue to next entry regardless — the skip-or-create decision is always
+ * followed by `continue` in `extractFile`).
+ *
+ * Extracted from `extractFile` to reduce cognitive complexity; behavior is
+ * byte-identical to the original inline SYMLINK branch.
+ */
+async function extractSymlinkEntry(
+  target: string,
+  entry: TarEntryWithData,
+  strip: number
+): Promise<void> {
+  // S3 (TOCTOU): symlinks pointing outside cwd could be used to redirect
+  // subsequent file writes (e.g. archive creates link→/etc, then writes link/file).
+  // `entry.linkname` has already been syntactically validated upstream by
+  // `ensureSafeLinkname()` (non-empty, no NUL byte, not a dot-segment placeholder).
+  // What we do NOT enforce here is that the symlink target stays within `cwd` —
+  // symlinks can legitimately point to relative paths inside the archive. The
+  // TOCTOU risk comes from follow-up entries, which are guarded by
+  // `ensureSafeTarget()` on each extraction target.
+
+  // V6c / V14: apply strip to SYMLINK linkname, consistent with HARDLINK treatment.
+  let strippedLinkname = entry.linkname;
+  if (strip && strippedLinkname) {
+    const parts = strippedLinkname.split('/').filter(Boolean);
+    strippedLinkname = parts.slice(strip).join('/');
+    if (!strippedLinkname) return; // stripped away — skip entry
+  }
+
+  await mkdir(dirname(target), { recursive: true });
+  // Remove existing symlink if present (allow re-extract). Narrow catch to ENOENT only.
+  try {
+    await unlink(target);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+  await symlink(strippedLinkname, target);
+}
+
+/**
+ * Write a HARDLINK entry to `target`.
+ *
+ * Applies `strip` to linkname, validates that the link source does not escape
+ * `cwd`, rejects symlink sources (R5-1), checks for symlink ancestors (TOCTOU),
+ * then creates the hardlink.
+ * Skips silently when strip removes the entire linkname (caller should
+ * continue to next entry regardless — the skip-or-create decision is always
+ * followed by `continue` in `extractFile`).
+ *
+ * Extracted from `extractFile` to reduce cognitive complexity; behavior is
+ * byte-identical to the original inline HARDLINK branch.
+ */
+async function extractHardlinkEntry(
+  target: string,
+  entry: TarEntryWithData,
+  cwd: string,
+  strip: number
+): Promise<void> {
+  // R4-2: apply the same strip logic to linkname as to entry.name, so that
+  // hardlink targets are consistent with stripped extraction paths.
+  let strippedLinkname = entry.linkname;
+  if (strip && strippedLinkname) {
+    const parts = strippedLinkname.split('/').filter(Boolean);
+    strippedLinkname = parts.slice(strip).join('/');
+    if (!strippedLinkname) return; // link target stripped away — skip entry
+  }
+  // S2: validate linkname — it must not escape cwd (absolute paths or ".." segments).
+  const linkSource = resolve(cwd, strippedLinkname);
+  const linkRel = relative(cwd, linkSource);
+  if (linkRel === '..' || linkRel.startsWith(`..${sep}`) || isAbsolute(linkRel)) {
+    throw new Error(`Refusing hardlink outside cwd: ${entry.linkname}`);
+  }
+  // R5-1: reject if linkSource itself is a symlink — the kernel would follow it
+  // and create a hardlink to whatever the symlink points to (possibly outside cwd).
+  // ENOENT is fine (linkname may point to a not-yet-extracted file); rethrow others.
+  let linkSrcStat: Awaited<ReturnType<typeof lstat>> | null = null;
+  try {
+    linkSrcStat = await lstat(linkSource);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+  if (linkSrcStat?.isSymbolicLink()) {
+    throw new Error(
+      `Refusing hardlink: source '${entry.linkname}' is a symlink (would resolve outside cwd)`
+    );
+  }
+  // R5-1: reject if any ancestor of linkSource is a symlink (TOCTOU risk).
+  if (await hasSymlinkAncestor(linkSource, cwd)) {
+    throw new Error(
+      `Refusing hardlink: source '${entry.linkname}' has a symlink ancestor (TOCTOU risk)`
+    );
+  }
+  await mkdir(dirname(target), { recursive: true });
+  // Remove existing file if present (allow re-extract). Narrow catch to ENOENT only.
+  try {
+    await unlink(target);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+  await link(linkSource, target);
+}
+
+/**
+ * POSIX implementation of FILE entry write (used by `writeFileEntry`).
+ *
+ * Opens with `O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW`. `O_NOFOLLOW`
+ * prevents opening a symlink at the leaf — if `ensureSafeTarget` somehow
+ * missed one, the OS rejects it here (V2 / V3).
+ * `chmod` and `utimes` are fd-based and strict (errors propagate).
+ * `handle.close()` is always called in `finally`.
+ */
+async function writeFileEntryPosix(
+  target: string,
+  entry: TarEntryWithData,
+  fileMode: number
+): Promise<void> {
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    handle = await open(
+      target,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | fsConstants.O_NOFOLLOW,
+      fileMode
+    );
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ELOOP') {
+      throw new Error(`Refusing '${entry.name}': target path is an existing symlink (O_NOFOLLOW)`);
+    }
+    throw err;
+  }
+  try {
+    // Collect all chunks from the async generator and write via fd.
+    // Using direct handle.write() calls avoids stream lifecycle issues
+    // with autoClose:false + pipeline in some Node versions.
+    for await (const chunk of entry.data) {
+      await handle.write(chunk as Uint8Array);
+    }
+    // fd-based chmod and utimes — do NOT follow symlinks (and there can't be one:
+    // O_NOFOLLOW would have errored on open).
+    await handle.chmod(fileMode);
+    if (entry.mtime > 0) {
+      const mt = new Date(entry.mtime * 1000);
+      await handle.utimes(mt, mt);
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * Open `target` with 'wx' (O_CREAT | O_EXCL — atomic exclusive create) for
+ * the Win32 FILE entry write path.
+ *
+ * Strategy:
+ *   1. Attempt `open(target, 'wx', fileMode)`.
+ *   2. On `EEXIST` (target exists — legitimate overwrite): unlink then retry.
+ *      - Ignore `ENOENT` on unlink (target disappeared between attempts — OK).
+ *   3. If the retry also fails with `EEXIST`, a symlink/junction was injected
+ *      between our unlink and our retry-open. Throw fail-closed security error.
+ *
+ * This implements the W1 → W2 window closure from WIN32-TOCTOU-2026-04-29 §3.
+ * The returned `FileHandle` is exclusively created — no by-path swap can occur
+ * on writes via the handle.
+ */
+async function openFileExclusive(
+  target: string,
+  entryName: string,
+  fileMode: number
+): Promise<Awaited<ReturnType<typeof open>>> {
+  try {
+    return await open(target, 'wx', fileMode);
+  } catch (firstErr) {
+    if ((firstErr as NodeJS.ErrnoException).code !== 'EEXIST') throw firstErr;
+    // Target exists — legitimate overwrite: unlink then retry.
+    // If the target disappears between the failed open() and unlink(), ignore
+    // ENOENT and still retry the atomic exclusive create.
+    try {
+      await unlink(target);
+    } catch (unlinkErr) {
+      if ((unlinkErr as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkErr;
+    }
+    try {
+      return await open(target, 'wx', fileMode);
+    } catch (retryErr) {
+      if ((retryErr as NodeJS.ErrnoException).code === 'EEXIST') {
+        // A symlink (or junction) was injected between our unlink and our open.
+        // Fail-closed: do NOT write through the symlink.
+        throw new Error(
+          `Security error: target still exists on retry for '${entryName}' — ` +
+            `possible symlink/junction injection or concurrent creation at the target path between unlink and open`
+        );
+      }
+      throw retryErr;
+    }
+  }
+}
+
+/**
+ * Windows implementation of FILE entry write (used by `writeFileEntry`).
+ *
+ * Opens exclusively via `openFileExclusive` ('wx' + unlink+retry fail-closed),
+ * then writes all chunks via fd, then does best-effort fd-based chmod/utimes.
+ * `handle.close()` is always called in `finally`.
+ *
+ * Threat model (W1-W4 per WIN32-TOCTOU-2026-04-29 §3):
+ *   W1: lstat check → open()    ~ms    CLOSED by 'wx' atomic create
+ *   W2: open() → last byte      per-chunk streaming window → CLOSED by 'wx' fd
+ *   W3: last byte → chmod       ~ms    CLOSED: fd-based handle.chmod()
+ *   W4: chmod → utimes          ~ms    CLOSED: fd-based handle.utimes()
+ * See SECURITY.md§"Windows symlink-swap TOCTOU" for the full reparse-tag table.
+ */
+async function writeFileEntryWin32(
+  target: string,
+  entry: TarEntryWithData,
+  fileMode: number
+): Promise<void> {
+  const handle = await openFileExclusive(target, entry.name, fileMode);
+  try {
+    // Write all chunks via fd — by-path swap after open() cannot redirect writes.
+    for await (const chunk of entry.data) {
+      await handle.write(chunk as Uint8Array);
+    }
+    // fd-based chmod and utimes to avoid any by-path follow after write.
+    // On Windows these metadata updates are best-effort: some filesystems can
+    // reject them (for example with EPERM) even when the file contents were
+    // written successfully.
+    try {
+      await handle.chmod(fileMode);
+    } catch {
+      // Best-effort on Windows.
+    }
+    if (entry.mtime > 0) {
+      const mt = new Date(entry.mtime * 1000);
+      try {
+        await handle.utimes(mt, mt);
+      } catch {
+        // Best-effort on Windows.
+      }
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * Write a FILE entry to `target` using fd-based I/O.
+ *
+ * Dispatches to `writeFileEntryPosix` (O_NOFOLLOW) or `writeFileEntryWin32`
+ * ('wx' atomic-create + unlink+retry fail-closed) based on `process.platform`.
+ * See the per-platform helpers for the full TOCTOU threat model documentation.
+ *
+ * @param target   - Validated absolute target path (caller has already run `ensureSafeTarget`)
+ * @param entry    - The tar entry (used for `entry.name`, `entry.data`, `entry.mtime`)
+ * @param fileMode - Mode already masked with `SAFE_MODE_MASK` (setuid/setgid/sticky stripped)
+ */
+async function writeFileEntry(
+  target: string,
+  entry: TarEntryWithData,
+  fileMode: number
+): Promise<void> {
+  if (process.platform !== 'win32') {
+    await writeFileEntryPosix(target, entry, fileMode);
+  } else {
+    await writeFileEntryWin32(target, entry, fileMode);
   }
 }
 
@@ -183,17 +469,12 @@ export async function extractFile(
 ): Promise<void> {
   const cwd = resolve(options.cwd ?? process.cwd());
   const archiveStream = createReadStream(archivePath);
+  const strip = options.strip ?? 0;
 
   for await (const entry of extract(archiveStream, options)) {
     // V6a / V6b: reject empty or NUL-containing names/linknames early, before any path math.
     ensureSafeName(entry.name, 'name');
-    // For SYMLINK and HARDLINK, also validate linkname (but only when it must be non-empty).
-    if (
-      (entry.type === TarEntryType.SYMLINK || entry.type === TarEntryType.HARDLINK) &&
-      entry.linkname !== undefined
-    ) {
-      ensureSafeName(entry.linkname, 'linkname');
-    }
+    ensureSafeLinkname(entry);
 
     const target = resolve(cwd, entry.name);
 
@@ -212,74 +493,12 @@ export async function extractFile(
     }
 
     if (entry.type === TarEntryType.SYMLINK) {
-      // S3 (TOCTOU): symlinks pointing outside cwd could be used to redirect
-      // subsequent file writes (e.g. archive creates link→/etc, then writes link/file).
-      // We do NOT validate entry.linkname here because symlinks can legitimately
-      // point to relative paths inside the archive; the TOCTOU risk comes from
-      // follow-up entries — those are guarded by ensureSafeTarget() on each entry.
-
-      // V6c / V14: apply strip to SYMLINK linkname, consistent with HARDLINK treatment.
-      let strippedLinkname = entry.linkname;
-      if (options.strip && strippedLinkname) {
-        const parts = strippedLinkname.split('/').filter(Boolean);
-        strippedLinkname = parts.slice(options.strip).join('/');
-        if (!strippedLinkname) continue;
-      }
-
-      await mkdir(dirname(target), { recursive: true });
-      // Remove existing symlink if present (allow re-extract). Narrow catch to ENOENT only.
-      try {
-        await unlink(target);
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-      }
-      await symlink(strippedLinkname, target);
+      await extractSymlinkEntry(target, entry, strip);
       continue;
     }
 
     if (entry.type === TarEntryType.HARDLINK) {
-      // R4-2: apply the same strip logic to linkname as to entry.name, so that
-      // hardlink targets are consistent with stripped extraction paths.
-      let strippedLinkname = entry.linkname;
-      if (options.strip && strippedLinkname) {
-        const parts = strippedLinkname.split('/').filter(Boolean);
-        strippedLinkname = parts.slice(options.strip).join('/');
-        if (!strippedLinkname) continue; // link target stripped away — skip entry
-      }
-      // S2: validate linkname — it must not escape cwd (absolute paths or ".." segments).
-      const linkSource = resolve(cwd, strippedLinkname);
-      const linkRel = relative(cwd, linkSource);
-      if (linkRel === '..' || linkRel.startsWith('..' + sep) || isAbsolute(linkRel)) {
-        throw new Error(`Refusing hardlink outside cwd: ${entry.linkname}`);
-      }
-      // R5-1: reject if linkSource itself is a symlink — the kernel would follow it
-      // and create a hardlink to whatever the symlink points to (possibly outside cwd).
-      // ENOENT is fine (linkname may point to a not-yet-extracted file); rethrow others.
-      let linkSrcStat: Awaited<ReturnType<typeof lstat>> | null = null;
-      try {
-        linkSrcStat = await lstat(linkSource);
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-      }
-      if (linkSrcStat?.isSymbolicLink()) {
-        throw new Error(
-          `Refusing hardlink: source '${entry.linkname}' is a symlink (would resolve outside cwd)`
-        );
-      }
-      // R5-1: reject if any ancestor of linkSource is a symlink (TOCTOU risk).
-      if (await hasSymlinkAncestor(linkSource, cwd)) {
-        throw new Error(
-          `Refusing hardlink: source '${entry.linkname}' has a symlink ancestor (TOCTOU risk)`
-        );
-      }
-      await mkdir(dirname(target), { recursive: true });
-      // Remove existing file if present (allow re-extract). Narrow catch to ENOENT only.
-      try {
-        await unlink(target);
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-      }
-      await link(linkSource, target);
+      await extractHardlinkEntry(target, entry, cwd, strip);
       continue;
     }
 
@@ -290,117 +509,9 @@ export async function extractFile(
       const fileMode = (entry.mode ?? 0o644) & SAFE_MODE_MASK;
 
       // V2 / V3: use file-descriptor-based extraction to eliminate the TOCTOU window
-      // between write and chmod/utimes. O_NOFOLLOW ensures we never open a symlink —
-      // if the leaf check (Fix 1) somehow missed one, the OS rejects it here.
-      if (process.platform !== 'win32') {
-        let handle: Awaited<ReturnType<typeof open>>;
-        try {
-          handle = await open(
-            target,
-            fsConstants.O_WRONLY |
-              fsConstants.O_CREAT |
-              fsConstants.O_TRUNC |
-              fsConstants.O_NOFOLLOW,
-            fileMode
-          );
-        } catch (err) {
-          if ((err as NodeJS.ErrnoException).code === 'ELOOP') {
-            throw new Error(
-              `Refusing '${entry.name}': target path is an existing symlink (O_NOFOLLOW)`
-            );
-          }
-          throw err;
-        }
-        try {
-          // Collect all chunks from the async generator and write via fd.
-          // Using direct handle.write() calls avoids stream lifecycle issues
-          // with autoClose:false + pipeline in some Node versions.
-          for await (const chunk of entry.data) {
-            await handle.write(chunk as Uint8Array);
-          }
-          // fd-based chmod and utimes — do NOT follow symlinks (and there can't be one:
-          // O_NOFOLLOW would have errored on open).
-          await handle.chmod(fileMode);
-          if (entry.mtime > 0) {
-            const mt = new Date(entry.mtime * 1000);
-            await handle.utimes(mt, mt);
-          }
-        } finally {
-          await handle.close();
-        }
-      } else {
-        // Windows: O_NOFOLLOW is not available.
-        //
-        // Threat model (W1-W4 per WIN32-TOCTOU-2026-04-29 §3):
-        //   W1: lstat check → open()    ~ms    (atomic-create succeeds or EEXIST)
-        //   W2: open() → last byte      per-chunk streaming window → CLOSED by 'wx' fd
-        //   W3: last byte → chmod       ~ms    CLOSED: fd-based handle.chmod()
-        //   W4: chmod → utimes          ~ms    CLOSED: fd-based handle.utimes()
-        //
-        // Strategy: open with 'wx' (O_CREAT | O_EXCL — atomic exclusive create).
-        //   • If target does not exist  → open succeeds, proceed normally.
-        //   • If target exists (EEXIST) → legitimate overwrite: unlink then retry 'wx'.
-        //     - If retry also fails with EEXIST, an attacker won the race between our
-        //       unlink and our retry-open (injected a symlink). Throw security error.
-        //   • Write, chmod, utimes all via fd (FileHandle) — immune to by-path swap.
-        //
-        // Residual race: the 'wx' open() syscall itself (atomic, sub-microsecond).
-        // A junction (IO_REPARSE_TAG_MOUNT_POINT) at the target path makes 'wx' fail
-        // with EEXIST → unlink → retry → EEXIST (attacker re-injects) → security error.
-        // See SECURITY.md§"Windows symlink-swap TOCTOU" for the full reparse-tag table.
-        let handle: Awaited<ReturnType<typeof open>>;
-        try {
-          handle = await open(target, 'wx', fileMode);
-        } catch (firstErr) {
-          if ((firstErr as NodeJS.ErrnoException).code !== 'EEXIST') throw firstErr;
-          // Target exists — legitimate overwrite: unlink then retry.
-          // If the target disappears between the failed open() and unlink(), ignore
-          // ENOENT and still retry the atomic exclusive create.
-          try {
-            await unlink(target);
-          } catch (unlinkErr) {
-            if ((unlinkErr as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkErr;
-          }
-          try {
-            handle = await open(target, 'wx', fileMode);
-          } catch (retryErr) {
-            if ((retryErr as NodeJS.ErrnoException).code === 'EEXIST') {
-              // A symlink (or junction) was injected between our unlink and our open.
-              // Fail-closed: do NOT write through the symlink.
-              throw new Error(
-                `Security error: target still exists on retry for '${entry.name}' — ` +
-                  `possible symlink/junction injection or concurrent creation at the target path between unlink and open`
-              );
-            }
-            throw retryErr;
-          }
-        }
-        try {
-          // Write all chunks via fd — by-path swap after open() cannot redirect writes.
-          for await (const chunk of entry.data) {
-            await handle.write(chunk as Uint8Array);
-          }
-          // fd-based chmod and utimes to avoid any by-path follow after write.
-          // On Windows these metadata updates are best-effort: some filesystems can
-          // reject them (for example with EPERM) even when the file contents were
-          // written successfully.
-          try {
-            await handle.chmod(fileMode);
-          } catch {
-            // Best-effort on Windows.
-          }
-          if (entry.mtime > 0) {
-            const mt = new Date(entry.mtime * 1000);
-            try {
-              await handle.utimes(mt, mt);
-            } catch {
-              // Best-effort on Windows.
-            }
-          }
-        } finally {
-          await handle.close();
-        }
-      }
+      // between write and chmod/utimes. See `writeFileEntry` for the platform-specific
+      // POSIX (O_NOFOLLOW) and Windows ('wx' atomic-create + unlink+retry) strategies.
+      await writeFileEntry(target, entry, fileMode);
     }
     // Other entry types (CHARDEV, BLOCKDEV, FIFO, CONTIGUOUS) are skipped:
     // they require elevated privileges and have no portable cross-platform behavior.

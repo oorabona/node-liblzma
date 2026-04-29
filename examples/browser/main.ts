@@ -21,7 +21,9 @@ import {
 
 // --- Logging helpers ---
 
-const logEl = document.getElementById('log')!;
+const logElRaw = document.getElementById('log');
+if (!logElRaw) throw new Error('Missing required DOM element: #log');
+const logEl = logElRaw;
 
 function log(msg: string, cls: string = '') {
   const span = document.createElement('span');

@@ -27,7 +27,7 @@ import { loadWasmModule, unloadWasmModule } from './wasm-helpers.utils.js';
  * lzma_stream_buffer_decode regardless of the exact stream content.
  */
 async function makeFixture(): Promise<{ original: Uint8Array; compressed: Uint8Array }> {
-  const original = new TextEncoder().encode('memlimit fixture: ' + 'x'.repeat(512));
+  const original = new TextEncoder().encode(`memlimit fixture: ${'x'.repeat(512)}`);
   const compressed = await xzAsync(original, { preset: 6 });
   return { original, compressed };
 }
@@ -138,7 +138,8 @@ describe('WASM unxzAsync — memlimit option', () => {
             expect(err).toBeNull();
             expect(result).toBeDefined();
             // Verify decompressed bytes equal the original, not merely that something was returned.
-            expect(Array.from(result!)).toEqual(Array.from(original));
+            if (result === undefined) throw new Error('result is undefined — test setup failed');
+            expect(Array.from(result)).toEqual(Array.from(original));
             resolve();
           } catch (e) {
             reject(e);

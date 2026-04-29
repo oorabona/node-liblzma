@@ -61,6 +61,7 @@ export {
 };
 
 // Re-export pool for concurrency control
+// biome-ignore lint/suspicious/noImportCycles: intentional ESM cycle resolved at runtime; LZMAPool re-exports from lzma.ts to keep public surface flat
 export { LZMAPool, type PoolMetrics } from './pool.js';
 
 // F-009: Type for internal Node.js stream state (no public API equivalent for _writableState.ended)

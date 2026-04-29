@@ -191,9 +191,9 @@ describe('streamXz', () => {
 
     try {
       // Only consume first chunk — break immediately
-      let count = 0;
+      let _count = 0;
       for await (const _chunk of streamXz(tarXz)) {
-        count++;
+        _count++;
         break; // consumer breaks early
       }
       // Allow a microtask turn for any unhandled rejection to surface

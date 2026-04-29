@@ -111,7 +111,8 @@ function parseCliArgs(args: string[]): CliOptions {
   for (const arg of args) {
     const presetMatch = arg.match(/^-(\d)$/);
     if (presetMatch) {
-      presetLevel = Number.parseInt(presetMatch[1]!, 10);
+      const digit = presetMatch[1];
+      presetLevel = digit !== undefined ? Number.parseInt(digit, 10) : 6;
     } else {
       filteredArgs.push(arg);
     }
@@ -707,14 +708,19 @@ async function listTarFile(filename: string, options: CliOptions): Promise<numbe
  */
 function findCommonParent(paths: string[]): string {
   if (paths.length === 0) return process.cwd();
-  if (paths.length === 1) return paths[0]!;
+  if (paths.length === 1) {
+    const p = paths[0];
+    if (p === undefined) return process.cwd();
+    return p;
+  }
   const parts = paths.map((p) => p.split('/'));
   const common: string[] = [];
-  const first = parts[0]!;
+  const first = parts[0];
+  if (first === undefined) return process.cwd();
   for (let i = 0; i < first.length; i++) {
     const segment = first[i];
-    if (parts.every((p) => p[i] === segment)) {
-      common.push(segment!);
+    if (segment !== undefined && parts.every((p) => p[i] === segment)) {
+      common.push(segment);
     } else {
       break;
     }
@@ -733,7 +739,17 @@ function resolveTarOutput(
 ): string | null {
   let outputFile = options.output;
   if (!outputFile) {
-    const base = pathModule.basename(files[0]!).replace(/\/$/, '');
+    // Invariant violation must fail-fast: an empty `files` array would
+    // otherwise silently produce an output named `.tar.xz` (just the
+    // suffix). Throw with a descriptive message so callers learn the
+    // contract instead of inheriting a degenerate output name.
+    const firstFile = files[0];
+    if (firstFile === undefined) {
+      throw new Error(
+        'resolveTarOutput requires at least one input file when no output path is provided'
+      );
+    }
+    const base = pathModule.basename(firstFile).replace(/\/$/, '');
     outputFile = `${base}.tar.xz`;
   }
 
@@ -752,16 +768,37 @@ function resolveArchiveCwd(
   resolvedFiles: string[],
   pathModule: typeof import('node:path')
 ): string {
-  if (resolvedFiles.length === 1 && statSync(resolvedFiles[0]!).isDirectory()) {
-    return resolvedFiles[0]!;
+  const firstFile = resolvedFiles[0];
+  if (resolvedFiles.length === 1 && firstFile !== undefined && statSync(firstFile).isDirectory()) {
+    return firstFile;
   }
   const parents = resolvedFiles.map((f) => (statSync(f).isDirectory() ? f : pathModule.dirname(f)));
-  return parents.length === 1 ? parents[0]! : findCommonParent(parents);
+  if (parents.length === 1) {
+    const parent = parents[0];
+    return parent !== undefined ? parent : findCommonParent(resolvedFiles);
+  }
+  return findCommonParent(parents);
 }
 
 /**
  * Collect all files to include in a tar archive, relative to cwd.
  */
+
+/**
+ * Build the relative archive path for a directory entry.
+ */
+function buildEntryPath(
+  entry: { parentPath: string; name: string },
+  dirAbsPath: string,
+  dirRelative: string
+): string {
+  const entryPath =
+    entry.parentPath === dirAbsPath
+      ? entry.name
+      : `${entry.parentPath.slice(dirAbsPath.length + 1)}/${entry.name}`;
+  return dirRelative ? `${dirRelative}/${entryPath}` : entryPath;
+}
+
 async function collectArchiveFiles(
   resolvedFiles: string[],
   cwd: string,
@@ -775,11 +812,7 @@ async function collectArchiveFiles(
       const dirRelative = pathModule.relative(cwd, file);
       for (const entry of entries) {
         if (entry.isFile()) {
-          const entryPath =
-            entry.parentPath === file
-              ? entry.name
-              : `${entry.parentPath.slice(file.length + 1)}/${entry.name}`;
-          filesToArchive.push(dirRelative ? `${dirRelative}/${entryPath}` : entryPath);
+          filesToArchive.push(buildEntryPath(entry, file, dirRelative));
         }
       }
     } else {
@@ -991,8 +1024,16 @@ async function main(): Promise<void> {
     process.exit(exitCode);
   }
 
-  // Check for tar-create mode: -T with files that aren't .tar.xz archives
-  const mode = determineMode(options, options.files[0]!);
+  // Check for tar-create mode: -T with files that aren't .tar.xz archives.
+  // The stdin check above already exits when files.length === 0, so reaching
+  // here means files[0] is defined. Fail-fast on a future invariant breach
+  // (e.g. argument-parsing changes) instead of silently dispatching with an
+  // empty filename.
+  const firstFile = options.files[0];
+  if (firstFile === undefined) {
+    throw new Error('Internal error: expected at least one input file after stdin handling');
+  }
+  const mode = determineMode(options, firstFile);
   if (mode === 'tar-create') {
     const exitCode = await createTarFile(options.files, options);
     process.exit(exitCode);
