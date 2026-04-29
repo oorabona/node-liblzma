@@ -103,6 +103,117 @@ function makeTarEntryWithData(
 }
 
 /**
+ * Pull the next event from `parser`, respecting any pending lookahead.
+ *
+ * Extracted from `extract()` to reduce cognitive complexity. Reads from
+ * `lookaheadRef.value` first; clears it on consumption.
+ */
+async function nextParseEvent(
+  parser: AsyncGenerator<ParseEvent>,
+  lookaheadRef: { value: ParseEvent | null }
+): Promise<IteratorResult<ParseEvent>> {
+  if (lookaheadRef.value !== null) {
+    const ev = lookaheadRef.value;
+    lookaheadRef.value = null;
+    return { value: ev, done: false };
+  }
+  return parser.next();
+}
+
+/**
+ * Drain all remaining 'chunk' events for the current entry from `parser`.
+ *
+ * The terminating 'entry' or 'end' event is stored in `lookaheadRef.value`.
+ * Extracted from `extract()` to reduce cognitive complexity; behavior is
+ * byte-identical.
+ */
+async function drainEntryChunks(
+  parser: AsyncGenerator<ParseEvent>,
+  lookaheadRef: { value: ParseEvent | null }
+): Promise<void> {
+  while (true) {
+    const result = await parser.next();
+    if (result.done) return;
+    if (result.value.kind !== 'chunk') {
+      lookaheadRef.value = result.value;
+      return;
+    }
+  }
+}
+
+/**
+ * Drain remaining chunks for an entry that the consumer did not fully read,
+ * swallowing non-fatal errors per the D-2 policy.
+ *
+ * TAR_PARSER_INVARIANT errors always re-throw (D-5) — they represent a corrupt
+ * archive or internal invariant violation, not a recoverable I/O error.
+ * All other errors are swallowed: they arise from decoding/IO on data the
+ * consumer intentionally skipped, so propagating them would be surprising.
+ *
+ * Extracted from `extract()` to reduce cognitive complexity; behavior is
+ * byte-identical to the inline drain-with-swallow block.
+ */
+async function drainSkippedEntry(
+  parser: AsyncGenerator<ParseEvent>,
+  lookaheadRef: { value: ParseEvent | null }
+): Promise<void> {
+  try {
+    await drainEntryChunks(parser, lookaheadRef);
+  } catch (err) {
+    // Decode/IO error during skipped data — swallow per D-2.
+    // TAR_PARSER_INVARIANT always re-throws per D-5.
+    if ((err as { code?: string }).code === 'TAR_PARSER_INVARIANT') {
+      throw err;
+    }
+    // Swallow other errors from skipped data per D-2.
+  }
+}
+
+/**
+ * Build a per-entry data-pull factory that reads 'chunk' events from `parser`.
+ *
+ * Returns a `make()` function (same contract as the inline `makeDataGen` it
+ * replaces) that, when called, returns a single-use `AsyncGenerator<Uint8Array>`
+ * backed by the outer `parseTar` generator. When chunks are exhausted, the
+ * terminating 'entry' or 'end' event is stored in `lookaheadRef.value`.
+ * A `dataGenInFlight` closure flag guards against concurrent iteration of the
+ * same entry's data (D-5 / TAR_PARSER_INVARIANT contract).
+ *
+ * Extracted from `extract()` to reduce cognitive complexity; behavior is
+ * byte-identical. The outer generator is suspended at `yield entryWithData`
+ * while the consumer iterates the returned generator — natural backpressure.
+ */
+function createEntryDataPull(
+  parser: AsyncGenerator<ParseEvent>,
+  lookaheadRef: { value: ParseEvent | null }
+): () => AsyncGenerator<Uint8Array> {
+  let dataGenInFlight = false;
+  return function makeDataGen(): AsyncGenerator<Uint8Array> {
+    if (dataGenInFlight) {
+      throw new Error('concurrent entry.data iteration is not supported');
+    }
+    dataGenInFlight = true;
+    return (async function* () {
+      try {
+        while (true) {
+          const r = await parser.next();
+          if (r.done) return;
+          if (r.value.kind === 'chunk') {
+            yield r.value.data;
+          } else {
+            // 'entry' or 'end' — store for outer loop.
+            lookaheadRef.value = r.value;
+            return;
+          }
+        }
+      } finally {
+        dataGenInFlight = false;
+      }
+    })();
+  };
+}
+
+/**
  * Extract a tar.xz archive.
  *
  * Returns an `AsyncIterable<TarEntryWithData>`. Each yielded entry includes:
@@ -119,7 +230,6 @@ function makeTarEntryWithData(
  * }
  * ```
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: streaming generator with strip/filter/drain logic — complexity is intrinsic
 export async function* extract(
   input: TarInputNode,
   options: ExtractOptions = {}
@@ -132,34 +242,13 @@ export async function* extract(
   // Lookahead: an event pulled from parseTar that hasn't been processed yet.
   // This allows the data-generator to consume chunks and then "return" the
   // terminating event (entry/end) for the outer loop to process.
-  let lookahead: ParseEvent | null = null;
-
-  /** Pull next event from parser, respecting any pending lookahead. */
-  async function nextEvent(): Promise<IteratorResult<ParseEvent>> {
-    if (lookahead !== null) {
-      const ev = lookahead;
-      lookahead = null;
-      return { value: ev, done: false };
-    }
-    return parser.next();
-  }
-
-  /** Drain all remaining 'chunk' events for the current entry from parseTar.
-   *  The terminating 'entry' or 'end' event is stored in `lookahead`. */
-  async function drainChunks(): Promise<void> {
-    while (true) {
-      const result = await parser.next();
-      if (result.done) return;
-      if (result.value.kind !== 'chunk') {
-        lookahead = result.value;
-        return;
-      }
-    }
-  }
+  // Wrapped in a ref-object so top-level helpers can read/write it without
+  // capturing `extract`'s local scope (which would add nesting complexity).
+  const lookaheadRef: { value: ParseEvent | null } = { value: null };
 
   try {
     while (true) {
-      const result = await nextEvent();
+      const result = await nextParseEvent(parser, lookaheadRef);
       if (result.done) break;
       const ev = result.value;
 
@@ -175,44 +264,21 @@ export async function* extract(
       const rawEntry = ev.entry;
       const strippedName = stripPath(rawEntry.name, strip);
       if (!strippedName) {
-        await drainChunks();
+        await drainEntryChunks(parser, lookaheadRef);
         continue;
       }
 
       const strippedEntry = { ...rawEntry, name: strippedName };
-      if (filter && !filter(strippedEntry)) {
-        await drainChunks();
+      if (filter?.(strippedEntry) === false) {
+        await drainEntryChunks(parser, lookaheadRef);
         continue;
       }
 
       // Build a data generator that pulls 'chunk' events from the parseTar stream.
-      // When chunks are exhausted it stores the next 'entry'/'end' in `lookahead`.
+      // When chunks are exhausted it stores the next 'entry'/'end' in lookaheadRef.
       // The outer generator is suspended at `yield entryWithData` while the consumer
       // iterates this — natural backpressure.
-      let dataGenInFlight = false;
-      function makeDataGen(): AsyncGenerator<Uint8Array> {
-        if (dataGenInFlight) {
-          throw new Error('concurrent entry.data iteration is not supported');
-        }
-        dataGenInFlight = true;
-        return (async function* () {
-          try {
-            while (true) {
-              const r = await parser.next();
-              if (r.done) return;
-              if (r.value.kind === 'chunk') {
-                yield r.value.data;
-              } else {
-                // 'entry' or 'end' — store for outer loop.
-                lookahead = r.value;
-                return;
-              }
-            }
-          } finally {
-            dataGenInFlight = false;
-          }
-        })();
-      }
+      const makeDataGen = createEntryDataPull(parser, lookaheadRef);
 
       const entryWithData = makeTarEntryWithData(strippedEntry, makeDataGen);
       yield entryWithData;
@@ -220,19 +286,9 @@ export async function* extract(
       // After the consumer advances past this entry, drain any remaining chunks
       // that the consumer did not read (S-08 auto-drain, Case A per §12.4).
       // If the data generator was fully consumed, lookahead is already set.
-      // If not, drain now.
-      if (lookahead === null) {
-        // Consumer did not fully iterate entry.data — drain remaining chunks.
-        try {
-          await drainChunks();
-        } catch (err) {
-          // Decode/IO error during skipped data — swallow per D-2.
-          // TAR_PARSER_INVARIANT always re-throws per D-5.
-          if ((err as { code?: string }).code === 'TAR_PARSER_INVARIANT') {
-            throw err;
-          }
-          // Swallow other errors from skipped data per D-2.
-        }
+      // If not, drain now (swallowing non-fatal errors per D-2, re-throwing D-5).
+      if (lookaheadRef.value === null) {
+        await drainSkippedEntry(parser, lookaheadRef);
       }
     }
   } finally {
