@@ -235,7 +235,12 @@ function isExcludedByFilter(
   entry: TarEntry,
   filter: ((e: TarEntry) => boolean) | undefined
 ): boolean {
-  return filter !== undefined && !filter(entry);
+  // `typeof === 'function'` over `!== undefined` is mandatory for null-safe
+  // semantics. The original `filter && !filter(entry)` short-circuited on ANY
+  // falsy filter (false / 0 / '' / null / undefined). A `null !== undefined`
+  // check would be true → call filter(null) → runtime crash. The `typeof`
+  // gate matches the browser-side `extract()` and the documented contract.
+  return typeof filter === 'function' && !filter(entry);
 }
 
 /**
