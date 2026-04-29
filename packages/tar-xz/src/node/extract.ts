@@ -214,6 +214,24 @@ function createEntryDataPull(
 }
 
 /**
+ * Apply the user-supplied `filter` predicate, if any, to decide if an entry
+ * should be skipped. Returns true when filter is provided AND the predicate
+ * returns ANY falsy value (false / 0 / '' / null / undefined). This preserves
+ * the historical `filter && !filter(entry)` semantics — a stricter `=== false`
+ * check would treat non-false falsies as "include", which diverges from both
+ * the documented contract and the browser-side implementation.
+ *
+ * Extracted from `extract()` to keep the outer loop under biome's cognitive
+ * complexity threshold.
+ */
+function isExcludedByFilter(
+  entry: TarEntry,
+  filter: ((e: TarEntry) => boolean) | undefined
+): boolean {
+  return filter !== undefined && !filter(entry);
+}
+
+/**
  * Extract a tar.xz archive.
  *
  * Returns an `AsyncIterable<TarEntryWithData>`. Each yielded entry includes:
@@ -269,7 +287,7 @@ export async function* extract(
       }
 
       const strippedEntry = { ...rawEntry, name: strippedName };
-      if (filter?.(strippedEntry) === false) {
+      if (isExcludedByFilter(strippedEntry, filter)) {
         await drainEntryChunks(parser, lookaheadRef);
         continue;
       }
