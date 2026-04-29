@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { extractFile } from '../src/node/file.js';
 import { calculatePadding, createEndOfArchive, createHeader } from '../src/tar/format.js';
 
-// Replace the module with a proxy so vi.spyOn intercepts named imports in file.ts.
+// Replace the module with a shallow spread so vi.spyOn intercepts named imports in file.ts.
 // Without this, ESM named bindings in file.ts are separate live references that
 // vi.spyOn on the namespace object cannot intercept.
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -38,8 +38,6 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 // ---------------------------------------------------------------------------
 // Helpers (self-contained — no shared imports from other test files)
 // ---------------------------------------------------------------------------
-
-/** Build a minimal TAR buffer with a single regular-file entry. */
 
 /** Stubs process.platform to 'win32' via Object.create so non-enumerable
  *  Node.js APIs (EventEmitter, env, argv, etc.) remain intact on the stub. */
@@ -141,7 +139,7 @@ describe('Win32 extractFile fail-closed under symlink-swap race', () => {
   // retry-'wx' open by injecting a symlink in the mock.
   //
   // BEFORE fix: extract() resolves and writes through the symlink.
-  // AFTER fix:  extract() rejects with /symlink-swap race detected/
+  // AFTER fix:  extract() rejects with /target still exists on retry/
   //             AND no bytes are written through the symlink.
   // -------------------------------------------------------------------------
 
