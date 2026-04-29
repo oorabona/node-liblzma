@@ -190,9 +190,14 @@ function createEntryDataPull(
   let dataGenInFlight = false;
   return function makeDataGen(): AsyncGenerator<Uint8Array> {
     if (dataGenInFlight) {
-      // D-5 invariant violation: must carry TAR_PARSER_INVARIANT code so that
-      // drainSkippedEntry's filter (and downstream consumers) can distinguish
-      // it from runtime/IO errors and re-throw rather than swallow.
+      // D-5 invariant violation: triggered if the same entry's data generator
+      // is created twice (`makeDataGen()` called more than once for one
+      // entry). The current `makeTarEntryWithData` design calls `dataPull()`
+      // exactly once per entry and never exposes `makeDataGen` to consumers,
+      // so this branch is effectively unreachable in production. The
+      // `code: 'TAR_PARSER_INVARIANT'` attribute matches the convention used
+      // by other invariant errors in this module (e.g. stray-chunk in extract,
+      // size-mismatch in bytes()) and keeps downstream filters consistent.
       const err = new Error('concurrent entry.data iteration is not supported') as Error & {
         code?: string;
       };

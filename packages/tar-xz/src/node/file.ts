@@ -155,9 +155,12 @@ async function extractSymlinkEntry(
 ): Promise<void> {
   // S3 (TOCTOU): symlinks pointing outside cwd could be used to redirect
   // subsequent file writes (e.g. archive creates link→/etc, then writes link/file).
-  // We do NOT validate entry.linkname here because symlinks can legitimately
-  // point to relative paths inside the archive; the TOCTOU risk comes from
-  // follow-up entries — those are guarded by ensureSafeTarget() on each entry.
+  // `entry.linkname` has already been syntactically validated upstream by
+  // `ensureSafeLinkname()` (non-empty, no NUL byte, not a dot-segment placeholder).
+  // What we do NOT enforce here is that the symlink target stays within `cwd` —
+  // symlinks can legitimately point to relative paths inside the archive. The
+  // TOCTOU risk comes from follow-up entries, which are guarded by
+  // `ensureSafeTarget()` on each extraction target.
 
   // V6c / V14: apply strip to SYMLINK linkname, consistent with HARDLINK treatment.
   let strippedLinkname = entry.linkname;
