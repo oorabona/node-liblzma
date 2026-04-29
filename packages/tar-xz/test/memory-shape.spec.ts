@@ -94,7 +94,7 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
       // preset: 6 matches the 16 MB slack rationale (XZ preset-6 dictionary ≈ 8 MB)
       const archive = await buildArchive([{ name: 'big.bin', size: ENTRY_SIZE }], 6);
 
-      gc!();
+      gc?.();
       const sampler = makeSampler();
 
       for await (const entry of extract(Readable.from([archive]))) {
@@ -105,7 +105,7 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
         sampler.sample();
       }
 
-      gc!();
+      gc?.();
       sampler.sample();
 
       const delta = sampler.peak() - sampler.baseline;
@@ -142,7 +142,7 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
         }))
       );
 
-      gc!();
+      gc?.();
       const sampler = makeSampler();
 
       let count = 0;
@@ -153,7 +153,7 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
         expect(entry.size).toBe(ENTRY_SIZE);
       }
 
-      gc!();
+      gc?.();
       sampler.sample();
 
       expect(count).toBe(ENTRY_COUNT);
@@ -190,7 +190,7 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
         }))
       );
 
-      gc!();
+      gc?.();
       const sampler = makeSampler();
 
       let totalBytes = 0;
@@ -203,7 +203,7 @@ describe('Memory shape gate (requires --expose-gc; skips otherwise)', () => {
         sampler.sample();
       }
 
-      gc!();
+      gc?.();
       sampler.sample();
 
       expect(totalBytes).toBe(ENTRY_COUNT * LARGEST_ENTRY);

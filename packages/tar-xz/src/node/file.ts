@@ -97,7 +97,7 @@ async function ensureSafeTarget(
   // F-001: safe traversal check — only reject when the relative path IS '..' or
   // starts with '../' (POSIX) / '..\' (Windows). Dotfiles like '..gitignore' are fine.
   const rel = relative(cwd, target);
-  if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
     throw new Error(`Refusing to extract entry outside cwd: ${entryName}`);
   }
   // F-002: TOCTOU guard — reject if any ancestor directory is a symlink.
@@ -249,7 +249,7 @@ export async function extractFile(
       // S2: validate linkname — it must not escape cwd (absolute paths or ".." segments).
       const linkSource = resolve(cwd, strippedLinkname);
       const linkRel = relative(cwd, linkSource);
-      if (linkRel === '..' || linkRel.startsWith('..' + sep) || isAbsolute(linkRel)) {
+      if (linkRel === '..' || linkRel.startsWith(`..${sep}`) || isAbsolute(linkRel)) {
         throw new Error(`Refusing hardlink outside cwd: ${entry.linkname}`);
       }
       // R5-1: reject if linkSource itself is a symlink — the kernel would follow it

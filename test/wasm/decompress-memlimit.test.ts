@@ -27,7 +27,7 @@ import { loadWasmModule, unloadWasmModule } from './wasm-helpers.utils.js';
  * lzma_stream_buffer_decode regardless of the exact stream content.
  */
 async function makeFixture(): Promise<{ original: Uint8Array; compressed: Uint8Array }> {
-  const original = new TextEncoder().encode('memlimit fixture: ' + 'x'.repeat(512));
+  const original = new TextEncoder().encode(`memlimit fixture: ${'x'.repeat(512)}`);
   const compressed = await xzAsync(original, { preset: 6 });
   return { original, compressed };
 }

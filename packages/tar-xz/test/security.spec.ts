@@ -28,12 +28,7 @@ import { xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { extractFile } from '../src/node/file.js';
 import { extract } from '../src/node/index.js';
-import {
-  BLOCK_SIZE,
-  calculatePadding,
-  createEndOfArchive,
-  createHeader,
-} from '../src/tar/format.js';
+import { calculatePadding, createEndOfArchive, createHeader } from '../src/tar/format.js';
 import { createPaxHeaderBlocks } from '../src/tar/pax.js';
 import { TarEntryType } from '../src/types.js';
 
@@ -460,7 +455,7 @@ describe('Security regression gate', () => {
       for (let i = 0; i < 512; i++) {
         checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
       }
-      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
 
       const archive = path.join(tempDir, 'nul-linkname.tar.xz');
@@ -496,7 +491,7 @@ describe('Security regression gate', () => {
       for (let i = 0; i < 512; i++) {
         checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
       }
-      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
 
       const archive = path.join(tempDir, 'nul-name.tar.xz');
@@ -538,14 +533,14 @@ describe('Security regression gate', () => {
       const tar = buildTar([{ name: 'x', content: Buffer.from('data') }]);
       const tarBuf = Buffer.from(tar);
       // Patch mode field at offset 100 to 0o4755 (setuid + rwxr-xr-x)
-      const modeStr = (0o4755).toString(8).padStart(7, '0') + '\x00';
+      const modeStr = `${(0o4755).toString(8).padStart(7, '0')}\x00`;
       for (let i = 0; i < 8; i++) tarBuf[100 + i] = modeStr.charCodeAt(i);
       // Recalculate checksum
       let checksum = 0;
       for (let i = 0; i < 512; i++) {
         checksum += i >= 148 && i < 156 ? 0x20 : tarBuf[i]!;
       }
-      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) tarBuf[148 + i] = checksumStr.charCodeAt(i);
 
       const archive = path.join(tempDir, 'setuid.tar.xz');
@@ -687,8 +682,8 @@ describe('Security regression gate', () => {
       // the guard fires first — both are correct rejection outcomes)
       expect(caught).not.toBeNull();
       const isExpectedError =
-        caught!.message.includes('Unexpected end') ||
-        caught!.message.toLowerCase().includes('pax') ||
+        caught?.message.includes('Unexpected end') ||
+        caught?.message.toLowerCase().includes('pax') ||
         (caught as Error & { code?: string }).code === 'TAR_PARSER_INVARIANT';
       expect(isExpectedError).toBe(true);
 
@@ -716,7 +711,7 @@ describe('Security regression gate', () => {
       }
 
       expect(caught).not.toBeNull();
-      expect(caught!.message).toMatch(/PAX|header exceeds/i);
+      expect(caught?.message).toMatch(/PAX|header exceeds/i);
       expect((caught as Error & { code?: string }).code).toBe('TAR_PARSER_INVARIANT');
     });
   });

@@ -378,7 +378,7 @@ describe('Node.js file API (v6)', () => {
 
       expect(entries).toHaveLength(1);
       expect(entries[0]?.name).toBe('hello.txt');
-      expect(Buffer.from(entries[0]!.content).toString('utf-8')).toBe('hello world');
+      expect(Buffer.from(entries[0]?.content).toString('utf-8')).toBe('hello world');
     });
   });
 });

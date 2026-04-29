@@ -917,7 +917,7 @@ describe('Coverage: Node API', () => {
         checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
       }
       // Write checksum in octal to bytes 148-155
-      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
 
       const archive = path.join(tempDir, 'nul-name.tar.xz');
@@ -964,7 +964,7 @@ describe('Coverage: Node API', () => {
       for (let i = 0; i < 512; i++) {
         checksum += i >= 148 && i < 156 ? 0x20 : header[i]!;
       }
-      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) header[148 + i] = checksumStr.charCodeAt(i);
 
       const archive = path.join(tempDir, 'nul-linkname.tar.xz');
@@ -1037,14 +1037,14 @@ describe('Coverage: Node API', () => {
       // Manually patch the mode in the header to 0o4755 (setuid + rwxr-xr-x)
       const tarBuf = Buffer.from(tar);
       // Mode field is at offset 100, length 8 in USTAR
-      const modeStr = (0o4755).toString(8).padStart(7, '0') + '\x00';
+      const modeStr = `${(0o4755).toString(8).padStart(7, '0')}\x00`;
       for (let i = 0; i < 8; i++) tarBuf[100 + i] = modeStr.charCodeAt(i);
       // Recalculate checksum (field at offset 148, length 8)
       let checksum = 0;
       for (let i = 0; i < 512; i++) {
         checksum += i >= 148 && i < 156 ? 0x20 : tarBuf[i]!;
       }
-      const checksumStr = checksum.toString(8).padStart(6, '0') + '\x00 ';
+      const checksumStr = `${checksum.toString(8).padStart(6, '0')}\x00 `;
       for (let i = 0; i < 8; i++) tarBuf[148 + i] = checksumStr.charCodeAt(i);
 
       const archive = path.join(tempDir, 'setuid.tar.xz');
