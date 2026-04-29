@@ -190,7 +190,14 @@ function createEntryDataPull(
   let dataGenInFlight = false;
   return function makeDataGen(): AsyncGenerator<Uint8Array> {
     if (dataGenInFlight) {
-      throw new Error('concurrent entry.data iteration is not supported');
+      // D-5 invariant violation: must carry TAR_PARSER_INVARIANT code so that
+      // drainSkippedEntry's filter (and downstream consumers) can distinguish
+      // it from runtime/IO errors and re-throw rather than swallow.
+      const err = new Error('concurrent entry.data iteration is not supported') as Error & {
+        code?: string;
+      };
+      err.code = 'TAR_PARSER_INVARIANT';
+      throw err;
     }
     dataGenInFlight = true;
     return (async function* () {

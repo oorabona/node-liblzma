@@ -49,15 +49,14 @@ function ensureSafeName(s: string | undefined, label: string): void {
 /**
  * V6b: Validate `entry.linkname` for SYMLINK and HARDLINK entries.
  *
- * Only SYMLINK and HARDLINK entries are required to have non-empty linknames;
- * other entry types may legitimately have empty or undefined linkname fields.
- * Delegates to `ensureSafeName` for the actual rejection logic.
+ * `TarEntry.linkname` is always present as a string (parser sets `''` for
+ * empty link fields). Only SYMLINK and HARDLINK entries are required to have
+ * non-empty linknames — other entry types may legitimately carry an empty
+ * linkname. Delegates to `ensureSafeName` for the actual rejection logic
+ * (empty-string + NUL-byte + dot-segment guards).
  */
 function ensureSafeLinkname(entry: TarEntry): void {
-  if (
-    (entry.type === TarEntryType.SYMLINK || entry.type === TarEntryType.HARDLINK) &&
-    entry.linkname !== undefined
-  ) {
+  if (entry.type === TarEntryType.SYMLINK || entry.type === TarEntryType.HARDLINK) {
     ensureSafeName(entry.linkname, 'linkname');
   }
 }
