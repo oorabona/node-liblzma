@@ -15,6 +15,7 @@ _None._
 ## Pending - LOW (Nice to Have)
 
 - [ ] [Lint] Single residual biome warning: `test/node-api.spec.ts:249` (`suppressions/unused` — pre-existing biome-ignore that no longer suppresses anything). Cosmetic 1-line cleanup for a future PR.
+- [ ] [tar-xz] Pre-existing latent HARDLINK validation gap (F-002 from REFACTOR-BIOME-2026-04-29 opus review): `extractHardlinkEntry` calls `resolve(cwd, strippedLinkname)` where `strippedLinkname` may be `undefined` if `entry.linkname === undefined` AND `strip === 0`. `resolve(undefined)` throws `TypeError` instead of a structured error. Defensive validation; not introduced by refactor; HARDLINK entries with no linkname are already malformed. Priority: L (rare path).
 
 ## Completed
 
