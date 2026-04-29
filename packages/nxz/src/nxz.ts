@@ -739,7 +739,16 @@ function resolveTarOutput(
 ): string | null {
   let outputFile = options.output;
   if (!outputFile) {
-    const firstFile = files[0] ?? '';
+    // Invariant violation must fail-fast: an empty `files` array would
+    // otherwise silently produce an output named `.tar.xz` (just the
+    // suffix). Throw with a descriptive message so callers learn the
+    // contract instead of inheriting a degenerate output name.
+    const firstFile = files[0];
+    if (firstFile === undefined) {
+      throw new Error(
+        'resolveTarOutput requires at least one input file when no output path is provided'
+      );
+    }
     const base = pathModule.basename(firstFile).replace(/\/$/, '');
     outputFile = `${base}.tar.xz`;
   }
