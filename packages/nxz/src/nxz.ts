@@ -61,75 +61,8 @@ interface CliOptions {
   memlimitDecompress?: bigint;
 }
 
-/**
- * Parse a memory size string into a bigint number of bytes.
- *
- * Accepted formats (integer mantissa only):
- *   - IEC binary suffixes: "256MiB", "1GiB", "512KiB" (1024-based)
- *   - SI decimal suffixes: "256MB", "1GB", "512KB" (1000-based)
- *   - Plain integer: "268435456"
- *   - "0", "0MiB", "0KB", …, or "max": returns undefined (no limit)
- *
- * Decimal mantissas (e.g. "1.5MiB") are rejected — integer mantissa only,
- * matching xz CLI behaviour and avoiding Number precision loss on large values.
- * All forms of zero (with or without suffix) return undefined (= no limit).
- *
- * @throws TypeError on malformed input
- */
-export function parseMemlimitSize(s: string): bigint | undefined {
-  if (s === '0' || s.toLowerCase() === 'max') return;
-
-  // IEC binary suffixes (1024-based) — integer mantissa only
-  const iec = /^(\d+)\s*(KiB|MiB|GiB|TiB)$/i.exec(s);
-  if (iec) {
-    const num = iec[1] ?? '';
-    const suffix = (iec[2] ?? '').toUpperCase();
-    const multipliers: Record<string, bigint> = {
-      KIB: BigInt(1024),
-      MIB: BigInt(1024 * 1024),
-      GIB: BigInt(1024 * 1024 * 1024),
-      TIB: BigInt(1024 * 1024 * 1024 * 1024),
-    };
-    const mult = multipliers[suffix];
-    if (mult === undefined) {
-      throw new TypeError(`Invalid memory size: "${s}"`);
-    }
-    const result = BigInt(num) * mult;
-    if (result === 0n) return;
-    return result;
-  }
-
-  // SI decimal suffixes (1000-based) — integer mantissa only
-  const si = /^(\d+)\s*(KB|MB|GB|TB)$/i.exec(s);
-  if (si) {
-    const num = si[1] ?? '';
-    const suffix = (si[2] ?? '').toUpperCase();
-    const multipliers: Record<string, bigint> = {
-      KB: BigInt(1000),
-      MB: BigInt(1000 * 1000),
-      GB: BigInt(1000 * 1000 * 1000),
-      TB: BigInt(1000 * 1000 * 1000 * 1000),
-    };
-    const mult = multipliers[suffix];
-    if (mult === undefined) {
-      throw new TypeError(`Invalid memory size: "${s}"`);
-    }
-    const result = BigInt(num) * mult;
-    if (result === 0n) return;
-    return result;
-  }
-
-  // Plain integer (no suffix)
-  if (/^\d+$/.test(s)) {
-    return BigInt(s);
-  }
-
-  throw new TypeError(
-    `Invalid memory size: "${s}". Expected a plain integer (e.g. 268435456), ` +
-      `an IEC suffix (e.g. 256MiB, 1GiB), a SI suffix (e.g. 256MB, 1GB), ` +
-      `integer mantissa only — or "0"/"max" for no limit.`
-  );
-}
+import { parseMemlimitSize } from './memlimit.js';
+export { parseMemlimitSize };
 
 /** Size threshold for using streams vs sync (1 MB) */
 const STREAM_THRESHOLD_BYTES = 1024 * 1024;

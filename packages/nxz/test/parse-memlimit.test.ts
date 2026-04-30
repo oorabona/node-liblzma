@@ -3,7 +3,7 @@
  * without going through the CLI binary. All edge-cases from the review findings.
  */
 import { describe, expect, it } from 'vitest';
-import { parseMemlimitSize } from '../src/nxz.ts';
+import { parseMemlimitSize } from '../src/memlimit.ts';
 
 // ---------------------------------------------------------------------------
 // Zero / no-limit forms — all must return undefined
@@ -102,9 +102,9 @@ describe('parseMemlimitSize — whitespace between number and suffix', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Decimal mantissa — REJECTED (S-1 fix)
+// Decimal mantissa — REJECTED (integer mantissa only)
 // ---------------------------------------------------------------------------
-describe('parseMemlimitSize — decimal mantissa rejected (S-1)', () => {
+describe('parseMemlimitSize — decimal mantissa rejected', () => {
   it('"1.5MiB" throws TypeError', () => {
     expect(() => parseMemlimitSize('1.5MiB')).toThrow(TypeError);
   });
