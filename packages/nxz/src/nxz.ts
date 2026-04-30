@@ -64,53 +64,59 @@ interface CliOptions {
 /**
  * Parse a memory size string into a bigint number of bytes.
  *
- * Accepted formats:
- *   - Plain integer: "268435456"
+ * Accepted formats (integer mantissa only):
  *   - IEC binary suffixes: "256MiB", "1GiB", "512KiB" (1024-based)
  *   - SI decimal suffixes: "256MB", "1GB", "512KB" (1000-based)
- *   - "0" or "max": returns undefined (no limit)
+ *   - Plain integer: "268435456"
+ *   - "0", "0MiB", "0KB", …, or "max": returns undefined (no limit)
+ *
+ * Decimal mantissas (e.g. "1.5MiB") are rejected — integer mantissa only,
+ * matching xz CLI behaviour and avoiding Number precision loss on large values.
+ * All forms of zero (with or without suffix) return undefined (= no limit).
  *
  * @throws TypeError on malformed input
  */
 export function parseMemlimitSize(s: string): bigint | undefined {
   if (s === '0' || s.toLowerCase() === 'max') return;
 
-  // IEC binary suffixes (1024-based)
-  const iec = /^(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)$/i.exec(s);
+  // IEC binary suffixes (1024-based) — integer mantissa only
+  const iec = /^(\d+)\s*(KiB|MiB|GiB|TiB)$/i.exec(s);
   if (iec) {
-    const num = iec[1];
-    const suffix = iec[2]?.toUpperCase();
-    const value = Number(num);
+    const num = iec[1] ?? '';
+    const suffix = (iec[2] ?? '').toUpperCase();
     const multipliers: Record<string, bigint> = {
       KIB: BigInt(1024),
       MIB: BigInt(1024 * 1024),
       GIB: BigInt(1024 * 1024 * 1024),
       TIB: BigInt(1024 * 1024 * 1024 * 1024),
     };
-    const mult = suffix !== undefined ? multipliers[suffix] : undefined;
+    const mult = multipliers[suffix];
     if (mult === undefined) {
       throw new TypeError(`Invalid memory size: "${s}"`);
     }
-    return BigInt(Math.round(value)) * mult;
+    const result = BigInt(num) * mult;
+    if (result === 0n) return;
+    return result;
   }
 
-  // SI decimal suffixes (1000-based)
-  const si = /^(\d+(?:\.\d+)?)\s*(KB|MB|GB|TB)$/i.exec(s);
+  // SI decimal suffixes (1000-based) — integer mantissa only
+  const si = /^(\d+)\s*(KB|MB|GB|TB)$/i.exec(s);
   if (si) {
-    const num = si[1];
-    const suffix = si[2]?.toUpperCase();
-    const value = Number(num);
+    const num = si[1] ?? '';
+    const suffix = (si[2] ?? '').toUpperCase();
     const multipliers: Record<string, bigint> = {
       KB: BigInt(1000),
       MB: BigInt(1000 * 1000),
       GB: BigInt(1000 * 1000 * 1000),
       TB: BigInt(1000 * 1000 * 1000 * 1000),
     };
-    const mult = suffix !== undefined ? multipliers[suffix] : undefined;
+    const mult = multipliers[suffix];
     if (mult === undefined) {
       throw new TypeError(`Invalid memory size: "${s}"`);
     }
-    return BigInt(Math.round(value)) * mult;
+    const result = BigInt(num) * mult;
+    if (result === 0n) return;
+    return result;
   }
 
   // Plain integer (no suffix)
@@ -120,8 +126,8 @@ export function parseMemlimitSize(s: string): bigint | undefined {
 
   throw new TypeError(
     `Invalid memory size: "${s}". Expected a plain integer (e.g. 268435456), ` +
-      `an IEC suffix (e.g. 256MiB, 1GiB), a decimal suffix (e.g. 256MB, 1GB), ` +
-      `or "0"/"max" for no limit.`
+      `an IEC suffix (e.g. 256MiB, 1GiB), a SI suffix (e.g. 256MB, 1GB), ` +
+      `integer mantissa only — or "0"/"max" for no limit.`
   );
 }
 
@@ -271,6 +277,8 @@ Operation modifiers:
   --memlimit-decompress=SIZE
                     limit decompressor memory usage (e.g. 256MiB, 1GiB, 512KB,
                     268435456); use 0 or max for no limit
+                    (IEC suffixes 1024-based, SI suffixes 1000-based,
+                    integer mantissa only)
 
 Compression presets:
   -0 ... -9         compression preset level (default: 6)
@@ -677,14 +685,16 @@ async function benchmarkFile(inputFile: string, options: CliOptions): Promise<nu
   const memlimitOpts =
     options.memlimitDecompress !== undefined ? { memlimit: options.memlimitDecompress } : undefined;
   const nativeDecompress = measureSync(() => unxzSync(nativeCompress.result, memlimitOpts));
-  const wasmDecompress = await measureAsync(() => wasmUnxzAsync(wasmCompress.result));
+  const wasmDecompress = await measureAsync(() => wasmUnxzAsync(wasmCompress.result, memlimitOpts));
 
   // --- Verify correctness ---
   const nativeOk = Buffer.compare(nativeDecompress.result, data) === 0;
   const wasmOk = Buffer.compare(Buffer.from(wasmDecompress.result), data) === 0;
 
   // --- Cross-decompression ---
-  const crossNativeToWasm = await measureAsync(() => wasmUnxzAsync(nativeCompress.result));
+  const crossNativeToWasm = await measureAsync(() =>
+    wasmUnxzAsync(nativeCompress.result, memlimitOpts)
+  );
   const crossWasmToNative = measureSync(() =>
     unxzSync(Buffer.from(wasmCompress.result), memlimitOpts)
   );
