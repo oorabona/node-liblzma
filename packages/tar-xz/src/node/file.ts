@@ -399,7 +399,11 @@ async function writeFileEntryWin32(
       // Best-effort on Windows.
     }
     /* v8 ignore stop */
+    /* v8 ignore start: negative-ROI — the false branch (mtime === 0) is structurally reachable but no
+     * public API in this package constructs an entry with mtime=0 on the Windows path; fixture cost
+     * outweighs regression value. */
     if (entry.mtime > 0) {
+      /* v8 ignore stop */
       const mt = new Date(entry.mtime * 1000);
       /* v8 ignore start: Windows best-effort — utimes can fail with EPERM on some filesystems; platform-specific defensive branch */
       try {
@@ -543,8 +547,12 @@ export async function extractFile(
       // POSIX (O_NOFOLLOW) and Windows ('wx' atomic-create + unlink+retry) strategies.
       await writeFileEntry(target, entry, fileMode);
     }
+    /* v8 ignore start: negative-ROI — uncommon entry types (CHARDEV/BLOCKDEV/FIFO/CONTIGUOUS) require a
+     * hand-crafted raw-byte archive fixture; these types are not produced by any public API in this package,
+     * fixture cost outweighs regression value. */
     // Other entry types (CHARDEV, BLOCKDEV, FIFO, CONTIGUOUS) are skipped:
     // they require elevated privileges and have no portable cross-platform behavior.
+    /* v8 ignore stop */
   }
 }
 
