@@ -57,6 +57,72 @@ interface CliOptions {
   extreme: boolean;
   strip: number;
   files: string[];
+  /** Memory limit for decompression in bytes. undefined = no limit. */
+  memlimitDecompress?: bigint;
+}
+
+/**
+ * Parse a memory size string into a bigint number of bytes.
+ *
+ * Accepted formats:
+ *   - Plain integer: "268435456"
+ *   - IEC binary suffixes: "256MiB", "1GiB", "512KiB" (1024-based)
+ *   - SI decimal suffixes: "256MB", "1GB", "512KB" (1000-based)
+ *   - "0" or "max": returns undefined (no limit)
+ *
+ * @throws TypeError on malformed input
+ */
+export function parseMemlimitSize(s: string): bigint | undefined {
+  if (s === '0' || s.toLowerCase() === 'max') return;
+
+  // IEC binary suffixes (1024-based)
+  const iec = /^(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)$/i.exec(s);
+  if (iec) {
+    const num = iec[1];
+    const suffix = iec[2]?.toUpperCase();
+    const value = Number(num);
+    const multipliers: Record<string, bigint> = {
+      KIB: BigInt(1024),
+      MIB: BigInt(1024 * 1024),
+      GIB: BigInt(1024 * 1024 * 1024),
+      TIB: BigInt(1024 * 1024 * 1024 * 1024),
+    };
+    const mult = suffix !== undefined ? multipliers[suffix] : undefined;
+    if (mult === undefined) {
+      throw new TypeError(`Invalid memory size: "${s}"`);
+    }
+    return BigInt(Math.round(value)) * mult;
+  }
+
+  // SI decimal suffixes (1000-based)
+  const si = /^(\d+(?:\.\d+)?)\s*(KB|MB|GB|TB)$/i.exec(s);
+  if (si) {
+    const num = si[1];
+    const suffix = si[2]?.toUpperCase();
+    const value = Number(num);
+    const multipliers: Record<string, bigint> = {
+      KB: BigInt(1000),
+      MB: BigInt(1000 * 1000),
+      GB: BigInt(1000 * 1000 * 1000),
+      TB: BigInt(1000 * 1000 * 1000 * 1000),
+    };
+    const mult = suffix !== undefined ? multipliers[suffix] : undefined;
+    if (mult === undefined) {
+      throw new TypeError(`Invalid memory size: "${s}"`);
+    }
+    return BigInt(Math.round(value)) * mult;
+  }
+
+  // Plain integer (no suffix)
+  if (/^\d+$/.test(s)) {
+    return BigInt(s);
+  }
+
+  throw new TypeError(
+    `Invalid memory size: "${s}". Expected a plain integer (e.g. 268435456), ` +
+      `an IEC suffix (e.g. 256MiB, 1GiB), a decimal suffix (e.g. 256MB, 1GB), ` +
+      `or "0"/"max" for no limit.`
+  );
 }
 
 /** Size threshold for using streams vs sync (1 MB) */
@@ -136,10 +202,23 @@ function parseCliArgs(args: string[]): CliOptions {
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', short: 'V', default: false },
       extreme: { type: 'boolean', short: 'e', default: false },
+      'memlimit-decompress': { type: 'string' },
     },
     allowPositionals: true,
     strict: false,
   });
+
+  const rawMemlimit = values['memlimit-decompress'];
+  let memlimitDecompress: bigint | undefined;
+  if (typeof rawMemlimit === 'string') {
+    try {
+      memlimitDecompress = parseMemlimitSize(rawMemlimit);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`nxz: --memlimit-decompress: ${message}`);
+      process.exit(1);
+    }
+  }
 
   return {
     compress: values.compress === true,
@@ -159,6 +238,7 @@ function parseCliArgs(args: string[]): CliOptions {
     extreme: values.extreme === true,
     strip: Number.parseInt(String(values.strip ?? '0'), 10),
     files: positionals,
+    memlimitDecompress,
   };
 }
 
@@ -188,6 +268,9 @@ Operation modifiers:
   -f, --force       force overwrite of output file
   -c, --stdout      write to standard output and don't delete input files
   -o, --output=FILE write output to FILE (or directory for tar extract)
+  --memlimit-decompress=SIZE
+                    limit decompressor memory usage (e.g. 256MiB, 1GiB, 512KB,
+                    268435456); use 0 or max for no limit
 
 Compression presets:
   -0 ... -9         compression preset level (default: 6)
@@ -477,6 +560,8 @@ async function compressFile(inputFile: string, options: CliOptions): Promise<num
  */
 async function decompressFile(inputFile: string, options: CliOptions): Promise<number> {
   const outputFile = resolveOutputFile(inputFile, 'decompress', options);
+  const decompressOpts =
+    options.memlimitDecompress !== undefined ? { memlimit: options.memlimitDecompress } : undefined;
 
   if (outputFile && existsSync(outputFile) && !options.force) {
     warn(`nxz: ${outputFile}: File already exists; use -f to overwrite`);
@@ -496,11 +581,11 @@ async function decompressFile(inputFile: string, options: CliOptions): Promise<n
 
     if (!outputFile || size <= STREAM_THRESHOLD_BYTES) {
       // Stdout or small file: sync decompression
-      const decompressed = unxzSync(data);
+      const decompressed = unxzSync(data, decompressOpts);
       writeOutput(decompressed, outputFile);
     } else {
       // Large file: stream decompression with optional progress
-      const decompressor = createUnxz();
+      const decompressor = createUnxz(decompressOpts);
       if (options.verbose) {
         attachProgress(decompressor, inputFile, size);
       }
@@ -589,7 +674,9 @@ async function benchmarkFile(inputFile: string, options: CliOptions): Promise<nu
   const wasmCompress = await measureAsync(() => wasmXzAsync(data, { preset: presetValue }));
 
   // --- Decompression ---
-  const nativeDecompress = measureSync(() => unxzSync(nativeCompress.result));
+  const memlimitOpts =
+    options.memlimitDecompress !== undefined ? { memlimit: options.memlimitDecompress } : undefined;
+  const nativeDecompress = measureSync(() => unxzSync(nativeCompress.result, memlimitOpts));
   const wasmDecompress = await measureAsync(() => wasmUnxzAsync(wasmCompress.result));
 
   // --- Verify correctness ---
@@ -598,7 +685,9 @@ async function benchmarkFile(inputFile: string, options: CliOptions): Promise<nu
 
   // --- Cross-decompression ---
   const crossNativeToWasm = await measureAsync(() => wasmUnxzAsync(nativeCompress.result));
-  const crossWasmToNative = measureSync(() => unxzSync(Buffer.from(wasmCompress.result)));
+  const crossWasmToNative = measureSync(() =>
+    unxzSync(Buffer.from(wasmCompress.result), memlimitOpts)
+  );
   const crossOk1 = Buffer.compare(Buffer.from(crossNativeToWasm.result), data) === 0;
   const crossOk2 = Buffer.compare(crossWasmToNative.result, data) === 0;
 
@@ -955,6 +1044,8 @@ async function processStdin(options: CliOptions): Promise<number> {
 
   const input = Buffer.concat(chunks);
   const mode = options.decompress ? 'decompress' : 'compress';
+  const decompressOpts =
+    options.memlimitDecompress !== undefined ? { memlimit: options.memlimitDecompress } : undefined;
 
   try {
     if (mode === 'compress') {
@@ -966,7 +1057,7 @@ async function processStdin(options: CliOptions): Promise<number> {
         warn('nxz: (stdin): File format not recognized');
         return EXIT_ERROR;
       }
-      const decompressed = unxzSync(input);
+      const decompressed = unxzSync(input, decompressOpts);
       process.stdout.write(decompressed);
     }
     return EXIT_SUCCESS;

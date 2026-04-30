@@ -535,4 +535,146 @@ describe('nxz CLI', () => {
       expect(result.stderr).toContain('ALL PASS');
     });
   });
+
+  describe('--memlimit-decompress', () => {
+    // Helper: produce a small .xz file in tempDir and return its path
+    function makeXzFixture(name: string, content: string): string {
+      const xzPath = join(tempDir, name);
+      writeFileSync(xzPath, xzSync(Buffer.from(content)));
+      return xzPath;
+    }
+
+    describe('Flag parsing', () => {
+      describe('Given --memlimit-decompress 268435456 (plain bytes)', () => {
+        it('Then decompresses successfully (flag accepted)', () => {
+          // Arrange
+          const xzPath = makeXzFixture('plain-bytes.txt.xz', 'plain bytes test');
+
+          // Act
+          const result = runNxz(
+            ['-d', '-k', '--memlimit-decompress', '268435456', 'plain-bytes.txt.xz'],
+            {
+              cwd: tempDir,
+            }
+          );
+
+          // Assert — flag parsed (bigint 268435456 = 256 MiB exactly), decompression succeeds
+          expect(result.exitCode).toBe(0);
+          expect(existsSync(join(tempDir, 'plain-bytes.txt'))).toBe(true);
+          expect(readFileSync(join(tempDir, 'plain-bytes.txt'), 'utf-8')).toBe('plain bytes test');
+          expect(existsSync(xzPath)).toBe(true);
+        });
+      });
+
+      describe('Given --memlimit-decompress 256MiB (IEC suffix)', () => {
+        it('Then parses to the same byte count as 268435456 and decompresses successfully', () => {
+          // Arrange — same content, different flag format
+          const xzPath = makeXzFixture('iec-mib.txt.xz', 'iec mib test');
+
+          // Act
+          const result = runNxz(['-d', '-k', '--memlimit-decompress', '256MiB', 'iec-mib.txt.xz'], {
+            cwd: tempDir,
+          });
+
+          // Assert — 256MiB = 268435456 bytes; decompression must succeed identically
+          expect(result.exitCode).toBe(0);
+          expect(readFileSync(join(tempDir, 'iec-mib.txt'), 'utf-8')).toBe('iec mib test');
+          expect(existsSync(xzPath)).toBe(true);
+        });
+      });
+
+      describe('Given --memlimit-decompress 1GB (SI decimal suffix)', () => {
+        it('Then decompresses successfully (1 000 000 000 bytes limit)', () => {
+          // Arrange
+          const xzPath = makeXzFixture('si-gb.txt.xz', 'si gb test');
+
+          // Act
+          const result = runNxz(['-d', '-k', '--memlimit-decompress', '1GB', 'si-gb.txt.xz'], {
+            cwd: tempDir,
+          });
+
+          // Assert — 1GB = 1_000_000_000 bytes, well above any small test file needs
+          expect(result.exitCode).toBe(0);
+          expect(readFileSync(join(tempDir, 'si-gb.txt'), 'utf-8')).toBe('si gb test');
+          expect(existsSync(xzPath)).toBe(true);
+        });
+      });
+
+      describe('Given --memlimit-decompress max', () => {
+        it('Then treats as no limit and decompresses successfully', () => {
+          // Arrange
+          const xzPath = makeXzFixture('max-limit.txt.xz', 'max limit test');
+
+          // Act
+          const result = runNxz(['-d', '-k', '--memlimit-decompress', 'max', 'max-limit.txt.xz'], {
+            cwd: tempDir,
+          });
+
+          // Assert — "max" means undefined (no limit), identical to omitting the flag
+          expect(result.exitCode).toBe(0);
+          expect(readFileSync(join(tempDir, 'max-limit.txt'), 'utf-8')).toBe('max limit test');
+          expect(existsSync(xzPath)).toBe(true);
+        });
+      });
+
+      describe('Given --memlimit-decompress with malformed input', () => {
+        it('Then exits with code 1 and prints a TypeError message', () => {
+          // Arrange — create a valid .xz so we know the failure is flag-parse, not file I/O
+          makeXzFixture('bad-limit.txt.xz', 'bad limit test');
+
+          // Act
+          const result = runNxz(
+            ['-d', '-k', '--memlimit-decompress', 'badinput', 'bad-limit.txt.xz'],
+            {
+              cwd: tempDir,
+            }
+          );
+
+          // Assert
+          expect(result.exitCode).toBe(1);
+          expect(result.stderr).toContain('--memlimit-decompress');
+          expect(result.stderr).toContain('badinput');
+        });
+      });
+    });
+
+    describe('Memory limit enforcement', () => {
+      describe('Given a memlimit too low for the compressed data', () => {
+        it('Then fails with LZMAMemoryLimitError (exit 1, error message in stderr)', () => {
+          // Arrange — compress a 1 KiB payload; set limit to 1 byte so the decompressor
+          // rejects it immediately before consuming any memory.
+          const content = 'A'.repeat(1024);
+          makeXzFixture('too-small-limit.txt.xz', content);
+
+          // Act — 1 byte is always below any real decompressor overhead
+          const result = runNxz(
+            ['-d', '-k', '--memlimit-decompress', '1', 'too-small-limit.txt.xz'],
+            {
+              cwd: tempDir,
+            }
+          );
+
+          // Assert
+          expect(result.exitCode).toBe(1);
+          expect(result.stderr).toContain('Memory usage limit was reached');
+        });
+      });
+
+      describe('Given no --memlimit-decompress flag', () => {
+        it('Then default behavior is preserved (decompresses without limit)', () => {
+          // Arrange
+          const content = 'default behavior test content';
+          const xzPath = makeXzFixture('default-behavior.txt.xz', content);
+
+          // Act — no memlimit flag at all
+          const result = runNxz(['-d', '-k', 'default-behavior.txt.xz'], { cwd: tempDir });
+
+          // Assert — byte-identical to pre-flag behavior
+          expect(result.exitCode).toBe(0);
+          expect(readFileSync(join(tempDir, 'default-behavior.txt'), 'utf-8')).toBe(content);
+          expect(existsSync(xzPath)).toBe(true);
+        });
+      });
+    });
+  });
 });
