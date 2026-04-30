@@ -165,6 +165,7 @@ export class LZMAPool extends EventEmitter {
     }
 
     const item = this.queue.shift();
+    /* v8 ignore start: defensive after queue.length > 0 guard on L163 — shift() always returns a value here */
     if (item === undefined) {
       // The `this.queue.length === 0` early-return guard above means shift()
       // must return a value here. Returning silently would let queued tasks
@@ -172,6 +173,7 @@ export class LZMAPool extends EventEmitter {
       // Throw so the bug surfaces at the breach instead of as a hung pool.
       throw new Error('Invariant violation: queue was non-empty but shift() returned undefined');
     }
+    /* v8 ignore stop */
 
     this.metrics.active++;
     this.metrics.queued = this.queue.length;

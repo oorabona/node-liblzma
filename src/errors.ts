@@ -174,6 +174,8 @@ function getErrorMessage(errno: number): string {
     return `Unknown LZMA error code: ${errno}`;
   }
   const msg = messages[errno];
+  /* v8 ignore start: defensive after bounds check on L172 — errno always in [0, messages.length) here */
   if (msg === undefined) return `Unknown LZMA error code: ${errno}`;
+  /* v8 ignore stop */
   return msg;
 }
