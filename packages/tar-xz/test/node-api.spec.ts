@@ -246,7 +246,6 @@ describe('Node.js file API (v6)', () => {
 
       for await (const entry of extract(archive)) {
         // Partially consume entry.data first
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: intentional drain
         for await (const _ of entry.data) {
           /* drain */
         }
