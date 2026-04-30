@@ -340,7 +340,9 @@ async function openFileExclusive(
         );
       }
       /* v8 ignore stop */
+      /* v8 ignore start: Win32 TOCTOU retry path — rethrow non-EEXIST errors from retry-open; reachable only if the second open() fails with an unexpected errno (e.g., EACCES from a sudden permission change between unlink and re-open) */
       throw retryErr;
+      /* v8 ignore stop */
     }
   }
 }
