@@ -26,6 +26,7 @@ function buildSingleEntryTar(options: {
   type?: string;
   mtime?: number;
   mode?: number;
+  linkname?: string;
 }): Buffer {
   const type = options.type ?? TarEntryType.FILE;
   const isLink =
@@ -40,6 +41,7 @@ function buildSingleEntryTar(options: {
     type: type as '0',
     mtime: options.mtime,
     mode: options.mode,
+    linkname: options.linkname,
   });
 
   const blocks: Buffer[] = [Buffer.from(header)];
@@ -164,4 +166,103 @@ describe('extractFile() — mode=0 in TAR header (mode code path, POSIX only)', 
       expect(permBits).toBe(0);
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// Test B — file.ts:170  SYMLINK with linkname fully stripped → early return
+//
+// When strip=N removes all components from the SYMLINK linkname, the early-
+// return `if (!strippedLinkname) return;` fires and the entry is silently
+// skipped (no symlink created on disk, no error).
+// ---------------------------------------------------------------------------
+
+describe('extractFile() — SYMLINK entry skipped when strip removes entire linkname', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tar-xz-zeta-sym-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it('silently skips a SYMLINK entry when strip=1 removes its 1-component linkname', async () => {
+    // entry name: "prefix/link-target.txt" → strip=1 strips "prefix/" → yielded as "link-target.txt"
+    // linkname: "only-one-part" → extractSymlinkEntry strips 1 component →
+    //   parts = ['only-one-part'], parts.slice(1) = [] → strippedLinkname = '' → early return
+    const rawTar = buildSingleEntryTar({
+      name: 'prefix/link-target.txt',
+      content: Buffer.alloc(0),
+      type: TarEntryType.SYMLINK,
+      linkname: 'only-one-part',
+    });
+
+    const archivePath = path.join(tempDir, 'sym-strip.tar.xz');
+    await fs.writeFile(archivePath, xzSync(rawTar));
+
+    const dest = path.join(tempDir, 'out');
+    await fs.mkdir(dest);
+
+    // strip=1 strips "prefix/" from the entry name (yielded as "link-target.txt")
+    // and also strips "only-one-part" → strippedLinkname = '' → early return in extractSymlinkEntry
+    await extractFile(archivePath, { cwd: dest, strip: 1 });
+
+    // The symlink must NOT have been created (silently skipped)
+    const symlinkPath = path.join(dest, 'link-target.txt');
+    const exists = await fs
+      .lstat(symlinkPath)
+      .then(() => true)
+      .catch(() => false);
+    expect(exists).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test C — file.ts:208  HARDLINK with linkname fully stripped → early return
+//
+// When strip=N removes all components from the HARDLINK linkname, the early-
+// return `if (!strippedLinkname) return;` fires and the entry is silently
+// skipped (no hardlink created on disk, no error).
+// ---------------------------------------------------------------------------
+
+describe('extractFile() — HARDLINK entry skipped when strip removes entire linkname', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tar-xz-zeta-hard-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it('silently skips a HARDLINK entry when strip=1 removes its 1-component linkname', async () => {
+    // HARDLINK linkname has exactly 1 component: "only-one-part"
+    // After strip=1 → parts.slice(1) = [] → strippedLinkname = '' → early return
+    const rawTar = buildSingleEntryTar({
+      name: 'prefix/hardlink-target.txt',
+      content: Buffer.alloc(0),
+      type: TarEntryType.HARDLINK,
+      linkname: 'only-one-part',
+    });
+
+    const archivePath = path.join(tempDir, 'hard-strip.tar.xz');
+    await fs.writeFile(archivePath, xzSync(rawTar));
+
+    const dest = path.join(tempDir, 'out');
+    await fs.mkdir(dest);
+
+    // strip=1 strips "prefix/" from the entry name and strips
+    // "only-one-part" → ['only-one-part'].slice(1) = [] → strippedLinkname = ''
+    await extractFile(archivePath, { cwd: dest, strip: 1 });
+
+    // The hardlink must NOT have been created (silently skipped)
+    const hardlinkPath = path.join(dest, 'hardlink-target.txt');
+    const exists = await fs
+      .lstat(hardlinkPath)
+      .then(() => true)
+      .catch(() => false);
+    expect(exists).toBe(false);
+  });
 });
