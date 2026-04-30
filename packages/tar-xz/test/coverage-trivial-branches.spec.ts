@@ -5,6 +5,10 @@
  *  - file.ts:287  `if (entry.mtime > 0)` — false branch (mtime === 0)
  *  - file.ts:519  `if (entry.type === TarEntryType.FILE)` — truthy branch explicit dispatch
  *  - file.ts:523  `(entry.mode ?? 0o644)` — mode=0 path (file created with mode 0 & SAFE_MODE_MASK)
+ *
+ * PR-θ2: additional branch coverage
+ *  - file.ts:504  `options.cwd ?? process.cwd()` — no-cwd path (process.cwd() fallback)
+ *  - create.ts:122  `file.mtime ? getTime() : Date.now()` — truthy mtime arm
  */
 
 import { promises as fs } from 'node:fs';
@@ -12,6 +16,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { xzSync } from 'node-liblzma';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { create } from '../src/node/create.js';
+import { extract } from '../src/node/index.js';
 import { extractFile } from '../src/node/file.js';
 import { calculatePadding, createEndOfArchive, createHeader } from '../src/tar/format.js';
 import { TarEntryType } from '../src/types.js';
@@ -264,5 +270,80 @@ describe('extractFile() — HARDLINK entry skipped when strip removes entire lin
       .then(() => true)
       .catch(() => false);
     expect(exists).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test θ2-A — file.ts:504  `options.cwd ?? process.cwd()` — no-cwd fallback
+//
+// Call extractFile() with NO cwd option so the implementation falls through to
+// `resolve(options.cwd ?? process.cwd())`.  We temporarily chdir into a clean
+// temp directory so the files land there predictably, then restore cwd.
+// covers file.ts:504
+// ---------------------------------------------------------------------------
+
+describe('extractFile() — no cwd option (process.cwd() fallback)', () => {
+  let tempDir: string;
+  let originalCwd: string;
+
+  beforeEach(async () => {
+    originalCwd = process.cwd();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tar-xz-theta2-cwd-'));
+  });
+
+  afterEach(async () => {
+    process.chdir(originalCwd);
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it('extracts relative to process.cwd() when no cwd option is provided', async () => {
+    // covers file.ts:504
+    const content = Buffer.from('cwd-default-content');
+    const rawTar = buildSingleEntryTar({ name: 'cwd-default.txt', content });
+
+    const archivePath = path.join(tempDir, 'cwd-default.tar.xz');
+    await fs.writeFile(archivePath, xzSync(rawTar));
+
+    // chdir into tempDir so process.cwd() points there; call without cwd option
+    process.chdir(tempDir);
+    await extractFile(archivePath);
+
+    const extracted = path.join(tempDir, 'cwd-default.txt');
+    const readBack = await fs.readFile(extracted);
+    expect(readBack).toEqual(content);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test θ2-B — create.ts:122  `file.mtime ? getTime() : Date.now()` — truthy arm
+//
+// Pass a TarSourceFile with an explicit mtime Date.  The truthy arm evaluates
+// `Math.floor(file.mtime.getTime() / 1000)` and embeds that value in the
+// archive header.  Verify by round-tripping through extract() and checking
+// entry.mtime.
+// covers create.ts:122
+// ---------------------------------------------------------------------------
+
+describe('create() — explicit mtime Date (truthy mtime arm)', () => {
+  it('uses file.mtime.getTime() when mtime is provided as a Date', async () => {
+    // covers create.ts:122
+    const fixedDate = new Date('2020-06-15T12:00:00.000Z');
+    const expectedMtime = Math.floor(fixedDate.getTime() / 1000);
+
+    const content = new Uint8Array([0xde, 0xad, 0xbe, 0xef]);
+    const archive = create({
+      files: [{ name: 'dated.bin', source: content, mtime: fixedDate }],
+    });
+
+    const entries: Array<{ name: string; mtime: number }> = [];
+    for await (const entry of extract(archive)) {
+      // consume data so the parser advances
+      await entry.bytes();
+      entries.push({ name: entry.name, mtime: entry.mtime });
+    }
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.name).toBe('dated.bin');
+    expect(entries[0]?.mtime).toBe(expectedMtime);
   });
 });

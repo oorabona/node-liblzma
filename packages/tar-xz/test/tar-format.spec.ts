@@ -9,7 +9,12 @@ import {
   parseHeader,
   verifyChecksum,
 } from '../src/tar/format.js';
-import { createPaxData, needsPaxHeaders, parsePaxData } from '../src/tar/pax.js';
+import {
+  createPaxData,
+  createPaxHeaderBlocks,
+  needsPaxHeaders,
+  parsePaxData,
+} from '../src/tar/pax.js';
 import { TarEntryType } from '../src/types.js';
 
 describe('TAR format', () => {
@@ -229,5 +234,103 @@ describe('PAX extended headers', () => {
       // 0o77777777777 = 8589934591 bytes (~8GB) is the max for 11-digit octal
       expect(needsPaxHeaders({ name: 'big.bin', size: 0o77777777777 })).toBe(false);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test θ2-4 — pax.ts:125  eqIdx === -1 → silent skip for record without '='
+//
+// Construct raw PAX bytes where the record body has no '=' character.
+// parsePaxData must silently skip it and return an empty attributes object.
+// covers pax.ts:125
+// ---------------------------------------------------------------------------
+
+describe('parsePaxData() — malformed record (no "=" in body) is silently skipped', () => {
+  it('returns empty attrs when a PAX record has no "=" separator', () => {
+    // covers pax.ts:125
+    // Format: "<length> <body>\n"  where length includes all bytes (digits + space + body + newline).
+    // "13 malformed\n" => len=2 + " "=1 + "malformed"=9 + "\n"=1 = 13 bytes — valid framing, no "=".
+    const malformedRecord = '13 malformed\n';
+    const data = new TextEncoder().encode(malformedRecord);
+
+    const attrs = parsePaxData(data);
+    // No attributes should have been parsed — the record was silently skipped.
+    expect(Object.keys(attrs)).toHaveLength(0);
+  });
+
+  it('skips malformed record but parses adjacent well-formed record', () => {
+    // covers pax.ts:125
+    // A well-formed record followed by a malformed one; only the well-formed key survives.
+    // "18 path=hello.txt\n": "18"=2, " "=1, "path=hello.txt"=14, "\n"=1 => 18 bytes total.
+    const wellFormed = '18 path=hello.txt\n';
+    const malformed = '13 malformed\n';
+    const combined = wellFormed + malformed;
+    const data = new TextEncoder().encode(combined);
+
+    const attrs = parsePaxData(data);
+    expect(attrs.path).toBe('hello.txt');
+    // The malformed record must not have added any extra key.
+    expect(Object.keys(attrs)).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test θ2-5 — pax.ts:206  padding === 0 → no padding block appended
+//
+// createPaxHeaderBlocks returns [header, data] with no third padding element
+// when the PAX data length is exactly a multiple of 512 bytes.
+//
+// Math: record "512 path=<V>\n" where V = 'a'.repeat(502):
+//   "512"(3) + " "(1) + "path="(5) + V(502) + "\n"(1) = 512 bytes exactly.
+// covers pax.ts:206
+// ---------------------------------------------------------------------------
+
+describe('createPaxHeaderBlocks() — PAX data exactly 512 bytes produces no padding block', () => {
+  it('returns exactly 2 blocks when PAX data is a multiple of BLOCK_SIZE', () => {
+    // covers pax.ts:206
+    // path value of 502 chars makes total PAX data exactly 512 bytes (no padding needed).
+    const path502 = 'a'.repeat(502);
+    const blocks = createPaxHeaderBlocks('test.txt', { path: path502 });
+
+    // Block 0: PAX header (512 bytes)
+    // Block 1: PAX data (512 bytes)
+    // No block 2: calculatePadding(512) === 0, so the padding branch is NOT taken.
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]?.length).toBe(BLOCK_SIZE); // header block
+    expect(blocks[1]?.length).toBe(512); // data block — exact multiple, no padding
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test θ2-7 — format.ts:186  typeFlagChar === '\0' → TarEntryType.FILE (legacy null typeflag)
+//
+// Hand-craft a 512-byte USTAR header with typeflag byte = 0x00 (null).
+// parseHeader must map the null typeflag to TarEntryType.FILE (legacy convention).
+// covers format.ts:186
+// ---------------------------------------------------------------------------
+
+describe('parseHeader() — null typeflag (0x00) maps to TarEntryType.FILE', () => {
+  it('returns type FILE when header[156] is the null byte (legacy null typeflag)', () => {
+    // covers format.ts:186
+    // Start from a valid header (correct checksum), then zero out typeflag and recalculate.
+    const header = createHeader({ name: 'legacy.txt', size: 0 });
+
+    // Zero the typeflag byte (offset 156).
+    header[156] = 0x00;
+
+    // Recalculate checksum after mutating the typeflag byte.
+    // Fill checksum field with spaces (0x20), sum all bytes, write as 6-digit octal + NUL + space.
+    let sum = 0;
+    for (let i = 0; i < 512; i++) {
+      sum += i >= 148 && i < 156 ? 0x20 : (header[i] ?? 0);
+    }
+    const octal = sum.toString(8).padStart(6, '0');
+    for (let i = 0; i < 6; i++) header[148 + i] = octal.charCodeAt(i);
+    header[154] = 0x00;
+    header[155] = 0x20;
+
+    const entry = parseHeader(header);
+    expect(entry).not.toBeNull();
+    expect(entry?.type).toBe(TarEntryType.FILE);
   });
 });
