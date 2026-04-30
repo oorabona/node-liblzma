@@ -40,10 +40,12 @@ function parseSuffixed(
 ): bigint | null {
   const match = regex.exec(s);
   if (!match) return null;
-  const num = match[1] ?? '';
-  const suffix = (match[2] ?? '').toUpperCase();
+  const num = match[1] as string;
+  const suffix = (match[2] as string).toUpperCase();
   const mult = multipliers[suffix];
+  /* v8 ignore start: defensive fail-closed; regex + map keys are pre-aligned, branch unreachable */
   if (mult === undefined) return null;
+  /* v8 ignore stop */
   return BigInt(num) * mult;
 }
 
