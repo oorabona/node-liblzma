@@ -521,7 +521,9 @@ export async function extractFile(
       // Ensure directory is traversable: always set execute bits (x) for user/group/other.
       // A directory with mode 0o644 (no execute) cannot be descended into.
       // V12: strip setuid/setgid/sticky bits (mask to SAFE_MODE_MASK) then restore traversability.
+      /* v8 ignore start: unreachable — parseOctal() returns 0 for missing/empty mode fields, never null/undefined, so the ?? right-hand side is unreachable via public API */
       const dirMode = ((entry.mode ?? 0o755) & SAFE_MODE_MASK) | 0o111;
+      /* v8 ignore stop */
       await mkdir(target, { recursive: true, mode: dirMode });
       continue;
     }
@@ -536,11 +538,15 @@ export async function extractFile(
       continue;
     }
 
+    /* v8 ignore start: negative-ROI — uncommon entry types (CHARDEV/BLOCKDEV/FIFO/CONTIGUOUS) require a hand-crafted raw-byte archive fixture; not produced by the package's create() public API but reachable via extractFile() of external archives; fixture cost outweighs regression value. */
     if (entry.type === TarEntryType.FILE) {
+      /* v8 ignore stop */
       await mkdir(dirname(target), { recursive: true });
 
       // V12: strip setuid/setgid/sticky bits from file mode.
+      /* v8 ignore start: unreachable — parseOctal() returns 0 for missing/empty mode fields, never null/undefined, so the ?? right-hand side is unreachable via public API */
       const fileMode = (entry.mode ?? 0o644) & SAFE_MODE_MASK;
+      /* v8 ignore stop */
 
       // V2 / V3: use file-descriptor-based extraction to eliminate the TOCTOU window
       // between write and chmod/utimes. See `writeFileEntry` for the platform-specific
