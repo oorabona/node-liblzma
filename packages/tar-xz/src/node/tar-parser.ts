@@ -345,7 +345,11 @@ export async function* parseTar(
         continue;
       }
 
+      /* v8 ignore start: unreachable — state machine invariant; phase is one of {HEADER, CONTENT, SKIP, PADDING}
+       * and the prior three branches (HEADER, CONTENT, SKIP) were handled above, so this condition is
+       * always true at this point. */
       if (phase === 'PADDING') {
+        /* v8 ignore stop */
         // Silently consume padding bytes.
         if (paddingRemaining === 0) {
           phase = 'HEADER';
@@ -369,8 +373,9 @@ export async function* parseTar(
       }
 
       // Unreachable — all phases handled above.
-      /* v8 ignore next */
+      /* v8 ignore start: unreachable — state machine invariant; the if-condition above is always true, so this break is never reached. */
       break;
+      /* v8 ignore stop */
     }
   } finally {
     // If the consumer called generator.return() early, propagate cleanup to the

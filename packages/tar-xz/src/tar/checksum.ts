@@ -29,7 +29,10 @@ export function calculateChecksum(header: Uint8Array): number {
     if (i >= CHECKSUM_OFFSET && i < CHECKSUM_OFFSET + CHECKSUM_LENGTH) {
       sum += 0x20;
     } else {
+      /* v8 ignore start: unreachable — TypeScript noUncheckedIndexedAccess guard; header[i] is always
+       * defined within i < 512 after the 512-byte length validation at the top of this function. */
       sum += header[i] ?? 0;
+      /* v8 ignore stop */
     }
   }
 

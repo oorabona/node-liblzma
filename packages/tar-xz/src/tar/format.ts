@@ -98,7 +98,10 @@ function writeString(header: Uint8Array, offset: number, length: number, value: 
 
   for (let i = 0; i < writeLen; i++) {
     const b = bytes[i];
+    /* v8 ignore start: unreachable — TypeScript noUncheckedIndexedAccess guard; bytes[i] is always
+     * defined within i < writeLen = min(bytes.length, length), so the undefined branch cannot fire. */
     if (b === undefined) break;
+    /* v8 ignore stop */
     header[offset + i] = b;
   }
 
@@ -167,14 +170,20 @@ export function parseHeader(header: Uint8Array): TarEntry | null {
   }
 
   // Parse type flag
+  /* v8 ignore start: unreachable — TypeScript noUncheckedIndexedAccess guard; header[156] is always
+   * defined after the 512-byte length validation above (OFFSETS.typeflag = 156 < 512). */
   const typeFlag = header[OFFSETS.typeflag] ?? 0;
+  /* v8 ignore stop */
   const typeFlagChar = String.fromCharCode(typeFlag);
 
   // Handle legacy type (null or empty = regular file)
+  /* v8 ignore start: unreachable — String.fromCharCode always returns a 1-char string for byte values [0,255]; the empty-string case is a legacy defensive guard that cannot fire */
+  const isEmptyChar = typeFlagChar === '';
+  /* v8 ignore stop */
+  // NOTE: the '\0' arm (null typeflag) is under-tested — no test currently exercises header[156]===0.
+  // That is a known partial; adding that test is deferred to a follow-up (out of scope here).
   const type: TarEntryTypeValue =
-    typeFlagChar === '\0' || typeFlagChar === ''
-      ? TarEntryType.FILE
-      : (typeFlagChar as TarEntryTypeValue);
+    typeFlagChar === '\0' || isEmptyChar ? TarEntryType.FILE : (typeFlagChar as TarEntryTypeValue);
 
   return {
     name,
