@@ -135,7 +135,9 @@ async function drainEntryChunks(
 ): Promise<void> {
   while (true) {
     const result = await parser.next();
+    /* v8 ignore start: parseTar always emits 'end' before returning; this done:true branch is unreachable via the public API */
     if (result.done) return;
+    /* v8 ignore stop */
     if (result.value.kind !== 'chunk') {
       lookaheadRef.value = result.value;
       return;
@@ -193,6 +195,7 @@ function createEntryDataPull(
 ): () => AsyncGenerator<Uint8Array> {
   let dataGenInFlight = false;
   return function makeDataGen(): AsyncGenerator<Uint8Array> {
+    /* v8 ignore start: internal state machine invariant — makeTarEntryWithData() calls dataPull() exactly once per entry and never exposes makeDataGen to consumers; concurrent-iteration path is unreachable via public API */
     if (dataGenInFlight) {
       // D-5 invariant violation: triggered if the same entry's data generator
       // is created twice (`makeDataGen()` called more than once for one
@@ -202,7 +205,6 @@ function createEntryDataPull(
       // `code: 'TAR_PARSER_INVARIANT'` attribute matches the convention used
       // by other invariant errors in this module (e.g. stray-chunk in extract,
       // size-mismatch in bytes()) and keeps downstream filters consistent.
-      /* v8 ignore start: internal state machine invariant — makeTarEntryWithData() calls dataPull() exactly once per entry and never exposes makeDataGen to consumers; concurrent-iteration path is unreachable via public API */
       const err = new Error('concurrent entry.data iteration is not supported') as Error & {
         code?: string;
       };
@@ -215,7 +217,9 @@ function createEntryDataPull(
       try {
         while (true) {
           const r = await parser.next();
+          /* v8 ignore start: parseTar always emits 'end' before returning; this done:true branch is unreachable via the public API */
           if (r.done) return;
+          /* v8 ignore stop */
           if (r.value.kind === 'chunk') {
             yield r.value.data;
           } else {
@@ -290,13 +294,15 @@ export async function* extract(
   try {
     while (true) {
       const result = await nextParseEvent(parser, lookaheadRef);
+      /* v8 ignore start: parseTar always emits 'end' before returning; this done:true branch is unreachable via the public API */
       if (result.done) break;
+      /* v8 ignore stop */
       const ev = result.value;
 
       if (ev.kind === 'end') break;
+      /* v8 ignore start: state machine invariant — parseTar never emits 'chunk' before 'entry'; this branch guards against a hypothetical parser bug that cannot be triggered via the public API */
       if (ev.kind === 'chunk') {
         // Stray chunk at outer-loop level is a parser invariant violation (D-5).
-        /* v8 ignore start: state machine invariant — parseTar never emits 'chunk' before 'entry'; this branch guards against a hypothetical parser bug that cannot be triggered via the public API */
         const err = new Error('parser invariant: chunk emitted before entry');
         (err as Error & { code: string }).code = 'TAR_PARSER_INVARIANT';
         throw err;
