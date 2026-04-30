@@ -104,9 +104,11 @@ export function parseNextHeader(state: HeaderParserState): HeaderParseResult {
 
   // Parse header
   const raw = parseHeader(headerBlock);
+  /* v8 ignore start: defensive — isEmptyBlock() check above ensures parseHeader() never returns null here; contract invariant */
   if (!raw) {
     return { action: 'pax-consumed' };
   }
+  /* v8 ignore stop */
 
   // PAX extended header — read data blocks and store attributes
   if (raw.type === TarEntryType.PAX_HEADER) {

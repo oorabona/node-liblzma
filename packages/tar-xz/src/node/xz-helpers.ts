@@ -61,9 +61,11 @@ export function streamXz(input: TarInputNode): AsyncIterable<Uint8Array> {
       // If the consumer stopped iterating early (generator.return() was called),
       // destroy the Transform stream so the pipeline does not keep running.
       // destroy() is idempotent — safe to call even if the stream already ended.
+      /* v8 ignore start: early-return path — destroy() guard only fires when consumer stops iterating before stream ends; not reached in full-iteration tests */
       if (!unxzStream.destroyed) {
         unxzStream.destroy();
       }
+      /* v8 ignore stop */
       // Swallow any subsequent pipeline rejection caused by the destroy() above.
       await pipelinePromise.catch(() => undefined);
     }

@@ -238,7 +238,9 @@ async function extractHardlinkEntry(
   try {
     await unlink(target);
   } catch (err) {
+    /* v8 ignore start: race-window — target disappears between existence check and unlink; benign ENOENT in concurrent extraction */
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    /* v8 ignore stop */
   }
   await link(linkSource, target);
 }
@@ -265,9 +267,11 @@ async function writeFileEntryPosix(
       fileMode
     );
   } catch (err) {
+    /* v8 ignore start: race-window — O_NOFOLLOW fires only if ensureSafeTarget missed a symlink in the TOCTOU gap; unreachable under normal test conditions */
     if ((err as NodeJS.ErrnoException).code === 'ELOOP') {
       throw new Error(`Refusing '${entry.name}': target path is an existing symlink (O_NOFOLLOW)`);
     }
+    /* v8 ignore stop */
     throw err;
   }
   try {
@@ -319,11 +323,14 @@ async function openFileExclusive(
     try {
       await unlink(target);
     } catch (unlinkErr) {
+      /* v8 ignore start: race-window — target disappears between failed open() and unlink(); PR #114 Win32 TOCTOU hardening */
       if ((unlinkErr as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkErr;
+      /* v8 ignore stop */
     }
     try {
       return await open(target, 'wx', fileMode);
     } catch (retryErr) {
+      /* v8 ignore start: race-window — TOCTOU injection between unlink and retry-open; PR #114 Win32 TOCTOU hardening, locked by adversarial review */
       if ((retryErr as NodeJS.ErrnoException).code === 'EEXIST') {
         // A symlink (or junction) was injected between our unlink and our open.
         // Fail-closed: do NOT write through the symlink.
@@ -332,6 +339,7 @@ async function openFileExclusive(
             `possible symlink/junction injection or concurrent creation at the target path between unlink and open`
         );
       }
+      /* v8 ignore stop */
       throw retryErr;
     }
   }
@@ -366,18 +374,22 @@ async function writeFileEntryWin32(
     // On Windows these metadata updates are best-effort: some filesystems can
     // reject them (for example with EPERM) even when the file contents were
     // written successfully.
+    /* v8 ignore start: Windows best-effort — chmod/utimes can fail with EPERM on some filesystems; platform-specific defensive branch */
     try {
       await handle.chmod(fileMode);
     } catch {
       // Best-effort on Windows.
     }
+    /* v8 ignore stop */
     if (entry.mtime > 0) {
       const mt = new Date(entry.mtime * 1000);
+      /* v8 ignore start: Windows best-effort — utimes can fail with EPERM on some filesystems; platform-specific defensive branch */
       try {
         await handle.utimes(mt, mt);
       } catch {
         // Best-effort on Windows.
       }
+      /* v8 ignore stop */
     }
   } finally {
     await handle.close();

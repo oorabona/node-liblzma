@@ -85,8 +85,11 @@ export function parseOctal(header: Uint8Array, offset: number, length: number): 
 
   for (let i = 0; i < length; i++) {
     const byte = header[offset + i];
-    // Stop at null, space, or out-of-bounds (undefined)
-    if (byte === undefined || byte === 0 || byte === 0x20) {
+    /* v8 ignore start: defensive vs noUncheckedIndexedAccess; offset+i is always within header bounds at runtime */
+    if (byte === undefined) break;
+    /* v8 ignore stop */
+    // Stop at null or space
+    if (byte === 0 || byte === 0x20) {
       break;
     }
     str += String.fromCharCode(byte);
