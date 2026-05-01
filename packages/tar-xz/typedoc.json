@@ -1,6 +1,7 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["src/index.ts", "src/node/file.ts"],
+  "tsconfig": "./tsconfig.json",
   "out": "../../docs-site/tar-xz-api",
   "name": "tar-xz",
   "readme": "README.md",

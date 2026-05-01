@@ -70,8 +70,7 @@ jobs:
         run: pnpm typedoc
 
       - name: Build tar-xz API docs
-        working-directory: packages/tar-xz
-        run: pnpm exec typedoc
+        run: pnpm exec typedoc --options packages/tar-xz/typedoc.json
 
       - name: Copy llms.txt to docs site
         run: cp llms.txt docs-site/
