@@ -64,7 +64,7 @@ With no FILE, or when FILE is -, read standard input.
 Examples:
   nxz file.txt              compress file.txt to file.txt.xz
   nxz -d file.xz            decompress file.xz
-  nxz -T -z dir/            create archive.tar.xz from dir/
+  nxz -T -z dir/            create dir.tar.xz from dir/
   nxz -l archive.tar.xz     list contents of archive
   nxz -d archive.tar.xz     extract archive to current directory
   nxz -d -o dest/ arch.txz  extract archive to dest/
