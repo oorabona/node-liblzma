@@ -1,19 +1,20 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/lzma.ts", "src/errors.ts", "src/pool.ts", "src/types.ts"],
-  "out": "docs-site",
-  "name": "node-liblzma",
+  "entryPoints": ["src/index.ts", "src/node/file.ts"],
+  "tsconfig": "./tsconfig.json",
+  "out": "../../docs-site/tar-xz-api",
+  "name": "tar-xz",
   "readme": "README.md",
   "includeVersion": true,
   "excludePrivate": true,
   "excludeProtected": true,
   "excludeInternal": true,
   "excludeExternals": true,
-  "projectDocuments": ["docs/nxz-usage.md"],
   "navigationLinks": {
-    "GitHub": "https://github.com/oorabona/node-liblzma",
-    "npm": "https://www.npmjs.com/package/node-liblzma",
-    "tar-xz API": "tar-xz-api/"
+    "GitHub": "https://github.com/oorabona/node-liblzma/tree/master/packages/tar-xz",
+    "npm": "https://www.npmjs.com/package/tar-xz",
+    "Demo": "../tar-xz/",
+    "node-liblzma API": "../"
   },
   "plugin": ["typedoc-material-theme"],
   "hideGenerator": true,

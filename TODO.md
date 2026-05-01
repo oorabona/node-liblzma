@@ -15,6 +15,7 @@ _None._
 ## Pending - LOW (Nice to Have)
 
 - [ ] [Release] Consider `engines.node` bump from `>=22.0.0` to `>=22.13.0` when 22.0–22.12 usage drops — surfaced by Copilot round 2 on PR #116 ; deferred because library itself runs fine on 22.0+, the 22.13 floor only applies to the dev/release toolchain (release-it@20). Re-evaluate if anyone reports install warnings.
+- [ ] [nxz] Fix misleading example in `nxz --help` output — surfaced by Copilot round 3 on PR #133 (docs). The example `nxz -T -z dir/            create archive.tar.xz from dir/` claims output filename `archive.tar.xz` but the CLI actually derives `dir.tar.xz` from the input. Update the help text source in `packages/nxz/src/nxz.ts` to match real behavior, then sync `docs/nxz-usage.md`. Doc was corrected pre-emptively in PR #133, so docs are accurate but currently diverge from `--help` output until CLI source is updated.
 <!-- F-002 (HARDLINK + undefined linkname → TypeError) DROPPED 2026-04-29 by Copilot round-2 review on PR #115: TarEntry.linkname is typed as required string (parser returns '' for empty fields), and ensureSafeLinkname → ensureSafeName already rejects '' with "empty linkname" before reaching resolve(). The original concern was mischaracterized — there is no path where resolve(cwd, undefined) gets called with undefined. -->
 
 
