@@ -12,6 +12,7 @@ on:
       - 'llms.txt'
       - 'examples/browser/**'
       - 'packages/tar-xz/**'
+      - 'packages/nxz/**'
       - 'src/wasm/**'
   workflow_dispatch:
 
@@ -67,6 +68,10 @@ jobs:
 
       - name: Build documentation
         run: pnpm typedoc
+
+      - name: Build tar-xz API docs
+        working-directory: packages/tar-xz
+        run: pnpm exec typedoc
 
       - name: Copy llms.txt to docs site
         run: cp llms.txt docs-site/
