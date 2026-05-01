@@ -74,7 +74,7 @@ jobs:
         if: steps.check.outputs.new_version == 'true'
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
 
       - name: Test with latest XZ version

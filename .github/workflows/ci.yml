@@ -65,7 +65,7 @@ permissions:
 env:
   # Global environment variables
   NODE_OPTIONS: '--max-old-space-size=4096'
-  NODE_VERSION: '22'
+  NODE_VERSION: '24'
 
 jobs:
   # Determine what to run based on trigger and changes
@@ -340,7 +340,7 @@ jobs:
       fail-fast: true  # Fail fast on smoke tests to save CI minutes
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: [22]
+        node: [24]
         runtime_link: [static]
         use_global_liblzma: [false]
         enable_threads: [no]
@@ -512,7 +512,7 @@ jobs:
       matrix:
         # Threading tests only on Unix platforms (Windows threading tested in full-test)
         os: [ubuntu-latest, macos-latest]
-        node: [22]  # Latest Node only for threading tests
+        node: [24]  # Latest Node only for threading tests
         config:
           - {runtime_link: "static", use_global_liblzma: false, enable_threads: "yes"}
           - {runtime_link: "shared", use_global_liblzma: false, enable_threads: "yes"}
