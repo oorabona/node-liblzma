@@ -14,8 +14,8 @@ npm install -g nxz-cli
 # pnpm
 pnpm add -g nxz-cli
 
-# Run without installing
-npx nxz-cli --help
+# Run without installing (binary name is `nxz`, package name is `nxz-cli`)
+npx --package nxz-cli nxz --help
 ```
 
 ## Usage
