@@ -110,6 +110,16 @@ describe('nxz CLI', () => {
       expect(result.stdout).toContain('nxz - Node.js XZ compression CLI');
     });
 
+    it('lists tar example with derived output name (regression: PR #134)', () => {
+      // Regression guard: PR #134 fixed the --help example so that
+      // `nxz -T -z dir/` shows `dir.tar.xz` (derived from input) instead
+      // of the stale `archive.tar.xz` hardcoded placeholder.
+      const result = runNxz(['--help']);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('nxz -T -z dir/            create dir.tar.xz from dir/');
+    });
+
     it('should display version with --version', () => {
       // Arrange & Act
       const result = runNxz(['--version']);

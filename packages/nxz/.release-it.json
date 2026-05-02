@@ -3,7 +3,7 @@
   "git": {
     "requireBranch": "master",
     "requireCleanWorkingDir": true,
-    "commitMessage": "chore(nxz-cli): release v${version}",
+    "commitMessage": "chore(nxz): release v${version}",
     "tagName": null,
     "push": false
   }
