@@ -38,7 +38,6 @@ Internal rewiring to consume the new `tar-xz` v6 API. **No CLI behavior change**
 
 - Updated dependencies (`tar-xz`: `^5.0.0` → `^6.0.0`)
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v7.0.0...HEAD
-[7.0.0]: https://github.com/oorabona/node-liblzma/compare/v6.1.0...v7.0.0
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v6.1.0...HEAD
 [v6.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v6.1.0
 [6.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v6.1.0
