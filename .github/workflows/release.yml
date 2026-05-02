@@ -2,7 +2,7 @@ name: Release
 
 # Supports independent versioning for each workspace package.
 # - node-liblzma: full flow (bump root, GPG-signed tag, GitHub Release, prebuilds, npm publish)
-# - tar-xz / nxz-cli: lightweight flow (bump workspace package.json, CHANGELOG commit, npm publish; no tag, no prebuilds)
+# - tar-xz / nxz:     lightweight flow (bump workspace package.json, CHANGELOG commit, npm publish; no tag, no prebuilds)
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ on:
         options:
           - node-liblzma
           - tar-xz
-          - nxz-cli
+          - nxz
       skip_npm:
         description: 'Skip npm publish (dry run)'
         type: boolean
@@ -95,7 +95,7 @@ jobs:
             --ci --increment "$INCREMENT"
 
       # ── workspace packages: bump the sub-package's package.json ────────────
-      - name: Bump workspace version and update CHANGELOG (tar-xz or nxz-cli)
+      - name: Bump workspace version and update CHANGELOG (tar-xz or nxz)
         if: inputs.target_package != 'node-liblzma'
         env:
           INCREMENT: ${{ inputs.increment }}

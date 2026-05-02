@@ -1,6 +1,14 @@
-# nxz-cli
+# nxz
 
 ## [Unreleased]
+
+## [7.0.0] - 2026-04-30
+
+### BREAKING CHANGES
+- Package renamed from `nxz-cli` to `nxz`. Update install commands: `npm i -g nxz` (was `npm i -g nxz-cli`). Binary name unchanged (`nxz`). The old `nxz-cli` package on npm is deprecated with a redirect message; consumers using `npx nxz-cli` should switch to `npx nxz`.
+
+### Fixed
+- CLI `--help` example for `nxz -T -z dir/` now correctly shows `dir.tar.xz` as default output (was previously labeled `archive.tar.xz`).
 
 ## [6.1.0] - 2026-04-30
 

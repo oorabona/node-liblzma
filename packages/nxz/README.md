@@ -1,4 +1,4 @@
-# nxz-cli
+# nxz
 
 Portable `xz`-like CLI tool for Node.js — compress, decompress, and handle `.tar.xz` archives.
 
@@ -8,10 +8,10 @@ Powered by [node-liblzma](https://github.com/oorabona/node-liblzma).
 
 ```bash
 # Run without installing
-npx nxz-cli file.txt              # → file.txt.xz
+npx nxz file.txt              # → file.txt.xz
 
 # Or install globally
-npm install -g nxz-cli
+npm install -g nxz
 nxz file.txt
 ```
 

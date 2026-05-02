@@ -15,7 +15,7 @@ _None._
 ## Pending - LOW (Nice to Have)
 
 - [ ] [Release] Consider `engines.node` bump from `>=22.0.0` to `>=22.13.0` when 22.0–22.12 usage drops — surfaced by Copilot round 2 on PR #116 ; deferred because library itself runs fine on 22.0+, the 22.13 floor only applies to the dev/release toolchain (release-it@20). Re-evaluate if anyone reports install warnings.
-- [ ] [nxz] Fix misleading example in `nxz --help` output — surfaced by Copilot round 3 on PR #133 (docs). The example `nxz -T -z dir/            create archive.tar.xz from dir/` claims output filename `archive.tar.xz` but the CLI actually derives `dir.tar.xz` from the input. Update the help text source in `packages/nxz/src/nxz.ts` to match real behavior, then sync `docs/nxz-usage.md`. Doc was corrected pre-emptively in PR #133, so docs are accurate but currently diverge from `--help` output until CLI source is updated.
+- [x] ✅ [nxz] Fix misleading example in `nxz --help` output — surfaced by Copilot round 3 on PR #133 (docs). The example `nxz -T -z dir/            create archive.tar.xz from dir/` claims output filename `archive.tar.xz` but the CLI actually derives `dir.tar.xz` from the input. Fixed in `packages/nxz/src/nxz.ts` (this PR).
 <!-- F-002 (HARDLINK + undefined linkname → TypeError) DROPPED 2026-04-29 by Copilot round-2 review on PR #115: TarEntry.linkname is typed as required string (parser returns '' for empty fields), and ensureSafeLinkname → ensureSafeName already rejects '' with "empty linkname" before reaching resolve(). The original concern was mischaracterized — there is no path where resolve(cwd, undefined) gets called with undefined. -->
 
 
@@ -37,6 +37,7 @@ _None._
 - [x] ✅ [WASM] PR #111 Round 2 Copilot fixes — C-2-001 TSDoc xzAsync removed from honored-by list, C-2-002 stale lzma.ts comment, C-2-003 LZMA_OPTIONS_ERROR constant replaces magic 8, C-2-004 MAX_SAFE_INTEGER guard + TSDoc, C-2-005 validateMemlimit lifted to decoderInit+autoDecoderInit; 12 new tests, 474+99+27=600 tests pass (2026-04-28)
 - [x] ✅ [WASM] PR #111 Round 1 review fixes — F-001 memlimit validation (NaN/Inf/frac/neg → LZMAOptionsError), F-002 ResolvedLZMAOptions internal type, C-001/C-002 async callback fixture pattern, C-003 byte-equality assertion, F-003 TSDoc reorder, F-004 stale comment, F-005 fixture comment magnitude, F-006 default-path caveat; 4 new tests (12 total in decompress-memlimit.test.ts), 458+99+27=584 tests pass (2026-04-28)
 - [x] ✅ [WASM] Wire `memlimit` through `LZMAOptions` → `unxzAsync`/`unxz` — `LZMAMemoryLimitError` thrown when limit exceeded; 8 new tests in `test/wasm/decompress-memlimit.test.ts`; TSDoc with parity note (2026-04-28)
+- [x] ✅ [Refactor] Rename `nxz-cli` → `nxz` (7.0.0 major bump) — package.json, help text fix, all doc/workflow refs updated — closes PR #<TBD>
 - [x] ✅ [tar-xz v6] Universal stream-first redesign: `create()`/`extract()`/`list()` with `AsyncIterable<Uint8Array>`, identical Node/Browser signatures, `tar-xz/file` subpath for fs helpers — published as `tar-xz@6.0.0` + `nxz-cli@6.0.0` (2026-04-27)
 - [x] ✅ [tar-xz v6] Security hardening: 18 path/symlink TOCTOU vectors audited and closed (leaf check, ENOENT walk, hardlink linkSource, NUL/empty rejection, setuid mask, fd-based fs ops with O_NOFOLLOW, pipeline error propagation) — 8 Copilot review rounds + 1 consolidated audit (2026-04-27)
 - [x] ✅ [Infra] Independent versioning per workspace package: `release.yml`/`publish.yml` accept `target_package` input, no cross-package version sync; proven in prod — `tar-xz@6.0.0` published without bumping `node-liblzma` (still at 5.0.0) (2026-04-27)
@@ -86,7 +87,7 @@ _None_
 | LOW | 1 | engines.node bump consideration (deferred — wait-and-see) |
 
 **Last merge:** PR #120 squash `43c4d25` (2026-04-30) — `refactor(nxz)`: split `parseMemlimitSize` via extract-method (CC 17→2) ; repo now biome-clean.
-**Last release:** `nxz-cli@6.1.0` (release commit `ecff028`, npm published 2026-04-30) — first real feature minor since 6.0.0.
+**Last release:** `nxz@7.0.0` (rename from `nxz-cli`, major bump, help text fix) — closes PR #<TBD>.
 **Last audit:** all post-#117 follow-ups merged (PR #118 preset 0.12.0 ; PR #119 dead biome-ignore removal ; PR #120 parseMemlimitSize CC refactor). Repo is biome-clean (0 warnings) and 707 tests green.
 **Last story arc:** #25 + #26 + 4 follow-ups end-to-end — per-package CHANGELOG scoping (cross-repo) → `--memlimit-decompress` feature → release v6.1.0 → upstream tag-baseline fix consumption → biome cleanup → parser CC refactor. Cross-LLM reviewing pattern (Codex substituted for Copilot quota) rodé.
 
@@ -96,4 +97,4 @@ _None_
 |---------|---------|
 | `node-liblzma` | 5.0.0 |
 | `tar-xz` | 6.1.0 |
-| `nxz-cli` | 6.1.0 |
+| `nxz` | 7.0.0 |
