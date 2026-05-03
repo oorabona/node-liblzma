@@ -36,7 +36,7 @@ This is the primary release path. It handles everything end-to-end.
 > ```bash
 > # From the repo root
 > pnpm install --frozen-lockfile
-> pnpm --filter <pkg-name> run build           # produce lib/ — files: ["lib/"] in package.json
+> pnpm build && pnpm -r --filter './packages/*' run build  # root + all workspace pkgs (a workspace pkg's build depends on root lib/)
 > TARBALL=$(cd packages/<pkg-dir> && pnpm pack --pack-destination /tmp | tail -1)
 > npm publish "$TARBALL" --access public        # may prompt for OTP
 > ```
