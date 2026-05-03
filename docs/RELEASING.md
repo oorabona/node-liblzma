@@ -31,6 +31,8 @@ graph LR
 
 This is the primary release path. It handles everything end-to-end.
 
+> **First-time bootstrap (only once per new package).** OIDC trusted publishing requires the package to already exist on npm before `publish.yml` can publish it via the workflow. For a brand-new package (e.g. when introducing `@oorabona/nxz`), the maintainer must run a one-time manual publish locally (`cd packages/<pkg> && npm publish --access public`) and then configure the trusted publisher on npmjs.com (`Repository: oorabona/node-liblzma`, `Workflow: publish.yml`). Subsequent releases of that package then flow through `release.yml` → OIDC normally.
+
 ```mermaid
 sequenceDiagram
     participant M as Maintainer
