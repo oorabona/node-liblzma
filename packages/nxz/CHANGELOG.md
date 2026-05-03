@@ -5,7 +5,7 @@
 ## [7.0.0] - 2026-04-30
 
 ### BREAKING CHANGES
-- Package renamed from `nxz-cli` to `nxz`. Update install commands: `npm i -g nxz` (was `npm i -g nxz-cli`). Binary name unchanged (`nxz`). The old `nxz-cli` package on npm is being deprecated as part of this release with a redirect message; consumers using `npx nxz-cli` should switch to `npx nxz`.
+- Package renamed from `nxz-cli` to `@oorabona/nxz` (scoped under the `@oorabona/` namespace because npm's typosquat protection blocked the unscoped `nxz` name as too similar to existing 2-3 letter packages). Update install commands: `npm i -g @oorabona/nxz` (was `npm i -g nxz-cli`). Binary name unchanged (`nxz`) — `nxz file.txt` still works after install. The old `nxz-cli` package on npm is being deprecated as part of this release with a redirect message.
 
 ### Fixed
 - CLI `--help` example for `nxz -T -z dir/` now correctly shows `dir.tar.xz` as default output (was previously labeled `archive.tar.xz`).

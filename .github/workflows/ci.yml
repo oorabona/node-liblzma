@@ -321,7 +321,7 @@ jobs:
         run: pnpm --filter tar-xz exec vitest run --coverage
 
       - name: Run nxz tests with coverage
-        run: pnpm --filter nxz exec vitest run --coverage
+        run: pnpm --filter @oorabona/nxz exec vitest run --coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v6

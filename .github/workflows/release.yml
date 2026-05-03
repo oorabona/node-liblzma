@@ -1,8 +1,8 @@
 name: Release
 
 # Supports independent versioning for each workspace package.
-# - node-liblzma: full flow (bump root, GPG-signed tag, GitHub Release, prebuilds, npm publish)
-# - tar-xz / nxz:     lightweight flow (bump workspace package.json, CHANGELOG commit, npm publish; no tag, no prebuilds)
+# - node-liblzma:      full flow (bump root, GPG-signed tag, GitHub Release, prebuilds, npm publish)
+# - tar-xz / @oorabona/nxz: lightweight flow (bump workspace package.json, CHANGELOG commit, npm publish; no tag, no prebuilds)
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ on:
         options:
           - node-liblzma
           - tar-xz
-          - nxz
+          - '@oorabona/nxz'
       skip_npm:
         description: 'Skip npm publish (dry run)'
         type: boolean
@@ -102,7 +102,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Resolve package directory from target name
           PKG_DIR: ${{ inputs.target_package == 'tar-xz' && 'packages/tar-xz' || 'packages/nxz' }}
-          PKG_NAME: ${{ inputs.target_package }}
+          PKG_NAME: ${{ inputs.target_package == '@oorabona/nxz' && 'nxz' || inputs.target_package }}
         run: |
           cd "$PKG_DIR"
           # Scope CHANGELOG to commits touching only this package subtree via GIT_CHANGELOG_PATH (release-it-preset v0.11.0+)

@@ -31,6 +31,18 @@ graph LR
 
 This is the primary release path. It handles everything end-to-end.
 
+> **First-time bootstrap (only once per new package).** OIDC trusted publishing requires the package to already exist on npm before `publish.yml` can publish it via the workflow. For a brand-new package (e.g. when introducing `@oorabona/nxz`), the maintainer must run a one-time manual publish locally that mirrors `publish.yml`'s pack-then-publish flow:
+>
+> ```bash
+> # From the repo root
+> pnpm install --frozen-lockfile
+> pnpm build && pnpm -r --filter './packages/*' run build  # root + all workspace pkgs (a workspace pkg's build depends on root lib/)
+> TARBALL=$(cd packages/<pkg-dir> && pnpm pack --pack-destination /tmp | tail -1)
+> npm publish "$TARBALL" --access public        # may prompt for OTP
+> ```
+>
+> The `pnpm pack` step is essential: it rewrites `workspace:` protocol dependencies to concrete versions in the tarball. A bare `npm publish` from the package directory would publish broken metadata. After the publish succeeds, configure the trusted publisher on npmjs.com (`Repository: oorabona/node-liblzma`, `Workflow: publish.yml`). Subsequent releases of that package then flow through `release.yml` → OIDC normally.
+
 ```mermaid
 sequenceDiagram
     participant M as Maintainer
@@ -49,7 +61,7 @@ sequenceDiagram
     R->>P: gh workflow run publish.yml
     P->>NPM: Publish node-liblzma (OIDC)
     P->>NPM: Publish tar-xz (OIDC)
-    P->>NPM: Publish nxz (OIDC)
+    P->>NPM: Publish @oorabona/nxz (OIDC)
 ```
 
 ### Inputs
@@ -140,7 +152,7 @@ Three packages are published in dependency order:
 |---|---------|----------|-------------|
 | 1 | root | `node-liblzma` | Core XZ/LZMA2 bindings (native + WASM) |
 | 2 | packages/tar-xz | `tar-xz` | tar.xz streaming library |
-| 3 | packages/nxz | `nxz` | CLI tool for XZ compression |
+| 3 | packages/nxz | `@oorabona/nxz` | CLI tool for XZ compression |
 
 ### Publishing details
 
