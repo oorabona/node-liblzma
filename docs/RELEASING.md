@@ -31,7 +31,17 @@ graph LR
 
 This is the primary release path. It handles everything end-to-end.
 
-> **First-time bootstrap (only once per new package).** OIDC trusted publishing requires the package to already exist on npm before `publish.yml` can publish it via the workflow. For a brand-new package (e.g. when introducing `@oorabona/nxz`), the maintainer must run a one-time manual publish locally (`cd packages/<pkg> && npm publish --access public`) and then configure the trusted publisher on npmjs.com (`Repository: oorabona/node-liblzma`, `Workflow: publish.yml`). Subsequent releases of that package then flow through `release.yml` → OIDC normally.
+> **First-time bootstrap (only once per new package).** OIDC trusted publishing requires the package to already exist on npm before `publish.yml` can publish it via the workflow. For a brand-new package (e.g. when introducing `@oorabona/nxz`), the maintainer must run a one-time manual publish locally that mirrors `publish.yml`'s pack-then-publish flow:
+>
+> ```bash
+> # From the repo root
+> pnpm install --frozen-lockfile
+> pnpm --filter <pkg-name> run build           # produce lib/ — files: ["lib/"] in package.json
+> TARBALL=$(cd packages/<pkg-dir> && pnpm pack --pack-destination /tmp | tail -1)
+> npm publish "$TARBALL" --access public        # may prompt for OTP
+> ```
+>
+> The `pnpm pack` step is essential: it rewrites `workspace:` protocol dependencies to concrete versions in the tarball. A bare `npm publish` from the package directory would publish broken metadata. After the publish succeeds, configure the trusted publisher on npmjs.com (`Repository: oorabona/node-liblzma`, `Workflow: publish.yml`). Subsequent releases of that package then flow through `release.yml` → OIDC normally.
 
 ```mermaid
 sequenceDiagram
