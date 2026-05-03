@@ -32,6 +32,7 @@ export {
   type ExtractOptions,
   type TarEntry,
   TarEntryType,
+  type TarEntryTypeValue,
   type TarEntryWithData,
   type TarInput,
   type TarSourceFile,

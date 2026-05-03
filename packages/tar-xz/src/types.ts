@@ -32,6 +32,28 @@ export const TarEntryType = {
   PAX_GLOBAL: 'g',
 } as const;
 
+/**
+ * Single-character TAR typeflag literal (POSIX 1003.1 ustar §11.2 + PAX extension).
+ *
+ * On the wire this is a single byte at offset 156 of the 512-byte header block,
+ * interpreted as an ASCII character — not as a numeric value. The digit-shaped
+ * flags (`'0'`–`'7'`) are a historical convention, not encoded integers; PAX
+ * later extended the set with non-digit chars (`'x'`, `'g'`).
+ *
+ * Valid values:
+ * - `'0'` — FILE (regular file)
+ * - `'1'` — HARDLINK
+ * - `'2'` — SYMLINK
+ * - `'3'` — CHARDEV (character device)
+ * - `'4'` — BLOCKDEV (block device)
+ * - `'5'` — DIRECTORY
+ * - `'6'` — FIFO (named pipe)
+ * - `'7'` — CONTIGUOUS file
+ * - `'x'` — PAX_HEADER (extended header for next file)
+ * - `'g'` — PAX_GLOBAL (global PAX header)
+ *
+ * @see {@link TarEntryType} for the named-constant equivalents (e.g. `TarEntryType.FILE === '0'`).
+ */
 export type TarEntryTypeValue = (typeof TarEntryType)[keyof typeof TarEntryType];
 
 /**
