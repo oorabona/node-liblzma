@@ -13,8 +13,8 @@
   "navigationLinks": {
     "GitHub": "https://github.com/oorabona/node-liblzma/tree/master/packages/tar-xz",
     "npm": "https://www.npmjs.com/package/tar-xz",
-    "Demo": "../tar-xz/",
-    "node-liblzma API": "../"
+    "Demo": "https://oorabona.github.io/node-liblzma/tar-xz/",
+    "node-liblzma API": "https://oorabona.github.io/node-liblzma/"
   },
   "plugin": ["typedoc-material-theme"],
   "hideGenerator": true,
