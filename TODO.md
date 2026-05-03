@@ -38,6 +38,7 @@ _None._
 - [x] ✅ [WASM] PR #111 Round 1 review fixes — F-001 memlimit validation (NaN/Inf/frac/neg → LZMAOptionsError), F-002 ResolvedLZMAOptions internal type, C-001/C-002 async callback fixture pattern, C-003 byte-equality assertion, F-003 TSDoc reorder, F-004 stale comment, F-005 fixture comment magnitude, F-006 default-path caveat; 4 new tests (12 total in decompress-memlimit.test.ts), 458+99+27=584 tests pass (2026-04-28)
 - [x] ✅ [WASM] Wire `memlimit` through `LZMAOptions` → `unxzAsync`/`unxz` — `LZMAMemoryLimitError` thrown when limit exceeded; 8 new tests in `test/wasm/decompress-memlimit.test.ts`; TSDoc with parity note (2026-04-28)
 - [x] ✅ [Refactor] Rename `nxz-cli` → `nxz` (7.0.0 major bump) — package.json, help text fix, all doc/workflow refs updated — closes PR #134
+- [x] ✅ [Release] Scope `nxz` → `@oorabona/nxz` — unscoped `nxz` blocked by npm typosquat protection (403); `@oorabona/nxz` confirmed available (404); package.json, CHANGELOG v7.0.0 entry, README, docs, and workflow refs updated — closes PR #TBD
 - [x] ✅ [tar-xz v6] Universal stream-first redesign: `create()`/`extract()`/`list()` with `AsyncIterable<Uint8Array>`, identical Node/Browser signatures, `tar-xz/file` subpath for fs helpers — published as `tar-xz@6.0.0` + `nxz-cli@6.0.0` (2026-04-27)
 - [x] ✅ [tar-xz v6] Security hardening: 18 path/symlink TOCTOU vectors audited and closed (leaf check, ENOENT walk, hardlink linkSource, NUL/empty rejection, setuid mask, fd-based fs ops with O_NOFOLLOW, pipeline error propagation) — 8 Copilot review rounds + 1 consolidated audit (2026-04-27)
 - [x] ✅ [Infra] Independent versioning per workspace package: `release.yml`/`publish.yml` accept `target_package` input, no cross-package version sync; proven in prod — `tar-xz@6.0.0` published without bumping `node-liblzma` (still at 5.0.0) (2026-04-27)
@@ -87,7 +88,7 @@ _None_
 | LOW | 1 | engines.node bump consideration (deferred — wait-and-see) |
 
 **Last merge:** PR #120 squash `43c4d25` (2026-04-30) — `refactor(nxz)`: split `parseMemlimitSize` via extract-method (CC 17→2) ; repo now biome-clean.
-**Last release:** `nxz-cli@6.1.0` (release commit `ecff028`, npm published 2026-04-30). **Pending:** `nxz@7.0.0` (PR #134 merged; placeholder publish + OIDC config + `nxz-cli` deprecation are manual post-merge steps — see PR #134 description).
+**Last release:** `nxz-cli@6.1.0` (release commit `ecff028`, npm published 2026-04-30). **Pending:** `@oorabona/nxz@7.0.0` (PR #134 merged + scope rename PR; placeholder publish + OIDC config + `nxz-cli` deprecation are manual post-merge steps).
 **Last audit:** all post-#117 follow-ups merged (PR #118 preset 0.12.0 ; PR #119 dead biome-ignore removal ; PR #120 parseMemlimitSize CC refactor). Repo is biome-clean (0 warnings) and 707 tests green.
 **Last story arc:** #25 + #26 + 4 follow-ups end-to-end — per-package CHANGELOG scoping (cross-repo) → `--memlimit-decompress` feature → release v6.1.0 → upstream tag-baseline fix consumption → biome cleanup → parser CC refactor. Cross-LLM reviewing pattern (Codex substituted for Copilot quota) rodé.
 
@@ -97,4 +98,4 @@ _None_
 |---------|---------|
 | `node-liblzma` | 5.0.0 |
 | `tar-xz` | 6.1.0 |
-| `nxz` | 7.0.0 (pending publish) |
+| `@oorabona/nxz` | 7.0.0 (pending publish) |

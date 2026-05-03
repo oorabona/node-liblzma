@@ -49,7 +49,7 @@ sequenceDiagram
     R->>P: gh workflow run publish.yml
     P->>NPM: Publish node-liblzma (OIDC)
     P->>NPM: Publish tar-xz (OIDC)
-    P->>NPM: Publish nxz (OIDC)
+    P->>NPM: Publish @oorabona/nxz (OIDC)
 ```
 
 ### Inputs
@@ -140,7 +140,7 @@ Three packages are published in dependency order:
 |---|---------|----------|-------------|
 | 1 | root | `node-liblzma` | Core XZ/LZMA2 bindings (native + WASM) |
 | 2 | packages/tar-xz | `tar-xz` | tar.xz streaming library |
-| 3 | packages/nxz | `nxz` | CLI tool for XZ compression |
+| 3 | packages/nxz | `@oorabona/nxz` | CLI tool for XZ compression |
 
 ### Publishing details
 

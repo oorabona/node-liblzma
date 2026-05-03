@@ -2,20 +2,20 @@
 
 `nxz` is a portable, Node.js-powered XZ compression CLI — a drop-in alternative to the
 system `xz` utility that also handles `.tar.xz` archives.
-It is published as [`nxz`](https://www.npmjs.com/package/nxz) on npm and backed by
+It is published as [`@oorabona/nxz`](https://www.npmjs.com/package/@oorabona/nxz) on npm and backed by
 [node-liblzma](https://github.com/oorabona/node-liblzma).
 
 ## Install
 
 ```bash
 # npm
-npm install -g nxz
+npm install -g @oorabona/nxz
 
 # pnpm
-pnpm add -g nxz
+pnpm add -g @oorabona/nxz
 
 # Run without installing
-npx nxz --help
+npx @oorabona/nxz --help
 ```
 
 ## Usage

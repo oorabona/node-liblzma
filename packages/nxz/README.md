@@ -8,10 +8,10 @@ Powered by [node-liblzma](https://github.com/oorabona/node-liblzma).
 
 ```bash
 # Run without installing
-npx nxz file.txt              # → file.txt.xz
+npx @oorabona/nxz file.txt              # → file.txt.xz
 
 # Or install globally
-npm install -g nxz
+npm install -g @oorabona/nxz
 nxz file.txt
 ```
 
