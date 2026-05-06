@@ -74,8 +74,14 @@
     "decompress",
     "archive",
     "extract",
+    "streaming",
+    "async-iterable",
+    "node",
+    "nodejs",
+    "typescript",
     "browser",
-    "wasm"
+    "wasm",
+    "webassembly"
   ],
   "author": "Olivier ORABONA",
   "license": "LGPL-3.0",
