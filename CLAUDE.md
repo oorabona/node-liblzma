@@ -32,9 +32,10 @@ node-liblzma/
 │   ├── bindings/            # Native C++ addon source (node-liblzma.cpp / .hpp)
 │   ├── wasm/                # Emscripten WASM bindings (8 files)
 │   └── *.ts                 # TypeScript source files
-├── scripts/                 # Build scripts (Python + JS)
-└── TODO.md                  # Main backlog
+└── scripts/                 # Build scripts (Python + JS)
 ```
+
+Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/issues).
 
 ## Stack
 
