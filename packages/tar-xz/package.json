@@ -67,6 +67,8 @@
   },
   "keywords": [
     "tar",
+    "tar.xz",
+    "tar-xz",
     "xz",
     "lzma",
     "lzma2",
