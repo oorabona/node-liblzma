@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-05-06
+
+### ⚠️ BREAKING CHANGES
+- scope package to @oorabona/nxz (#135) (nxz) ([a43c736](https://github.com/oorabona/node-liblzma/commit/a43c736))
+- rename nxz-cli to nxz and bump to 7.0.0 (#134) (nxz) ([4db0a94](https://github.com/oorabona/node-liblzma/commit/4db0a94))
+- redesign for v6 — universal stream-first API (#108) (tar-xz) ([b2c8a8c](https://github.com/oorabona/node-liblzma/commit/b2c8a8c))
+
+### Added
+- add --memlimit-decompress flag to CLI (#117) (nxz) ([2e3c25f](https://github.com/oorabona/node-liblzma/commit/2e3c25f))
+- true streaming for Node extract()/list() — O(largest entry) (#113) (tar-xz) ([06a9937](https://github.com/oorabona/node-liblzma/commit/06a9937))
+- wire memlimit through N-API decoder (#112) (native) ([0d09200](https://github.com/oorabona/node-liblzma/commit/0d09200))
+- wire memlimit option through unxzAsync/unxz (#111) (wasm) ([6e2bc09](https://github.com/oorabona/node-liblzma/commit/6e2bc09))
+- adopt Changesets for monorepo versioning + changelog generation (ci) ([adfbc99](https://github.com/oorabona/node-liblzma/commit/adfbc99))
+
+### Changed
+- enrich package metadata (description + keywords) for 3 packages (#141) ([5f0bb5b](https://github.com/oorabona/node-liblzma/commit/5f0bb5b))
+- migrate TODO.md to TODO.local.md per private-backlog directive (#140) ([806bfc4](https://github.com/oorabona/node-liblzma/commit/806bfc4))
+- sync llms.txt and CLAUDE.md to current monorepo state (#138) ([9f78901](https://github.com/oorabona/node-liblzma/commit/9f78901))
+- refresh lockfile for latest transitive dependencies (deps) ([8d9f202](https://github.com/oorabona/node-liblzma/commit/8d9f202))
+- refresh lockfile for latest transitive dependencies (deps) ([16fbaf7](https://github.com/oorabona/node-liblzma/commit/16fbaf7))
+- refresh lockfile for latest transitive dependencies (deps) ([8f1be86](https://github.com/oorabona/node-liblzma/commit/8f1be86))
+- document TarEntryTypeValue with JSDoc + expose in index (#137) (tar-xz) ([fe56124](https://github.com/oorabona/node-liblzma/commit/fe56124))
+- refresh lockfile for latest transitive dependencies (deps) ([fbf8a0f](https://github.com/oorabona/node-liblzma/commit/fbf8a0f))
+- refresh lockfile for latest transitive dependencies (deps) ([9f7968c](https://github.com/oorabona/node-liblzma/commit/9f7968c))
+- add tar-xz API and nxz CLI to GitHub Pages (#133) (pages) ([2c22298](https://github.com/oorabona/node-liblzma/commit/2c22298))
+- bump release-it-preset to 1.0.0-rc.0 and align Node CI (#132) (deps) ([dcf9427](https://github.com/oorabona/node-liblzma/commit/dcf9427))
+- refresh lockfile for latest transitive dependencies (deps) ([2261c05](https://github.com/oorabona/node-liblzma/commit/2261c05))
+- close 7 final coverage partials to reach 100% (#131) (tar-xz) ([0830fac](https://github.com/oorabona/node-liblzma/commit/0830fac))
+- close 7 coverage partials with surgical v8 ignores (#130) (tar-xz) ([de86c0c](https://github.com/oorabona/node-liblzma/commit/de86c0c))
+- close extract.ts coverage partials with v8 ignores (#129) (tar-xz) ([3abb041](https://github.com/oorabona/node-liblzma/commit/3abb041))
+- close file.ts coverage partials with tests + v8 ignores (#128) (tar-xz) ([8e51020](https://github.com/oorabona/node-liblzma/commit/8e51020))
+- cover three trivial file.ts branches (mtime=0, FILE type, mode=0) (#126) (tar-xz) ([5c496f8](https://github.com/oorabona/node-liblzma/commit/5c496f8))
+- close remaining coverage gaps to 100% lines (#125) (tar-xz) ([7189f8e](https://github.com/oorabona/node-liblzma/commit/7189f8e))
+- cover toAsyncIterable across Node and Browser variants (#124) (tar-xz) ([8c0f994](https://github.com/oorabona/node-liblzma/commit/8c0f994))
+- wrap defensive-unreachable branches with v8 ignore start/stop (#123) (tar-xz) ([add1724](https://github.com/oorabona/node-liblzma/commit/add1724))
+- restore 100% coverage on root src/ (errors.ts + pool.ts defensive guards) (#122) ([5e164e0](https://github.com/oorabona/node-liblzma/commit/5e164e0))
+- restore 100% coverage on memlimit.ts after parser refactor (#121) (nxz) ([7c87610](https://github.com/oorabona/node-liblzma/commit/7c87610))
+- close 3 follow-ups (preset 0.12, biome cleanup, parser CC refactor) (todo) ([de60b8f](https://github.com/oorabona/node-liblzma/commit/de60b8f))
+- split parseMemlimitSize via extract-method (#120) (nxz) ([43c4d25](https://github.com/oorabona/node-liblzma/commit/43c4d25))
+- remove dead biome suppression in tar-xz node-api spec (#119) (lint) ([49c7f14](https://github.com/oorabona/node-liblzma/commit/49c7f14))
+- bump @oorabona/release-it-preset 0.11.0 → 0.12.0 (#118) (deps) ([7ac6d05](https://github.com/oorabona/node-liblzma/commit/7ac6d05))
+- link upstream issue #21 for populate-script tag baseline follow-up (todo) ([ca6b389](https://github.com/oorabona/node-liblzma/commit/ca6b389))
+- refresh lockfile for latest transitive dependencies (deps) ([9fcad2e](https://github.com/oorabona/node-liblzma/commit/9fcad2e))
+- finalize nxz-cli v6.1.0 release notes and TODO ([9e30af4](https://github.com/oorabona/node-liblzma/commit/9e30af4))
+- release v6.1.0 (nxz-cli) ([ecff028](https://github.com/oorabona/node-liblzma/commit/ecff028))
+- close #25 per-package CHANGELOG scoping (PR #116) (todo) ([5833a22](https://github.com/oorabona/node-liblzma/commit/5833a22))
+- scope per-package CHANGELOG via GIT_CHANGELOG_PATH (#116) (release) ([68d6d91](https://github.com/oorabona/node-liblzma/commit/68d6d91))
+- close REFACTOR-BIOME-2026-04-29 (todo) ([9f37d1a](https://github.com/oorabona/node-liblzma/commit/9f37d1a))
+- biome warnings sweep + cognitive-complexity extract-method (63→1) (#115) ([ad2e18f](https://github.com/oorabona/node-liblzma/commit/ad2e18f))
+- clean up stale changesets — content shipped via release-it ([4d24fde](https://github.com/oorabona/node-liblzma/commit/4d24fde))
+- release v6.1.0 (tar-xz) ([f22f6dc](https://github.com/oorabona/node-liblzma/commit/f22f6dc))
+- finalize WIN32-TOCTOU-2026-04-29 — promote spec, mark TODO done ([1ee9db4](https://github.com/oorabona/node-liblzma/commit/1ee9db4))
+- refresh lockfile for latest transitive dependencies (deps) ([06e9590](https://github.com/oorabona/node-liblzma/commit/06e9590))
+- refresh lockfile for latest transitive dependencies (deps) ([f8f21d0](https://github.com/oorabona/node-liblzma/commit/f8f21d0))
+- capture tar-xz v6 redesign in CHANGELOGs + TODO.md ([9abd0a2](https://github.com/oorabona/node-liblzma/commit/9abd0a2))
+- release v5.0.1 (tar-xz) ([0c631f5](https://github.com/oorabona/node-liblzma/commit/0c631f5))
+- sync workspace package versions to npm registry (3.2.0 -> 5.0.0) ([900a055](https://github.com/oorabona/node-liblzma/commit/900a055))
+- refresh lockfile for latest transitive dependencies (deps) ([8345c25](https://github.com/oorabona/node-liblzma/commit/8345c25))
+- propagate anti-flake cleanup pattern to 3 high-risk integration tests ([f752664](https://github.com/oorabona/node-liblzma/commit/f752664))
+- add afterEach cleanup + timer tracking in error_recovery test (anti-flake) ([2d7f285](https://github.com/oorabona/node-liblzma/commit/2d7f285))
+- refresh lockfile for latest transitive dependencies (deps) ([bc7e804](https://github.com/oorabona/node-liblzma/commit/bc7e804))
+- refresh lockfile for latest transitive dependencies (deps) ([dedd2c1](https://github.com/oorabona/node-liblzma/commit/dedd2c1))
+- bump @vitest/ui (#106) (deps-dev) ([276f0b4](https://github.com/oorabona/node-liblzma/commit/276f0b4))
+- refresh lockfile for latest transitive dependencies (deps) ([8b7b5b9](https://github.com/oorabona/node-liblzma/commit/8b7b5b9))
+- ignore pnpm/action-setup v6+ in Dependabot (corrupts lockfile) (ci) ([fd2cf8c](https://github.com/oorabona/node-liblzma/commit/fd2cf8c))
+- refresh lockfile for latest transitive dependencies (deps) ([a01694e](https://github.com/oorabona/node-liblzma/commit/a01694e))
+- refresh lockfile for latest transitive dependencies (deps) ([e2eca27](https://github.com/oorabona/node-liblzma/commit/e2eca27))
+- refresh lockfile for latest transitive dependencies (deps) ([b1386e9](https://github.com/oorabona/node-liblzma/commit/b1386e9))
+- refresh lockfile for latest transitive dependencies (deps) ([1ba850e](https://github.com/oorabona/node-liblzma/commit/1ba850e))
+- refresh lockfile for latest transitive dependencies (deps) ([e66f8fb](https://github.com/oorabona/node-liblzma/commit/e66f8fb))
+- refresh lockfile for latest transitive dependencies (deps) ([fd906d6](https://github.com/oorabona/node-liblzma/commit/fd906d6))
+- refresh lockfile for latest transitive dependencies (deps) ([e085fa4](https://github.com/oorabona/node-liblzma/commit/e085fa4))
+- bump @vitest/ui in the dev-dependencies group (#95) (deps-dev) ([01e828c](https://github.com/oorabona/node-liblzma/commit/01e828c))
+- refresh lockfile for latest transitive dependencies (deps) ([cfe60ca](https://github.com/oorabona/node-liblzma/commit/cfe60ca))
+- refresh lockfile for latest transitive dependencies (deps) ([1d0dd42](https://github.com/oorabona/node-liblzma/commit/1d0dd42))
+- refresh lockfile for latest transitive dependencies (deps) ([775ed0f](https://github.com/oorabona/node-liblzma/commit/775ed0f))
+- refresh lockfile for latest transitive dependencies (deps) ([9a66903](https://github.com/oorabona/node-liblzma/commit/9a66903))
+- refresh lockfile for latest transitive dependencies (deps) ([3e2bd44](https://github.com/oorabona/node-liblzma/commit/3e2bd44))
+- refresh lockfile for latest transitive dependencies (deps) ([d3bea99](https://github.com/oorabona/node-liblzma/commit/d3bea99))
+
+### Fixed
+- use absolute URLs in typedoc navigationLinks (#136) (docs) ([cd1185c](https://github.com/oorabona/node-liblzma/commit/cd1185c))
+- include CHANGELOG.md and SECURITY.md in published tarball (tar-xz) ([408e955](https://github.com/oorabona/node-liblzma/commit/408e955))
+- close Win32 symlink-swap TOCTOU with JS-pure 'wx'+retry fail-closed (#114) (tar-xz) ([b24040d](https://github.com/oorabona/node-liblzma/commit/b24040d))
+- re-add @changesets/cli (was clobbered by pnpm add of changelog-github) (deps) ([6d76280](https://github.com/oorabona/node-liblzma/commit/6d76280))
+- use 'changeset' so the bin resolves with --ignore-scripts (ci) ([78b91f7](https://github.com/oorabona/node-liblzma/commit/78b91f7))
+- use always() in publish job to bypass skipped build (workspace target) (ci) ([2e08977](https://github.com/oorabona/node-liblzma/commit/2e08977))
+- pin pnpm/action-setup to v5 in refresh-lockfile (v6 corrupts lockfile) (ci) ([f39d603](https://github.com/oorabona/node-liblzma/commit/f39d603))
+- regenerate pnpm-lock.yaml (was broken with duplicate YAML document) (deps) ([e0c66ab](https://github.com/oorabona/node-liblzma/commit/e0c66ab))
+- use squash merge in Dependabot auto-merge (linear history required) (ci) ([f3aee60](https://github.com/oorabona/node-liblzma/commit/f3aee60))
+- point tar-xz demo Vite alias to browser entry ([8aea7ac](https://github.com/oorabona/node-liblzma/commit/8aea7ac))
+- point demo Vite alias to browser entry (fixes docs build) ([e86dba5](https://github.com/oorabona/node-liblzma/commit/e86dba5))
+
 ## [5.0.0] - 2026-04-10
 
 ### ⚠️ BREAKING CHANGES
@@ -516,7 +609,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.1...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -537,3 +630,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [4.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v4.0.2
 [v5.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.0
 [5.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.0
+[v5.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.1
+[5.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.1

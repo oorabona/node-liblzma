@@ -1,6 +1,6 @@
 {
   "name": "node-liblzma",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Native Node.js bindings for liblzma (XZ/LZMA2). Streaming, buffer and async APIs with browser support via WebAssembly. zlib-like API, TypeScript-first, prebuilt binaries for Linux/macOS/Windows.",
   "type": "module",
   "main": "./lib/lzma.js",
