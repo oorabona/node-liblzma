@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [6.1.1] - 2026-05-06
+
+### Changed
+- enrich package metadata (description + keywords) for 3 packages (#141) ([5f0bb5b](https://github.com/oorabona/node-liblzma/commit/5f0bb5b))
+- document TarEntryTypeValue with JSDoc + expose in index (#137) (tar-xz) ([fe56124](https://github.com/oorabona/node-liblzma/commit/fe56124))
+- add tar-xz API and nxz CLI to GitHub Pages (#133) (pages) ([2c22298](https://github.com/oorabona/node-liblzma/commit/2c22298))
+- close 7 final coverage partials to reach 100% (#131) (tar-xz) ([0830fac](https://github.com/oorabona/node-liblzma/commit/0830fac))
+- close 7 coverage partials with surgical v8 ignores (#130) (tar-xz) ([de86c0c](https://github.com/oorabona/node-liblzma/commit/de86c0c))
+- close extract.ts coverage partials with v8 ignores (#129) (tar-xz) ([3abb041](https://github.com/oorabona/node-liblzma/commit/3abb041))
+- close file.ts coverage partials with tests + v8 ignores (#128) (tar-xz) ([8e51020](https://github.com/oorabona/node-liblzma/commit/8e51020))
+- cover three trivial file.ts branches (mtime=0, FILE type, mode=0) (#126) (tar-xz) ([5c496f8](https://github.com/oorabona/node-liblzma/commit/5c496f8))
+- close remaining coverage gaps to 100% lines (#125) (tar-xz) ([7189f8e](https://github.com/oorabona/node-liblzma/commit/7189f8e))
+- cover toAsyncIterable across Node and Browser variants (#124) (tar-xz) ([8c0f994](https://github.com/oorabona/node-liblzma/commit/8c0f994))
+- wrap defensive-unreachable branches with v8 ignore start/stop (#123) (tar-xz) ([add1724](https://github.com/oorabona/node-liblzma/commit/add1724))
+- remove dead biome suppression in tar-xz node-api spec (#119) (lint) ([49c7f14](https://github.com/oorabona/node-liblzma/commit/49c7f14))
+- biome warnings sweep + cognitive-complexity extract-method (63→1) (#115) ([ad2e18f](https://github.com/oorabona/node-liblzma/commit/ad2e18f))
+
+### Fixed
+- use absolute URLs in typedoc navigationLinks (#136) (docs) ([cd1185c](https://github.com/oorabona/node-liblzma/commit/cd1185c))
+- include CHANGELOG.md and SECURITY.md in published tarball (tar-xz) ([408e955](https://github.com/oorabona/node-liblzma/commit/408e955))
+
 ## [6.1.0] - 2026-04-29
 
 ### ⚠️ BREAKING CHANGES
@@ -131,6 +152,8 @@ See [README.md § Migration v5 → v6](./README.md#migration-v5--v6) for full co
 
 - Workspace package versions synchronized to npm registry (3.2.0 → 5.0.0). Internal infrastructure updates (CI workflows, lockfile maintenance, anti-flake test cleanup). No API changes.
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v6.1.1...HEAD
 [v6.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v6.1.0
 [6.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v6.1.0
+[v6.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v6.1.1
+[6.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v6.1.1
