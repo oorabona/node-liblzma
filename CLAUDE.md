@@ -39,7 +39,7 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 
 ## Stack
 
-- **Language:** TypeScript strict + `noUncheckedIndexedAccess` / C++ (native) / C (WASM via Emscripten)
+- **Language:** TypeScript strict / C++ (native) / C (WASM via Emscripten). Root `tsconfig.json` has `noUncheckedIndexedAccess: false`; workspace packages `tar-xz` and `@oorabona/nxz` enable it.
 - **Package Manager:** pnpm 10+ workspace
 - **Test Framework:** Vitest 4.x
 - **Linter:** Biome 2.x
@@ -52,7 +52,7 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 ### Code Style
 - ESM modules (`"type": "module"`)
 - Biome for linting and formatting
-- TypeScript strict mode + `noUncheckedIndexedAccess`
+- TypeScript strict mode (per-package `noUncheckedIndexedAccess`: see Stack section above)
 
 ### Git
 - Branch naming: `<type>/<description>`
@@ -62,7 +62,7 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 ### Testing
 - Unit tests with Vitest 4.x
 - Coverage: monocart (default) or v8 (`pnpm test:coverage-v8` — lcov output, used by Codecov)
-- 100% lines + branches expected across all packages
+- 100% lines + branches as a project target (currently met; not enforced via vitest threshold — maintained by convention via the `v8 ignore start/stop` discipline for unreachable / negative-ROI branches)
 
 ## Commands Reference
 
@@ -85,7 +85,7 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 
 ## Important Notes
 
-- Native addon requires liblzma system library or builds from source (XZ tarball downloaded into `deps/` at build time by `binding.gyp`; `deps/` is gitignored, NOT a git submodule)
+- Native addon requires liblzma system library or builds from source (XZ tarball downloaded into `deps/` at build time by `binding.gyp` → `scripts/download_xz_from_github.py`; `deps/` is gitignored, NOT a git submodule)
 - Uses prebuildify for prebuilt binaries; `prebuilds/` must be in `files` array
 - Dual implementation: native N-API + Emscripten WASM (browser condition in package.json exports)
 - License: LGPL-3.0
