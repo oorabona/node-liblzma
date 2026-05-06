@@ -1,7 +1,7 @@
 {
   "name": "node-liblzma",
   "version": "5.0.0",
-  "description": "NodeJS wrapper for liblzma",
+  "description": "Native Node.js bindings for liblzma (XZ/LZMA2). Streaming, buffer and async APIs with browser support via WebAssembly. zlib-like API, TypeScript-first, prebuilt binaries for Linux/macOS/Windows.",
   "type": "module",
   "main": "./lib/lzma.js",
   "exports": {
@@ -107,6 +107,9 @@
   },
   "keywords": [
     "module",
+    "node",
+    "nodejs",
+    "typescript",
     "lzma",
     "lzma2",
     "xz",
@@ -114,6 +117,11 @@
     "compress",
     "uncompress",
     "decompress",
+    "streaming",
+    "wasm",
+    "webassembly",
+    "browser",
+    "zlib",
     "filters",
     "binding",
     "native"

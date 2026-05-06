@@ -46,12 +46,18 @@
   "keywords": [
     "xz",
     "lzma",
+    "lzma2",
     "compress",
     "decompress",
     "tar",
     "tar.xz",
+    "archive",
+    "extract",
     "cli",
-    "nxz"
+    "command-line",
+    "nxz",
+    "node",
+    "nodejs"
   ],
   "author": "Olivier ORABONA",
   "license": "LGPL-3.0",

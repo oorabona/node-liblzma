@@ -67,6 +67,8 @@
   },
   "keywords": [
     "tar",
+    "tar.xz",
+    "tar-xz",
     "xz",
     "lzma",
     "lzma2",
@@ -74,8 +76,14 @@
     "decompress",
     "archive",
     "extract",
+    "streaming",
+    "async-iterable",
+    "node",
+    "nodejs",
+    "typescript",
     "browser",
-    "wasm"
+    "wasm",
+    "webassembly"
   ],
   "author": "Olivier ORABONA",
   "license": "LGPL-3.0",
