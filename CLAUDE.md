@@ -30,7 +30,7 @@ node-liblzma/
 │   └── nxz/                 # CLI wrapper (npm: @oorabona/nxz, v7.0.0, binary: nxz)
 ├── src/
 │   ├── bindings/            # Native C++ addon source (node-liblzma.cpp / .hpp)
-│   ├── wasm/                # Emscripten WASM bindings (8 files)
+│   ├── wasm/                # Emscripten WASM bindings + build helpers
 │   └── *.ts                 # TypeScript source files
 └── scripts/                 # Build scripts (Python + JS)
 ```
@@ -45,7 +45,7 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 - **Linter:** Biome 2.x
 - **Build:** node-gyp + tsc + prebuildify (native); emcc (WASM)
 - **Native binding:** node-addon-api (N-API)
-- **Node.js:** >= 22.0.0
+- **Node.js:** root `node-liblzma` >= 22.0.0; workspace packages `tar-xz` and `@oorabona/nxz` >= 20.0.0
 
 ## Conventions
 
@@ -85,10 +85,9 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 
 ## Important Notes
 
-- Native addon requires liblzma system library or builds from source (deps/xz submodule)
+- Native addon requires liblzma system library or builds from source (XZ tarball downloaded into `deps/` at build time by `binding.gyp`; `deps/` is gitignored, NOT a git submodule)
 - Uses prebuildify for prebuilt binaries; `prebuilds/` must be in `files` array
 - Dual implementation: native N-API + Emscripten WASM (browser condition in package.json exports)
-- `biome` must be invoked via `rtk proxy biome ...` (not `pnpm exec biome`) due to RTK proxy rewrite
 - License: LGPL-3.0
 
 ## Workflow Integration
