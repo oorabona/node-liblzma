@@ -1,6 +1,6 @@
 {
   "name": "@oorabona/nxz",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Portable xz-like CLI tool for Node.js — compress, decompress, and handle tar.xz archives",
   "type": "module",
   "main": "./lib/nxz.js",
