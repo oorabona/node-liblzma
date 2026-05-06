@@ -122,3 +122,7 @@ build/wasm/
 # TypeDoc output & demo build
 docs-site/
 examples/browser/node_modules/
+
+# Maintainer working memory — per global Claude Code directive
+# (public actionable backlog → GitHub Issues; *.local.md files are never tracked)
+*.local.md
