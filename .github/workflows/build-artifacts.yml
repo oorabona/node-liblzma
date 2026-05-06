@@ -131,8 +131,10 @@ jobs:
       - name: Run prepare (git hooks + TypeScript build)
         run: pnpm run prepare
 
-      - name: Install prebuildify globally
-        run: npm install -g prebuildify
+      - name: Install prebuildify and node-gyp globally
+        # node-gyp is no longer bundled with npm@11+ (default with Node 24);
+        # prebuildify spawns `node-gyp` by name and needs it in PATH.
+        run: npm install -g prebuildify node-gyp
 
       - name: Prebuild native modules
         run: |
