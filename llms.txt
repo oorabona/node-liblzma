@@ -1,8 +1,9 @@
 # node-liblzma
 
 > Node.js bindings for liblzma (XZ/LZMA2 compression). Provides streaming
-> and buffer APIs compatible with zlib, plus a portable CLI tool (nxz).
-> Supports prebuilt binaries for Linux, macOS, and Windows.
+> and buffer APIs compatible with zlib. Dual implementation: native N-API
+> addon (Linux/macOS/Windows) + Emscripten WASM (browser/worker).
+> Requires Node.js >= 22.0.0. License: LGPL-3.0.
 
 ## Installation
 
@@ -12,37 +13,53 @@ npm install node-liblzma
 
 ## Key APIs
 
-- [Streaming API](https://github.com/oorabona/node-liblzma#streaming-api): `createXz()`, `createUnxz()` - zlib-compatible transform streams
-- [Buffer API](https://github.com/oorabona/node-liblzma#buffer-api): `xz()`, `unxz()`, `xzSync()`, `unxzSync()` - callback and sync variants
-- [Promise API](https://github.com/oorabona/node-liblzma#promise-api): `xzAsync()`, `unxzAsync()` - modern async/await support
-- [File API](https://github.com/oorabona/node-liblzma#file-api): `xzFile()`, `unxzFile()` - compress/decompress files directly
-- [Utility API](https://github.com/oorabona/node-liblzma#utility-functions): `isXZ()`, `parseFileIndex()`, `versionString()` - format detection and metadata
+- [Quick Start](https://github.com/oorabona/node-liblzma#quick-start): Installation and first examples
+- [API Reference](https://github.com/oorabona/node-liblzma#api-reference): `createXz()`, `createUnxz()`, `xzAsync()`, `unxzAsync()`, `xzSync()`, `unxzSync()`, `xzFile()`, `unxzFile()`, `isXZ()`, `parseFileIndex()`, `versionString()`
+- [API Comparison with Zlib](https://github.com/oorabona/node-liblzma#api-comparison-with-zlib): Drop-in replacement guide
+- [Browser Usage](https://github.com/oorabona/node-liblzma#browser-usage): WASM/Emscripten mode for bundlers and workers
+- [Benchmark](https://github.com/oorabona/node-liblzma#benchmark): Performance comparison with native xz
 
 ## CLI Tool (nxz)
 
-Portable xz-like command line tool included in the package:
+The CLI is published as a **separate package** (`@oorabona/nxz`, v7.0.0) — not bundled with `node-liblzma`.
+The binary name is `nxz`.
 
 ```bash
-npx node-liblzma file.txt        # compress
-npx node-liblzma -d file.xz      # decompress
-npx node-liblzma -l file.xz      # list info
-npx node-liblzma -9e large.bin   # max compression
+# One-shot (no install required)
+npx @oorabona/nxz file.txt        # compress
+npx @oorabona/nxz -d file.xz      # decompress
+npx @oorabona/nxz -l file.xz      # list info
+npx @oorabona/nxz -9e large.bin   # max compression
+
+# After global install
+npm i -g @oorabona/nxz
+nxz file.txt
+nxz -d file.xz
 ```
 
-Options: `-z` compress, `-d` decompress, `-l` list, `-k` keep, `-f` force, `-c` stdout, `-o FILE` output, `-0`.`-9` preset, `-e` extreme, `-v` verbose, `-q` quiet
+Options: `-z` compress, `-d` decompress, `-l` list, `-k` keep, `-f` force, `-c` stdout, `-o FILE` output, `-0`..`-9` preset, `-e` extreme, `-v` verbose, `-q` quiet
+
+More: [CLI Tool (nxz)](https://github.com/oorabona/node-liblzma#cli-tool-nxz)
+
+## Ecosystem Packages
+
+- [`tar-xz`](https://github.com/oorabona/node-liblzma#ecosystem-packages) (v6.1.0) — tar.xz archive creation and extraction for Node and browser
+- [`@oorabona/nxz`](https://github.com/oorabona/node-liblzma#nxz--standalone-cli) (v7.0.0) — standalone CLI (was `nxz-cli`, deprecated)
 
 ## Documentation
 
 - [README](https://github.com/oorabona/node-liblzma#readme): Quick start and examples
-- [TypeDoc API Reference](https://oorabona.github.io/node-liblzma/): Full API documentation
-- [Migration from zlib](https://github.com/oorabona/node-liblzma#compatibility-with-zlib): Drop-in replacement guide
+- [TypeDoc API — node-liblzma](https://oorabona.github.io/node-liblzma/): Full root package API
+- [TypeDoc API — tar-xz](https://oorabona.github.io/node-liblzma/tar-xz-api/): tar-xz package API
+- [nxz usage page](https://oorabona.github.io/node-liblzma/documents/nxz-usage.html): CLI reference
+- [Benchmark](https://github.com/oorabona/node-liblzma#benchmark): Performance numbers
 
 ## Quick Examples
 
 ```typescript
 import { xzAsync, unxzAsync, createXz } from 'node-liblzma';
 
-// Buffer API
+// Promise API
 const compressed = await xzAsync(Buffer.from('Hello World'));
 const original = await unxzAsync(compressed);
 
@@ -57,5 +74,4 @@ createReadStream('input.txt')
 
 - [Contributing Guide](https://github.com/oorabona/node-liblzma/blob/master/CONTRIBUTING.md): How to contribute
 - [Changelog](https://github.com/oorabona/node-liblzma/blob/master/CHANGELOG.md): Version history
-- [Benchmark](https://github.com/oorabona/node-liblzma#benchmark): Performance comparison with native xz
 - [License](https://github.com/oorabona/node-liblzma/blob/master/LICENSE): LGPL-3.0
