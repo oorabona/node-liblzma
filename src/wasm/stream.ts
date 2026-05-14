@@ -69,6 +69,7 @@ export function createXz(opts?: LZMAOptions): TransformStream<Uint8Array, Uint8A
        Transformer interface, earlier versions did not. We use `@ts-expect-error`
        (not `@ts-expect-error`) so the directive is harmless on the newer
        typings where the property already exists. */
+    // biome-ignore lint/suspicious/noTsIgnore: @ts-expect-error is intentional — forward-compat with @types/node 25.7.0 (Transformer.cancel typing drift)
     // @ts-expect-error cancel is a valid Transformer method per Streams spec
     cancel: doCleanup,
   });
@@ -129,6 +130,7 @@ export function createUnxz(): TransformStream<Uint8Array, Uint8Array> {
     },
     /* cancel() frees WASM resources when the readable side is cancelled.
        See createXz() for the rationale on `@ts-expect-error` vs `@ts-expect-error`. */
+    // biome-ignore lint/suspicious/noTsIgnore: see createXz()
     // @ts-expect-error cancel is a valid Transformer method per Streams spec
     cancel: doCleanup,
   });
