@@ -48,7 +48,7 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:",
-    "vite": "^8.0.1",
+    "vite": "^8.0.11",
     "vitest": "catalog:"
   },
   "types": "./lib/index.d.ts",
