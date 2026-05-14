@@ -8,10 +8,18 @@
     # node.exe on Windows (#153). Python is always available because
     # node-gyp itself depends on it and writes its absolute path into
     # build/config.gypi as the `python` variable.
+    #
+    # `python%` provides a fallback for legacy node-gyp versions (<10) that
+    # did not emit `python` into config.gypi. Quotes around <(python) and
+    # <(module_root_dir) preserve paths containing spaces
+    # (e.g. C:\Program Files\Python311\python.exe).
+    "conditions": [
+      ["OS == 'win'", { "python%": "python" }, { "python%": "python3" }]
+    ],
     "py3%": "<(python)",
-    "use_global_liblzma%": "<!(<(python) <(module_root_dir)/scripts/binding_config.py use_global_liblzma)",
-    "runtime_link%": "<!(<(python) <(module_root_dir)/scripts/binding_config.py runtime_link)",
-    "enable_thread_support%": "<!(<(python) <(module_root_dir)/scripts/binding_config.py enable_thread_support)",
+    "use_global_liblzma%": "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" use_global_liblzma)",
+    "runtime_link%": "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" runtime_link)",
+    "enable_thread_support%": "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" enable_thread_support)",
     "xz_vendor_dir": "<(module_root_dir)/deps/xz",
     "target_dir": "<(module_root_dir)/build",
     "liblzma_install_dir": "<(target_dir)/liblzma"
@@ -208,10 +216,10 @@
   ],
   "targets": [{
     "target_name": "node_lzma",
-    "include_dirs": ["<!(<(python) <(module_root_dir)/scripts/binding_config.py node_addon_api_include)"],
+    "include_dirs": ["<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_include)"],
     "defines": ["NAPI_DISABLE_CPP_EXCEPTIONS"],
-    "sources": ["<!@(<(python) scripts/walk_sources.py src)"],
-    "dependencies": ["<!(<(python) <(module_root_dir)/scripts/binding_config.py node_addon_api_gyp)"],
+    "sources": ["<!@(\"<(python)\" \"<(module_root_dir)/scripts/walk_sources.py\" src)"],
+    "dependencies": ["<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_gyp)"],
     "cflags": [
       "-std=c++2a",
       "-Wall",
