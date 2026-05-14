@@ -40,8 +40,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0(release-it@20.0.1(@types/node@25.6.0)(magicast@0.5.2))
       '@oorabona/vitest-monocart-coverage':
-        specifier: ^2.0.1
-        version: 2.0.1(vitest@4.1.5)
+        specifier: ^3.0.1
+        version: 3.0.1(vite@8.0.11(@types/node@25.6.0)(jiti@2.7.0)(yaml@2.8.4))(vitest@4.1.5)
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.0
@@ -508,12 +508,13 @@ packages:
     peerDependencies:
       release-it: ^19.0.0 || ^20.0.0
 
-  '@oorabona/vitest-monocart-coverage@2.0.1':
-    resolution: {integrity: sha512-Z6eE1Q64hz4qCm0LEQIUT9UJG12qerU6JtnUihZyPOdVzgL74kVOzjFtSPVGt05smwmmFkHNaJZcs25J9yOnEQ==}
-    engines: {node: '>=20'}
+  '@oorabona/vitest-monocart-coverage@3.0.1':
+    resolution: {integrity: sha512-G1AodwVcclNdSFm8JTllDaHMwf4F+NRWsjLSprCNf5PJRCoep36XcU/FH3S88M4KpNWQfxTbfQpv/NeKqUkqBQ==}
+    engines: {node: '>=20.19.0'}
     peerDependencies:
-      '@vitest/browser': '>=2.0.0'
-      vitest: '>=2.0.0'
+      '@vitest/browser': '>=4.0.0'
+      vite: '>=6.0.0'
+      vitest: '>=4.0.0'
     peerDependenciesMeta:
       '@vitest/browser':
         optional: true
@@ -2528,10 +2529,11 @@ snapshots:
     dependencies:
       release-it: 20.0.1(@types/node@25.6.0)(magicast@0.5.2)
 
-  '@oorabona/vitest-monocart-coverage@2.0.1(vitest@4.1.5)':
+  '@oorabona/vitest-monocart-coverage@3.0.1(vite@8.0.11(@types/node@25.6.0)(jiti@2.7.0)(yaml@2.8.4))(vitest@4.1.5)':
     dependencies:
       monocart-coverage-reports: 2.12.11
       picomatch: 4.0.4
+      vite: 8.0.11(@types/node@25.6.0)(jiti@2.7.0)(yaml@2.8.4)
       vitest: 4.1.5(@types/node@25.6.0)(@vitest/coverage-istanbul@4.1.5)(@vitest/coverage-v8@4.1.5)(@vitest/ui@4.1.5)(vite@8.0.11(@types/node@25.6.0)(jiti@2.7.0)(yaml@2.8.4))
       zod: 4.4.3
 
