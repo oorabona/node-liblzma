@@ -2,11 +2,17 @@
 # This replaces the complex manual configuration with CMake-based builds
 {
   "variables": {
-    "use_global_liblzma%": "<!(node -p \"process.env.USE_GLOBAL || (process.platform === 'linux' || process.platform === 'darwin' ? 'true' : 'false')\")",
-    "runtime_link%": "<!(node -p \"(process.env.RUNTIME_LINK && process.env.RUNTIME_LINK.length > 0) ? process.env.RUNTIME_LINK : (process.platform === 'linux' || process.platform === 'darwin' ? 'shared' : 'static')\")",
-    "enable_thread_support%": "<!(node -p \"process.env.ENABLE_THREAD_SUPPORT || 'yes'\")",
+    # All defaults are resolved via Python (injected by node-gyp as
+    # <(python)) instead of `node -p`. Required because npm spawns install
+    # scripts in a shell whose PATH does not include mise/aube/pnpm-managed
+    # node.exe on Windows (#153). Python is always available because
+    # node-gyp itself depends on it and writes its absolute path into
+    # build/config.gypi as the `python` variable.
+    "py3%": "<(python)",
+    "use_global_liblzma%": "<!(<(python) <(module_root_dir)/scripts/binding_config.py use_global_liblzma)",
+    "runtime_link%": "<!(<(python) <(module_root_dir)/scripts/binding_config.py runtime_link)",
+    "enable_thread_support%": "<!(<(python) <(module_root_dir)/scripts/binding_config.py enable_thread_support)",
     "xz_vendor_dir": "<(module_root_dir)/deps/xz",
-    "py3": "<!(node -p \"process.env.npm_config_python || 'python3'\")",
     "target_dir": "<(module_root_dir)/build",
     "liblzma_install_dir": "<(target_dir)/liblzma"
   },
@@ -202,10 +208,10 @@
   ],
   "targets": [{
     "target_name": "node_lzma",
-    "include_dirs": ["<!(node -p \"require('node-addon-api').include_dir\")"],
+    "include_dirs": ["<!(<(python) <(module_root_dir)/scripts/binding_config.py node_addon_api_include)"],
     "defines": ["NAPI_DISABLE_CPP_EXCEPTIONS"],
-    "sources": ["<!@(<(py3) scripts/walk_sources.py src)"],
-    "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
+    "sources": ["<!@(<(python) scripts/walk_sources.py src)"],
+    "dependencies": ["<!(<(python) <(module_root_dir)/scripts/binding_config.py node_addon_api_gyp)"],
     "cflags": [
       "-std=c++2a",
       "-Wall",
