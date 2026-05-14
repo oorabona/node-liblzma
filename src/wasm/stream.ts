@@ -65,7 +65,10 @@ export function createXz(opts?: LZMAOptions): TransformStream<Uint8Array, Uint8A
       }
     },
     /* cancel() frees WASM resources when the readable side is cancelled.
-       Part of the Streams spec but not yet in TypeScript's DOM lib. */
+       Part of the Streams spec; @types/node 25.7.0 added it to the
+       Transformer interface, earlier versions did not. We use @ts-expect-error
+       (not @ts-expect-error) so the directive is harmless on the newer
+       typings where the property already exists. */
     // @ts-expect-error cancel is a valid Transformer method per Streams spec
     cancel: doCleanup,
   });
@@ -125,7 +128,7 @@ export function createUnxz(): TransformStream<Uint8Array, Uint8Array> {
       }
     },
     /* cancel() frees WASM resources when the readable side is cancelled.
-       Part of the Streams spec but not yet in TypeScript's DOM lib. */
+       See createXz() for the rationale on @ts-expect-error vs @ts-expect-error. */
     // @ts-expect-error cancel is a valid Transformer method per Streams spec
     cancel: doCleanup,
   });
