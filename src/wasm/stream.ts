@@ -5,6 +5,7 @@
  * Use `.pipeThrough()` instead of `.pipe()`.
  */
 
+import type { Transformer } from 'node:stream/web';
 import { createLZMAError } from '../errors.js';
 import type { LZMAOptions } from '../types.js';
 import { code, decoderInit, encoderInit, end, getModule } from './bindings.js';
@@ -65,9 +66,13 @@ export function createXz(opts?: LZMAOptions): TransformStream<Uint8Array, Uint8A
       }
     },
     /* cancel() frees WASM resources when the readable side is cancelled.
-       Part of the Streams spec but not yet in TypeScript's DOM lib. */
-    // @ts-expect-error cancel is a valid Transformer method per Streams spec
+       Part of the Streams spec; @types/node added `cancel?:` to the Transformer
+       interface in 25.7.0. The intersection cast accepts the property on both
+       older typings (where it's absent) and newer typings (where it's present),
+       keeping the typecheck stable across `@types/node` minor bumps. */
     cancel: doCleanup,
+  } as Transformer<Uint8Array, Uint8Array> & {
+    cancel?: (reason: unknown) => void | PromiseLike<void>;
   });
 }
 
@@ -125,9 +130,10 @@ export function createUnxz(): TransformStream<Uint8Array, Uint8Array> {
       }
     },
     /* cancel() frees WASM resources when the readable side is cancelled.
-       Part of the Streams spec but not yet in TypeScript's DOM lib. */
-    // @ts-expect-error cancel is a valid Transformer method per Streams spec
+       See createXz() for the rationale on the intersection cast. */
     cancel: doCleanup,
+  } as Transformer<Uint8Array, Uint8Array> & {
+    cancel?: (reason: unknown) => void | PromiseLike<void>;
   });
 }
 
