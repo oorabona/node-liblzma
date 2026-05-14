@@ -12,7 +12,6 @@ Subcommands:
   use_global_liblzma     env USE_GLOBAL or platform default ("true" on linux/darwin, "false" elsewhere)
   runtime_link           env RUNTIME_LINK or platform default ("shared" on linux/darwin, "static" elsewhere)
   enable_thread_support  env ENABLE_THREAD_SUPPORT or "yes"
-  py3                    env npm_config_python or platform default ("python3" on linux/darwin, "python" on win32)
   node_addon_api_include absolute path to node-addon-api include dir (POSIX-style)
   node_addon_api_gyp     absolute path to node-addon-api node_api.gyp (POSIX-style)
 """
@@ -42,10 +41,6 @@ def runtime_link():
 
 def enable_thread_support():
     return env_or("ENABLE_THREAD_SUPPORT", "yes")
-
-
-def py3():
-    return env_or("npm_config_python", "python3" if is_unix() else "python")
 
 
 def find_node_addon_api():
@@ -99,7 +94,6 @@ COMMANDS = {
     "use_global_liblzma": use_global_liblzma,
     "runtime_link": runtime_link,
     "enable_thread_support": enable_thread_support,
-    "py3": py3,
     "node_addon_api_include": node_addon_api_include,
     "node_addon_api_gyp": node_addon_api_gyp,
 }
