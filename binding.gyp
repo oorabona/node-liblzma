@@ -5,17 +5,12 @@
     # All defaults are resolved via Python (injected by node-gyp as
     # <(python)) instead of `node -p`. Required because npm spawns install
     # scripts in a shell whose PATH does not include mise/aube/pnpm-managed
-    # node.exe on Windows (#153). Python is always available because
-    # node-gyp itself depends on it and writes its absolute path into
-    # build/config.gypi as the `python` variable.
-    #
-    # `python%` provides a fallback for legacy node-gyp versions (<10) that
-    # did not emit `python` into config.gypi. Quotes around <(python) and
-    # <(module_root_dir) preserve paths containing spaces
-    # (e.g. C:\Program Files\Python311\python.exe).
-    "conditions": [
-      ["OS == 'win'", { "python%": "python" }, { "python%": "python3" }]
-    ],
+    # node.exe on Windows (#153). node-gyp >=10 (shipped with node >=20)
+    # writes the absolute python path into build/config.gypi, so <(python)
+    # always resolves before binding.gyp parses. Quoting around <(python)
+    # and <(module_root_dir) preserves paths containing spaces (e.g.
+    # C:\Program Files\Python311\python.exe — the literal value reported
+    # in the issue logs).
     "py3%": "<(python)",
     "use_global_liblzma%": "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" use_global_liblzma)",
     "runtime_link%": "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" runtime_link)",
