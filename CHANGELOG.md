@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.2] - 2026-06-16
+
+### Changed
+- split _processChunk into sync/async paths (#164) (lzma) ([dc07ebd](https://github.com/oorabona/node-liblzma/commit/dc07ebd))
+- bump @vitest/ui (#161) (deps-dev) ([4823a8f](https://github.com/oorabona/node-liblzma/commit/4823a8f))
+- refresh lockfile for latest transitive dependencies (deps) ([4be7bfe](https://github.com/oorabona/node-liblzma/commit/4be7bfe))
+- refresh lockfile for latest transitive dependencies (deps) ([88b7d49](https://github.com/oorabona/node-liblzma/commit/88b7d49))
+- refresh lockfile for latest transitive dependencies (deps) ([44c3e2b](https://github.com/oorabona/node-liblzma/commit/44c3e2b))
+- refresh lockfile for latest transitive dependencies (deps) ([0227aa3](https://github.com/oorabona/node-liblzma/commit/0227aa3))
+- refresh lockfile for latest transitive dependencies (deps) ([bff8383](https://github.com/oorabona/node-liblzma/commit/bff8383))
+- refresh lockfile for latest transitive dependencies (deps) ([1bf379c](https://github.com/oorabona/node-liblzma/commit/1bf379c))
+- refresh lockfile for latest transitive dependencies (deps) ([77847f4](https://github.com/oorabona/node-liblzma/commit/77847f4))
+- refresh lockfile for latest transitive dependencies (deps) ([4bbde9d](https://github.com/oorabona/node-liblzma/commit/4bbde9d))
+- refresh lockfile for latest transitive dependencies (deps) ([2be5ef7](https://github.com/oorabona/node-liblzma/commit/2be5ef7))
+- refresh lockfile for latest transitive dependencies (deps) ([84d66c2](https://github.com/oorabona/node-liblzma/commit/84d66c2))
+- refresh lockfile for latest transitive dependencies (deps) ([f3eba44](https://github.com/oorabona/node-liblzma/commit/f3eba44))
+- refresh lockfile for latest transitive dependencies (deps) ([e67f99b](https://github.com/oorabona/node-liblzma/commit/e67f99b))
+- refresh lockfile for latest transitive dependencies (deps) ([20d2e01](https://github.com/oorabona/node-liblzma/commit/20d2e01))
+- refresh lockfile for latest transitive dependencies (deps) ([27c53d7](https://github.com/oorabona/node-liblzma/commit/27c53d7))
+- refresh lockfile for latest transitive dependencies (deps) ([9a9f39b](https://github.com/oorabona/node-liblzma/commit/9a9f39b))
+- refresh lockfile for latest transitive dependencies (deps) ([e8e0431](https://github.com/oorabona/node-liblzma/commit/e8e0431))
+- refresh lockfile for latest transitive dependencies (deps) ([caa5913](https://github.com/oorabona/node-liblzma/commit/caa5913))
+- refresh lockfile for latest transitive dependencies (deps) ([cd1a7a4](https://github.com/oorabona/node-liblzma/commit/cd1a7a4))
+- refresh lockfile for latest transitive dependencies (deps) ([9ad334e](https://github.com/oorabona/node-liblzma/commit/9ad334e))
+- refresh lockfile for latest transitive dependencies (deps) ([2a00620](https://github.com/oorabona/node-liblzma/commit/2a00620))
+- refresh lockfile for latest transitive dependencies (deps) ([292f5b0](https://github.com/oorabona/node-liblzma/commit/292f5b0))
+- refresh lockfile for latest transitive dependencies (deps) ([a3846f2](https://github.com/oorabona/node-liblzma/commit/a3846f2))
+- refresh lockfile for latest transitive dependencies (deps) ([ec517d4](https://github.com/oorabona/node-liblzma/commit/ec517d4))
+- refresh lockfile for latest transitive dependencies (deps) ([bbfe7b7](https://github.com/oorabona/node-liblzma/commit/bbfe7b7))
+- refresh lockfile for latest transitive dependencies (deps) ([788248c](https://github.com/oorabona/node-liblzma/commit/788248c))
+- refresh lockfile for latest transitive dependencies (deps) ([4d393e7](https://github.com/oorabona/node-liblzma/commit/4d393e7))
+- refresh lockfile for latest transitive dependencies (deps) ([29c95d3](https://github.com/oorabona/node-liblzma/commit/29c95d3))
+- refresh lockfile for latest transitive dependencies (deps) ([2ce8e04](https://github.com/oorabona/node-liblzma/commit/2ce8e04))
+- refresh lockfile for latest transitive dependencies (deps) ([09dc57f](https://github.com/oorabona/node-liblzma/commit/09dc57f))
+- refresh lockfile for latest transitive dependencies (deps) ([73fcd3c](https://github.com/oorabona/node-liblzma/commit/73fcd3c))
+- bump @oorabona/vitest-monocart-coverage (#148) (deps-dev) ([34e77db](https://github.com/oorabona/node-liblzma/commit/34e77db))
+- bump the dev-dependencies group with 2 updates (#146) (deps-dev) ([59b5c25](https://github.com/oorabona/node-liblzma/commit/59b5c25))
+- refresh lockfile for latest transitive dependencies (deps) ([0600d15](https://github.com/oorabona/node-liblzma/commit/0600d15))
+- release v7.0.1 (nxz) ([14c5db1](https://github.com/oorabona/node-liblzma/commit/14c5db1))
+- release v6.1.1 (tar-xz) ([44b6e14](https://github.com/oorabona/node-liblzma/commit/44b6e14))
+
+### Fixed
+- pin node-gyp 12.4.0 for VS2026 Windows native builds (#159) (build) ([8b08d93](https://github.com/oorabona/node-liblzma/commit/8b08d93))
+- drop node-PATH dependency in binding.gyp (#153) (#154) (binding) ([e64062d](https://github.com/oorabona/node-liblzma/commit/e64062d))
+- drop @ts-expect-error via intersection-cast (forward-compat with @types/node 25.7.0) (#155) (stream) ([bc0bf0f](https://github.com/oorabona/node-liblzma/commit/bc0bf0f))
+- install node-gyp globally alongside prebuildify (#142) (ci) ([5114c33](https://github.com/oorabona/node-liblzma/commit/5114c33))
+
 ## [5.0.1] - 2026-05-06
 
 ### ⚠️ BREAKING CHANGES
@@ -609,7 +656,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.1...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.2...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -632,3 +679,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [5.0.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.0
 [v5.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.1
 [5.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.1
+[v5.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.2
+[5.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.2
