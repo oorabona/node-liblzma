@@ -14,7 +14,6 @@ import sys
 import subprocess
 import platform
 import argparse
-import shutil
 from pathlib import Path
 
 def detect_cmake():
@@ -29,12 +28,15 @@ def detect_cmake():
         return False
 
 def get_cmake_generator():
-    """Get appropriate CMake generator for the current platform"""
+    """Get appropriate CMake generator for the current platform.
+
+    Returns None on Windows so CMake selects the newest installed Visual
+    Studio generator itself; hardcoding a version (e.g. "Visual Studio 17
+    2022") breaks when the CI image bumps the toolchain (VS2022 -> VS2026).
+    """
     system = platform.system()
     if system == "Windows":
-        # Use Ninja or Unix Makefiles for better CI compatibility
-        # Visual Studio generator can be problematic in CI environments
-        return "Ninja" if shutil.which('ninja') else "Unix Makefiles"
+        return None
     else:
         # Use Unix Makefiles on Linux/macOS (works with make, ninja, etc.)
         return "Unix Makefiles"
@@ -44,7 +46,6 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
     generator = get_cmake_generator()
     cmake_args = [
         'cmake',
-        f'-G{generator}',
         f'-B{build_dir}',
         f'-DCMAKE_INSTALL_PREFIX={install_dir}',
         '-DCMAKE_BUILD_TYPE=Release',
@@ -62,7 +63,12 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
         # Disable compiler warnings that might cause issues in CI
         '-DCMAKE_C_FLAGS=-w',
     ]
-    
+
+    # Explicit generator on Unix; on Windows it stays unset so CMake picks
+    # the newest installed Visual Studio (see get_cmake_generator).
+    if generator:
+        cmake_args.insert(1, f'-G{generator}')
+
     # Platform-specific configuration
     system = platform.system()
     
@@ -75,8 +81,10 @@ def configure_cmake(source_dir, build_dir, install_dir, runtime_link="static", e
         print("[THREAD] Threading support: disabled (XZ_THREADS=no)")
     
     if system == "Windows":
-        # Use Visual Studio generator for Windows builds (supports -A x64)
-        cmake_args.extend(['-G', 'Visual Studio 17 2022', '-A', 'x64'])
+        # No -G: CMake defaults to the newest installed Visual Studio, so the
+        # build follows the runner image's toolchain (VS2022, VS2026, ...).
+        # -A x64 selects the 64-bit architecture on the VS generator.
+        cmake_args.extend(['-A', 'x64'])
         print("[BUILD] Windows x64 build configuration")
     elif system == "Darwin":
         # macOS specific optimizations
