@@ -10,8 +10,6 @@ on:
       - 'pnpm-lock.yaml'
       - '**.md'
       - 'docs/**'
-      - 'demo/**'
-      - 'examples/**'
       - '.github/dependabot.yml'
   schedule:
     - cron: '0 0 * * 0'  # Weekly, Sunday 00:00 UTC
