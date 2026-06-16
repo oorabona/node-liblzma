@@ -22,19 +22,6 @@ async function drain(iter: AsyncIterable<Uint8Array>): Promise<Uint8Array[]> {
   return chunks;
 }
 
-function makeReadableStream(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
-  let index = 0;
-  return new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (index < chunks.length) {
-        controller.enqueue(chunks[index++] as Uint8Array);
-      } else {
-        controller.close();
-      }
-    },
-  });
-}
-
 /**
  * Build a minimal Web-Streams-compatible reader that does NOT implement
  * Symbol.asyncIterator. Node 18+ ReadableStream has asyncIterator so it
