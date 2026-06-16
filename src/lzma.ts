@@ -324,6 +324,12 @@ interface ResolvedLZMAOptions {
   memlimit?: number | bigint;
 }
 
+interface ProcessChunkState {
+  availInBefore: number | undefined;
+  availOutBefore: number;
+  inOff: number;
+}
+
 export abstract class XzStream extends Transform {
   protected _opts: ResolvedLZMAOptions;
   protected _chunkSize: number;
@@ -578,105 +584,139 @@ export abstract class XzStream extends Transform {
     flushFlag: number,
     cb?: TransformCallback
   ): Buffer | undefined {
-    const async = typeof cb === 'function';
+    /* v8 ignore start */
+    return typeof cb === 'function'
+      ? this._processChunkAsync(chunk, flushFlag, cb)
+      : this._processChunkSync(chunk, flushFlag);
+    /* v8 ignore stop */
+  }
 
+  private _consumeProcessOutput(
+    state: ProcessChunkState,
+    availOutAfter: number,
+    onOutput: (out: Buffer, used: number) => void
+  ): void {
+    const used = state.availOutBefore - availOutAfter;
+    assert.ok(used >= 0, `More bytes after than before! Delta = ${used}`);
+
+    if (used > 0) {
+      const out = this._buffer.subarray(this._offset, this._offset + used);
+      this._offset += used;
+      onOutput(out, used);
+    }
+
+    /* v8 ignore start */
+    // exhausted the output buffer, or used all the input create a new one.
+    if (availOutAfter === 0 || this._offset >= this._chunkSize) {
+      state.availOutBefore = this._chunkSize;
+      this._reallocateBuffer();
+    }
+    /* v8 ignore stop */
+  }
+
+  private _advanceProcessInput(state: ProcessChunkState, availInAfter: number): void {
+    /* v8 ignore next */
+    state.inOff += (state.availInBefore ?? 0) - availInAfter;
+    state.availInBefore = availInAfter;
+  }
+
+  private _processChunkSync(chunk: Buffer | null, flushFlag: number): Buffer | undefined {
     // Sanity checks
     assert.ok(!this._closed, 'Stream closed!');
 
-    let availInBefore = chunk?.length;
-    let availOutBefore = this._chunkSize - this._offset;
-    let inOff = 0;
-    /* v8 ignore start */
+    const state: ProcessChunkState = {
+      availInBefore: chunk?.length,
+      availOutBefore: this._chunkSize - this._offset,
+      inOff: 0,
+    };
 
-    if (!async) {
-      /* v8 ignore stop */
-      // Doing it synchronously
-      const buffers: Buffer[] = [];
-      let nread = 0;
-      let error: Error | null = null;
-      /* v8 ignore next */
+    // Doing it synchronously
+    const buffers: Buffer[] = [];
+    let nread = 0;
+    let error: Error | null = null;
+    /* v8 ignore next */
 
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex but necessary LZMA callback logic
-      const callback = (errno: number, availInAfter: number, availOutAfter: number): boolean => {
-        /* v8 ignore start */
-        if (this._hadError) {
-          return false;
-        }
-
-        // if LZMA engine returned something else, we are running into trouble!
-        if (errno !== liblzma.LZMA_OK && errno !== liblzma.LZMA_STREAM_END) {
-          this.emit('onerror', errno);
-          return false;
-        }
-        /* v8 ignore stop */
-
-        const used = availOutBefore - availOutAfter;
-        assert.ok(used >= 0, `More bytes after than before! Delta = ${used}`);
-
-        if (used > 0) {
-          const out = this._buffer.subarray(this._offset, this._offset + used);
-          this._offset += used;
-          buffers.push(out);
-          nread += used;
-        }
-
-        /* v8 ignore start */
-        // exhausted the output buffer, or used all the input create a new one.
-        if (availOutAfter === 0 || this._offset >= this._chunkSize) {
-          availOutBefore = this._chunkSize;
-          this._reallocateBuffer();
-        }
-
-        if (availOutAfter === 0 || availInAfter > 0) {
-          inOff += (availInBefore ?? 0) - availInAfter;
-          availInBefore = availInAfter;
-          return true;
-        }
-
-        /* v8 ignore stop */
+    const callback = (errno: number, availInAfter: number, availOutAfter: number): boolean => {
+      /* v8 ignore start */
+      if (this._hadError) {
         return false;
-      };
+      }
+
+      // if LZMA engine returned something else, we are running into trouble!
+      if (errno !== liblzma.LZMA_OK && errno !== liblzma.LZMA_STREAM_END) {
+        this.emit('onerror', errno);
+        return false;
+      }
+      /* v8 ignore stop */
+
+      this._consumeProcessOutput(state, availOutAfter, (out, used) => {
+        buffers.push(out);
+        nread += used;
+      });
 
       /* v8 ignore start */
-      this.on('error', (e: Error) => {
-        error = e;
-      });
+      if (availOutAfter === 0 || availInAfter > 0) {
+        this._advanceProcessInput(state, availInAfter);
+        return true;
+      }
+
       /* v8 ignore stop */
+      return false;
+    };
 
-      /* v8 ignore next - processing loop entry */
-      while (true) {
-        const [status, availInAfter, availOutAfter] = this.lzma.codeSync(
-          flushFlag,
-          chunk,
-          inOff,
-          availInBefore,
-          this._buffer,
-          this._offset
-        );
-        /* v8 ignore start */
-        if (this._hadError || !callback(status, availInAfter, availOutAfter)) {
-          break;
-        }
-        /* v8 ignore stop */
+    /* v8 ignore start */
+    this.on('error', (e: Error) => {
+      error = e;
+    });
+    /* v8 ignore stop */
+
+    /* v8 ignore next - processing loop entry */
+    while (true) {
+      const [status, availInAfter, availOutAfter] = this.lzma.codeSync(
+        flushFlag,
+        chunk,
+        state.inOff,
+        state.availInBefore,
+        this._buffer,
+        this._offset
+      );
+      /* v8 ignore start */
+      if (this._hadError || !callback(status, availInAfter, availOutAfter)) {
+        break;
       }
-
-      // F-012: Use try-finally to ensure close() runs even on error
-      try {
-        /* v8 ignore start */
-        if (this._hadError) {
-          throw error ?? new Error('Unknown LZMA error');
-        }
-        /* v8 ignore stop */
-
-        const buf = Buffer.concat(buffers, nread);
-        return buf;
-      } finally {
-        /* v8 ignore next - cleanup path */
-        this.close();
-      }
+      /* v8 ignore stop */
     }
 
-    // Async path
+    // F-012: Use try-finally to ensure close() runs even on error
+    try {
+      /* v8 ignore start */
+      if (this._hadError) {
+        throw error ?? new Error('Unknown LZMA error');
+      }
+      /* v8 ignore stop */
+
+      const buf = Buffer.concat(buffers, nread);
+      return buf;
+    } finally {
+      /* v8 ignore next - cleanup path */
+      this.close();
+    }
+  }
+
+  private _processChunkAsync(
+    chunk: Buffer | null,
+    flushFlag: number,
+    cb: TransformCallback
+  ): Buffer | undefined {
+    // Sanity checks
+    assert.ok(!this._closed, 'Stream closed!');
+
+    const state: ProcessChunkState = {
+      availInBefore: chunk?.length,
+      availOutBefore: this._chunkSize - this._offset,
+      inOff: 0,
+    };
+
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex but necessary async LZMA callback logic with proper error handling
     const callback = (errno: number, availInAfter: number, availOutAfter: number): boolean => {
       /* v8 ignore start - error state handling is difficult to test */
@@ -695,33 +735,21 @@ export abstract class XzStream extends Transform {
       /* v8 ignore stop */
       /* v8 ignore next */
 
-      const used = availOutBefore - availOutAfter;
-      assert.ok(used >= 0, `More bytes after than before! Delta = ${used}`);
-
-      if (used > 0) {
-        const out = this._buffer.subarray(this._offset, this._offset + used);
-        this._offset += used;
+      this._consumeProcessOutput(state, availOutAfter, (out, used) => {
         this._bytesWritten += used;
         this.push(out);
         this._emitProgress();
-      }
-
-      // exhausted the output buffer, or used all the input create a new one.
-      if (availOutAfter === 0 || this._offset >= this._chunkSize) {
-        availOutBefore = this._chunkSize;
-        this._reallocateBuffer();
-      }
+      });
 
       if (availOutAfter === 0 || availInAfter > 0) {
         /* v8 ignore start - complex async processing continuation */
-        inOff += (availInBefore ?? 0) - availInAfter;
-        availInBefore = availInAfter;
+        this._advanceProcessInput(state, availInAfter);
         /* v8 ignore stop */
         this.lzma.code(
           flushFlag,
           chunk,
-          inOff,
-          availInBefore,
+          state.inOff,
+          state.availInBefore,
           this._buffer,
           this._offset,
           callback
@@ -741,7 +769,15 @@ export abstract class XzStream extends Transform {
       return false;
     };
 
-    this.lzma.code(flushFlag, chunk, inOff, availInBefore, this._buffer, this._offset, callback);
+    this.lzma.code(
+      flushFlag,
+      chunk,
+      state.inOff,
+      state.availInBefore,
+      this._buffer,
+      this._offset,
+      callback
+    );
     return;
   }
 }
