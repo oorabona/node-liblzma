@@ -75,6 +75,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "4.1.5",
     "nano-staged": "^0.9.0",
+    "node-gyp": "^12.4.0",
     "prebuildify": "^6.0.1",
     "release-it": "^20.0.0",
     "simple-git-hooks": "^2.13.1",
