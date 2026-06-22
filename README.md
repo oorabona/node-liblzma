@@ -131,7 +131,7 @@ xz(Buffer.from('Hello, World!'), (err, compressed) => {
 
 - **Node.js >= 22 required** — Node 20 reached EOL in April 2026
 - **TypeScript 6** — Upgraded from TS 5.x; explicit `types` declarations in workspace tsconfigs
-- **CI matrix updated** — Tests now run on Node 22 + 24 (was 20 + 22)
+- **CI matrix updated** — Tests now run on Node 22, 24, and 26 (was 20 + 22)
 - **XZ Utils 5.8.3** — Updated from 5.8.2
 
 ### v4.0.0 — API Cleanup

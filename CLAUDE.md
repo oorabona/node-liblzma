@@ -45,7 +45,7 @@ Actionable backlog: [GitHub Issues](https://github.com/oorabona/node-liblzma/iss
 - **Linter:** Biome 2.x
 - **Build:** node-gyp + tsc + prebuildify (native); emcc (WASM)
 - **Native binding:** node-addon-api (N-API)
-- **Node.js:** root `node-liblzma` >= 22.0.0; workspace packages `tar-xz` and `@oorabona/nxz` >= 20.0.0
+- **Node.js:** >= 22.0.0 across all packages (root `node-liblzma`, `tar-xz`, `@oorabona/nxz`)
 
 ## Conventions
 
