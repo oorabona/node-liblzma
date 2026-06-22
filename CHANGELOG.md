@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.3] - 2026-06-22
+
+### Changed
+- refresh lockfile for latest transitive dependencies (deps) ([07e7d96](https://github.com/oorabona/node-liblzma/commit/07e7d96))
+- refresh lockfile for latest transitive dependencies (deps) ([410fd2b](https://github.com/oorabona/node-liblzma/commit/410fd2b))
+- refresh lockfile for latest transitive dependencies (deps) ([3d7f2c6](https://github.com/oorabona/node-liblzma/commit/3d7f2c6))
+- refresh lockfile for latest transitive dependencies (deps) ([f9cc0b5](https://github.com/oorabona/node-liblzma/commit/f9cc0b5))
+- refresh lockfile for latest transitive dependencies (deps) ([3c81b8d](https://github.com/oorabona/node-liblzma/commit/3c81b8d))
+- refresh lockfile for latest transitive dependencies (deps) ([540a473](https://github.com/oorabona/node-liblzma/commit/540a473))
+
+### Fixed
+- build with WASM_BIGINT so .xz works on strict-BigInt engines (#170) (wasm) ([828b7ee](https://github.com/oorabona/node-liblzma/commit/828b7ee))
+
 ## [5.0.2] - 2026-06-16
 
 ### Changed
@@ -656,7 +669,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.2...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.3...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -681,3 +694,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [5.0.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.1
 [v5.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.2
 [5.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.2
+[v5.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.3
+[5.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.3
