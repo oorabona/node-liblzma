@@ -30,7 +30,7 @@ jobs:
       latest_version: ${{ steps.check.outputs.latest }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -230,7 +230,7 @@ jobs:
       (needs.check-updates.outputs.has_update == 'false' && github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download XZ sources
         run: |

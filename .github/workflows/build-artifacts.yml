@@ -53,7 +53,7 @@ jobs:
     name: Build ${{ matrix.target }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.normalize-tag.outputs.tag }}
           submodules: recursive
