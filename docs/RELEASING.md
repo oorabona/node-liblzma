@@ -130,7 +130,7 @@ For publishing alpha, beta, or release candidate versions.
 ### Steps
 
 1. Runs tests and type-check
-2. Builds native modules for Node 20, 22 × Linux, macOS, Windows
+2. Builds N-API prebuilt binaries (Node-version-independent) for linux-x64, macOS-arm64, win32-x64
 3. Publishes to npm with the appropriate dist-tag (`--tag alpha`)
 4. Creates GitHub pre-release
 
