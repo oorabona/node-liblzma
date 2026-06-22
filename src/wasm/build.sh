@@ -118,6 +118,7 @@ EXPORTED_FUNCTIONS=$(echo "$EXPORTED_FUNCTIONS" | tr -d ' \n')
 emcc -Oz -flto \
     -I"$LIBLZMA_SRC/src/liblzma/api" \
     -s WASM=1 \
+    -s WASM_BIGINT=1 \
     -s FILESYSTEM=0 \
     -s MODULARIZE=1 \
     -s EXPORT_ES6=1 \

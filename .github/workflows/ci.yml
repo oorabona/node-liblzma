@@ -586,10 +586,57 @@ jobs:
           retry_on: error
           command: pnpm test
 
+  # WASM runtime compatibility: the .xz i64 boundary (memlimit) must work on
+  # strict-BigInt engines. Node <=24 silently coerced BigInt->Number at the
+  # legalized i64 boundary; Node 26 and Deno throw. Built with WASM_BIGINT, the
+  # decoder accepts BigInt natively. This job locks the regression on both
+  # runtimes (the rest of the matrix only covers Node 22/24). See issue #165.
+  wasm-runtime-compat:
+    name: WASM runtime compat (Node 26 + Deno)
+    needs: [setup, build-wasm]
+    if: >-
+      needs.setup.outputs.run-smoke-only == 'true' ||
+      needs.setup.outputs.run-full-matrix == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-build
+          path: src/wasm
+
+      - name: Setup build environment (Node 26)
+        uses: ./.github/actions/setup-env
+        with:
+          node-version: '26'
+          cache-prefix: 'wasm-compat'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build (tsc + copy WASM artifacts)
+        run: pnpm build
+
+      - name: WASM smoke on Node 26
+        run: node test/wasm/runtime-smoke.mjs
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: WASM smoke on Deno
+        run: deno run -A test/wasm/runtime-smoke.mjs
+
   # Final summary
   summary:
     name: CI Summary
-    needs: [setup, quality, build-wasm, coverage, smoke-test, full-test, threading-test]
+    needs: [setup, quality, build-wasm, coverage, smoke-test, full-test, threading-test, wasm-runtime-compat]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -613,6 +660,7 @@ jobs:
           echo "- **Smoke Tests**: ${{ needs.smoke-test.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Full Tests**: ${{ needs.full-test.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Threading Tests**: ${{ needs.threading-test.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **WASM runtime compat**: ${{ needs.wasm-runtime-compat.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Overall status
@@ -621,6 +669,7 @@ jobs:
           SMOKE_OK="${{ needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped' }}"
           FULL_OK="${{ needs.full-test.result == 'success' || needs.full-test.result == 'skipped' }}"
           THREADING_OK="${{ needs.threading-test.result == 'success' || needs.threading-test.result == 'skipped' }}"
+          WASM_COMPAT_OK="${{ needs.wasm-runtime-compat.result == 'success' || needs.wasm-runtime-compat.result == 'skipped' }}"
 
           # Ensure at least one test suite actually ran (not just skipped)
           SMOKE_RAN="${{ needs.smoke-test.result == 'success' }}"
@@ -631,7 +680,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$QUALITY_OK" == "true" && "$COVERAGE_OK" == "true" && "$SMOKE_OK" == "true" && "$FULL_OK" == "true" && "$THREADING_OK" == "true" ]]; then
+          if [[ "$QUALITY_OK" == "true" && "$COVERAGE_OK" == "true" && "$SMOKE_OK" == "true" && "$FULL_OK" == "true" && "$THREADING_OK" == "true" && "$WASM_COMPAT_OK" == "true" ]]; then
             echo "### ✅ All checks passed!" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Some checks failed" >> $GITHUB_STEP_SUMMARY
