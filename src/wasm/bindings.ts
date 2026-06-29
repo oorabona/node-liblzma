@@ -27,13 +27,67 @@ let moduleInstance: LZMAModule | null = null;
 let modulePromise: Promise<LZMAModule> | null = null;
 
 /**
+ * Dynamically import a Node/Deno built-in without exposing the specifier to
+ * browser bundlers' static analysis. Only ever reached after a Node/Deno
+ * runtime check (see {@link readLocalWasmBinary}), so a browser bundle never
+ * executes it; the variable specifier plus the ignore comments stop
+ * Vite/webpack from trying to resolve `node:*` at build time.
+ */
+function importNodeBuiltin<T>(specifier: string): Promise<T> {
+  return import(/* @vite-ignore */ /* webpackIgnore: true */ specifier) as Promise<T>;
+}
+
+/**
+ * Read the sibling `liblzma.wasm` from disk on Node and Deno.
+ *
+ * The WASM glue is built for `web,worker`, so its default loader resolves the
+ * binary via `import.meta.url` and fetches it — which fails on `file://` URLs
+ * under Node and Deno. On those runtimes we read the file ourselves so it can be
+ * handed to Emscripten as `wasmBinary`. Returns null in browser/worker runtimes,
+ * where Emscripten's built-in fetch loader is used instead.
+ */
+async function readLocalWasmBinary(): Promise<Uint8Array | null> {
+  const g = globalThis as { Deno?: unknown; process?: { versions?: { node?: string } } };
+  const hasDeno = typeof g.Deno !== 'undefined';
+  /* v8 ignore start - under Node vitest only the Node arm runs; the Deno arm is covered by the CI runtime smoke and the browser arm (return null) needs a browser env */
+  const hasNode = !!g.process?.versions?.node;
+  if (!hasNode && !hasDeno) {
+    return null;
+  }
+  /* v8 ignore stop */
+  const { readFile } =
+    await importNodeBuiltin<typeof import('node:fs/promises')>('node:fs/promises');
+  const { fileURLToPath } = await importNodeBuiltin<typeof import('node:url')>('node:url');
+  const wasmPath = fileURLToPath(new URL('./liblzma.wasm', import.meta.url));
+  const buf = await readFile(wasmPath);
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
+/**
+ * Default module loader: imports the Emscripten glue and, on Node/Deno, supplies
+ * the `.wasm` binary so `node-liblzma/wasm` works with zero configuration.
+ * Browsers fall through to Emscripten's built-in fetch loader.
+ */
+async function loadDefaultModule(): Promise<LZMAModule> {
+  const { default: createLZMA } = await import('./liblzma.js');
+  const wasmBinary = await readLocalWasmBinary();
+  /* v8 ignore start - browser fetch path (wasmBinary === null) only reachable in a browser env */
+  if (!wasmBinary) {
+    return createLZMA();
+  }
+  /* v8 ignore stop */
+  return createLZMA({ wasmBinary });
+}
+
+/**
  * Initialize the WASM module. Must be called before any operation.
  *
- * The module is loaded once and cached. Subsequent calls return
- * the same instance. Can be called with a custom loader for
- * inline/bundled WASM scenarios.
+ * The module is loaded once and cached. Subsequent calls return the same
+ * instance. On Node and Deno the sibling `liblzma.wasm` is loaded automatically
+ * (zero config); pass a custom loader only for inline/bundled scenarios or to
+ * fetch the binary from a custom location.
  *
- * @param loader - Optional custom module loader (for inline WASM)
+ * @param loader - Optional custom module loader (for inline/bundled WASM)
  * @returns The initialized Emscripten module
  */
 export async function initModule(loader?: () => Promise<LZMAModule>): Promise<LZMAModule> {
@@ -45,14 +99,7 @@ export async function initModule(loader?: () => Promise<LZMAModule>): Promise<LZ
   }
 
   modulePromise = (async () => {
-    if (loader) {
-      moduleInstance = await loader();
-      /* v8 ignore start - default import path only used in browser environments */
-    } else {
-      const { default: createLZMA } = await import('./liblzma.js');
-      moduleInstance = (await createLZMA()) as LZMAModule;
-      /* v8 ignore stop */
-    }
+    moduleInstance = loader ? await loader() : await loadDefaultModule();
     return moduleInstance;
   })();
 
