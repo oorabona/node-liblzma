@@ -150,7 +150,7 @@ jobs:
 
       - name: Cache XZ sources
         id: cache-xz
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             deps/xz
@@ -292,7 +292,7 @@ jobs:
           ccache-max-size: '200M'
 
       - name: Cache build artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             build/liblzma
@@ -376,7 +376,7 @@ jobs:
           ccache-max-size: '200M'
 
       - name: Cache build artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             build/liblzma
@@ -465,7 +465,7 @@ jobs:
 
       - name: Cache build artifacts
         if: matrix.config.use_global_liblzma == false
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             build/liblzma
@@ -550,7 +550,7 @@ jobs:
           ccache-max-size: '300M'
 
       - name: Cache build artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             build/liblzma
