@@ -41,6 +41,18 @@ Forces WASM usage regardless of environment. Useful for Node.js when you don't w
 
 On **Node and Deno** this works with zero configuration — `initModule()` loads the sibling `liblzma.wasm` from disk automatically. In browsers the binary is resolved by your bundler (or fetched relative to the module URL). Pass a custom loader only to fetch the binary from a non-default location (see [Custom WASM Loading](#custom-wasm-loading)).
 
+```typescript
+// Node / Deno — no loader, no native build:
+import { xzAsync, unxzAsync } from 'node-liblzma/wasm';
+const compressed = await xzAsync('hello'); // buffer API auto-initializes
+const original = await unxzAsync(compressed);
+
+// The streaming API needs an explicit initModule() first:
+import { initModule, createXz, createUnxz } from 'node-liblzma/wasm';
+await initModule();
+const stream = createXz({ preset: 6 });
+```
+
 ### Inline WASM Import (zero-config)
 
 ```typescript
