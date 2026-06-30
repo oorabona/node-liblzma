@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-06-30
+
+### Added
+- zero-config WASM loading on Node and Deno (#173) (wasm) ([34a3035](https://github.com/oorabona/node-liblzma/commit/34a3035))
+
+### Changed
+- document zero-config WASM loading on Node and Deno (#174) (wasm) ([dcfa324](https://github.com/oorabona/node-liblzma/commit/dcfa324))
+- refresh lockfile for latest transitive dependencies (deps) ([6423c55](https://github.com/oorabona/node-liblzma/commit/6423c55))
+- refresh lockfile for latest transitive dependencies (deps) ([78f1767](https://github.com/oorabona/node-liblzma/commit/78f1767))
+- refresh lockfile for latest transitive dependencies (deps) ([553093f](https://github.com/oorabona/node-liblzma/commit/553093f))
+- refresh lockfile for latest transitive dependencies (deps) ([5c03219](https://github.com/oorabona/node-liblzma/commit/5c03219))
+- refresh lockfile for latest transitive dependencies (deps) ([32349bc](https://github.com/oorabona/node-liblzma/commit/32349bc))
+- refresh lockfile for latest transitive dependencies (deps) ([4695853](https://github.com/oorabona/node-liblzma/commit/4695853))
+- refresh lockfile for latest transitive dependencies (deps) ([8591b61](https://github.com/oorabona/node-liblzma/commit/8591b61))
+- bump @types/node from 25.9.4 to 26.0.0 (#168) (deps) ([fa115fb](https://github.com/oorabona/node-liblzma/commit/fa115fb))
+- bump node-gyp from 12.4.0 to 13.0.0 (#167) (deps-dev) ([828320e](https://github.com/oorabona/node-liblzma/commit/828320e))
+
 ## [5.0.3] - 2026-06-22
 
 ### Changed
@@ -669,7 +686,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.0.3...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.0...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -696,3 +713,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [5.0.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.2
 [v5.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.3
 [5.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.3
+[v5.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.0
+[5.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.0
