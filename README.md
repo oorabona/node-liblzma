@@ -228,11 +228,11 @@ const decompressed = compressedStream.pipeThrough(createUnxz());
 | Import | When to use |
 |--------|-------------|
 | `node-liblzma` | Standard — bundler resolves to WASM (browser) or native (Node.js) |
-| `node-liblzma/wasm` | Explicit WASM usage in Node.js (no native addon needed) |
-| `node-liblzma/inline` | Zero-config — WASM embedded as base64 (no external file to serve) |
+| `node-liblzma/wasm` | Explicit WASM — **zero-config on Node & Deno** (auto-loads the sibling `.wasm`, no native addon); browser resolved by your bundler |
+| `node-liblzma/inline` | Zero-config everywhere — WASM embedded as base64 (no external file to serve) |
 
 ```typescript
-// Explicit WASM (works in Node.js too, no native build required)
+// Explicit WASM — zero-config on Node & Deno (auto-loads the sibling .wasm), no native build
 import { xzAsync } from 'node-liblzma/wasm';
 
 // Inline mode (larger bundle, but no WASM file to configure)
