@@ -438,6 +438,23 @@ describe('WASM Bindings (Block 2)', () => {
     });
   });
 
+  describe('zero-config default loader', () => {
+    it('should load on Node with no custom loader (initModule() zero-config)', async () => {
+      // The default loader reads the sibling liblzma.wasm itself, so
+      // node-liblzma/wasm works in Node/Deno without a custom wasmBinary loader.
+      resetModule();
+      const mod = await initModule();
+      expect(mod).toBeDefined();
+      expect(mod._lzma_easy_encoder).toBeTypeOf('function');
+      // Sanity: the module is actually functional, not just constructed.
+      expect(versionString()).toMatch(/^\d+\.\d+\.\d+/);
+    });
+
+    afterAll(async () => {
+      await loadWasmModule();
+    });
+  });
+
   describe('Cross-compatibility with native', () => {
     it('should produce output decompressible by native xz tool', () => {
       // This test validates that WASM output is standard-compliant XZ

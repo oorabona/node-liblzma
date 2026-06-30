@@ -39,6 +39,8 @@ import { xzAsync, unxzAsync, initModule } from 'node-liblzma/wasm';
 
 Forces WASM usage regardless of environment. Useful for Node.js when you don't want to install native build dependencies.
 
+On **Node and Deno** this works with zero configuration — `initModule()` loads the sibling `liblzma.wasm` from disk automatically. In browsers the binary is resolved by your bundler (or fetched relative to the module URL). Pass a custom loader only to fetch the binary from a non-default location (see [Custom WASM Loading](#custom-wasm-loading)).
+
 ### Inline WASM Import (zero-config)
 
 ```typescript
