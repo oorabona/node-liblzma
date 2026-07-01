@@ -652,6 +652,17 @@ npm install node-liblzma
 pnpm add node-liblzma
 ```
 
+### Node.js support
+
+Requires **Node.js >= 22**. CI builds and tests on **Node 22, 24, and 26** across Linux, macOS, and Windows.
+
+The `>= 22` floor is deliberate and tracks the active Node.js release line:
+
+- Node 20 reached **end-of-life in April 2026** and was dropped in v5.0.0.
+- Native builds use **node-gyp 13**, required for the Node 26 Windows toolchain — it drops Node < 22.22.2, so supporting Node 20 and Node 26-on-Windows in a single toolchain isn't possible.
+
+Prebuilt N-API binaries ship for `linux-x64`, `darwin-arm64`, and `win32-x64`; other platforms build from source (see below).
+
 ### System Libraries
 
 If prebuilt binaries don't match your platform, install system development libraries:
