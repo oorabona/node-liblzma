@@ -32,7 +32,7 @@
     "./wasm/liblzma.wasm": "./lib/wasm/liblzma.wasm"
   },
   "scripts": {
-    "postinstall": "node-gyp-build",
+    "install": "node-gyp-build",
     "build": "tsc && node scripts/copy-wasm-artifacts.js",
     "build:wasm": "bash src/wasm/build.sh",
     "build:wasm:size": "bash src/wasm/build.sh --size-only",
@@ -128,7 +128,6 @@
     "binding",
     "native"
   ],
-  "gypfile": true,
   "author": "Olivier ORABONA",
   "license": "LGPL-3.0",
   "bugs": {
