@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.1] - 2026-07-01
+
+### Changed
+- document the Node.js >= 22 support policy (#176) (readme) ([93515b3](https://github.com/oorabona/node-liblzma/commit/93515b3))
+- refresh lockfile for latest transitive dependencies (deps) ([dbe428d](https://github.com/oorabona/node-liblzma/commit/dbe428d))
+- refresh lockfile for latest transitive dependencies (deps) ([1dc18bd](https://github.com/oorabona/node-liblzma/commit/1dc18bd))
+
+### Fixed
+- use node-gyp-build install script so prebuilds are used under pnpm (#175) (build) ([ef480ca](https://github.com/oorabona/node-liblzma/commit/ef480ca))
+
 ## [5.1.0] - 2026-06-30
 
 ### Added
@@ -686,7 +696,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.0...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.1...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -715,3 +725,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [5.0.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.0.3
 [v5.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.0
 [5.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.0
+[v5.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.1
+[5.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.1
