@@ -80,7 +80,7 @@
     "release-it": "^20.0.0",
     "simple-git-hooks": "^2.13.1",
     "tsd": "^0.33.0",
-    "typedoc": "^0.28.17",
+    "typedoc": "^0.28.20",
     "typedoc-material-theme": "^1.4.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
