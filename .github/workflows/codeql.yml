@@ -57,7 +57,7 @@ jobs:
 
       - name: Setup Python (for XZ download)
         if: matrix.language == 'c-cpp'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
