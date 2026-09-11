@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.2] - 2026-09-11
+
+### Added
+- update XZ to v5.8.4 (#182) ([a3d4b7f](https://github.com/oorabona/node-liblzma/commit/a3d4b7f))
+
+### Changed
+- refresh lockfile for latest transitive dependencies (deps) ([13f61a8](https://github.com/oorabona/node-liblzma/commit/13f61a8))
+- refresh lockfile for latest transitive dependencies (deps) ([d87b26e](https://github.com/oorabona/node-liblzma/commit/d87b26e))
+- refresh lockfile for latest transitive dependencies (deps) ([1ed7ae5](https://github.com/oorabona/node-liblzma/commit/1ed7ae5))
+- refresh lockfile for latest transitive dependencies (deps) ([d43526f](https://github.com/oorabona/node-liblzma/commit/d43526f))
+- refresh lockfile for latest transitive dependencies (deps) ([88c7dc7](https://github.com/oorabona/node-liblzma/commit/88c7dc7))
+- refresh lockfile for latest transitive dependencies (deps) ([4a4ed54](https://github.com/oorabona/node-liblzma/commit/4a4ed54))
+- refresh lockfile for latest transitive dependencies (deps) ([f899918](https://github.com/oorabona/node-liblzma/commit/f899918))
+- refresh lockfile for latest transitive dependencies (deps) ([727130c](https://github.com/oorabona/node-liblzma/commit/727130c))
+- refresh lockfile for latest transitive dependencies (deps) ([4e1a26e](https://github.com/oorabona/node-liblzma/commit/4e1a26e))
+- refresh lockfile for latest transitive dependencies (deps) ([0c8f13f](https://github.com/oorabona/node-liblzma/commit/0c8f13f))
+- refresh lockfile for latest transitive dependencies (deps) ([ef2b760](https://github.com/oorabona/node-liblzma/commit/ef2b760))
+- refresh lockfile for latest transitive dependencies (deps) ([6262c31](https://github.com/oorabona/node-liblzma/commit/6262c31))
+- refresh lockfile for latest transitive dependencies (deps) ([07214a1](https://github.com/oorabona/node-liblzma/commit/07214a1))
+- refresh lockfile for latest transitive dependencies (deps) ([dda49eb](https://github.com/oorabona/node-liblzma/commit/dda49eb))
+- refresh lockfile for latest transitive dependencies (deps) ([b355df4](https://github.com/oorabona/node-liblzma/commit/b355df4))
+- refresh lockfile for latest transitive dependencies (deps) ([ee85f5e](https://github.com/oorabona/node-liblzma/commit/ee85f5e))
+- bump @vitest/ui in the dev-dependencies group (#181) (deps-dev) ([433a856](https://github.com/oorabona/node-liblzma/commit/433a856))
+- refresh lockfile for latest transitive dependencies (deps) ([0a604f9](https://github.com/oorabona/node-liblzma/commit/0a604f9))
+- refresh lockfile for latest transitive dependencies (deps) ([e8e2802](https://github.com/oorabona/node-liblzma/commit/e8e2802))
+- refresh lockfile for latest transitive dependencies (deps) ([6cd1d80](https://github.com/oorabona/node-liblzma/commit/6cd1d80))
+- refresh lockfile for latest transitive dependencies (deps) ([4aa4193](https://github.com/oorabona/node-liblzma/commit/4aa4193))
+- refresh lockfile for latest transitive dependencies (deps) ([9059527](https://github.com/oorabona/node-liblzma/commit/9059527))
+- refresh lockfile for latest transitive dependencies (deps) ([e7ca5f9](https://github.com/oorabona/node-liblzma/commit/e7ca5f9))
+- refresh lockfile for latest transitive dependencies (deps) ([90a08e0](https://github.com/oorabona/node-liblzma/commit/90a08e0))
+- refresh lockfile for latest transitive dependencies (deps) ([3137f89](https://github.com/oorabona/node-liblzma/commit/3137f89))
+- refresh lockfile for latest transitive dependencies (deps) ([21722b7](https://github.com/oorabona/node-liblzma/commit/21722b7))
+- refresh lockfile for latest transitive dependencies (deps) ([c616198](https://github.com/oorabona/node-liblzma/commit/c616198))
+- refresh lockfile for latest transitive dependencies (deps) ([ff003bb](https://github.com/oorabona/node-liblzma/commit/ff003bb))
+- refresh lockfile for latest transitive dependencies (deps) ([d8e003f](https://github.com/oorabona/node-liblzma/commit/d8e003f))
+- refresh lockfile for latest transitive dependencies (deps) ([08a13b9](https://github.com/oorabona/node-liblzma/commit/08a13b9))
+- refresh lockfile for latest transitive dependencies (deps) ([1da929a](https://github.com/oorabona/node-liblzma/commit/1da929a))
+- refresh lockfile for latest transitive dependencies (deps) ([082f197](https://github.com/oorabona/node-liblzma/commit/082f197))
+- refresh lockfile for latest transitive dependencies (deps) ([da78b1a](https://github.com/oorabona/node-liblzma/commit/da78b1a))
+- refresh lockfile for latest transitive dependencies (deps) ([6e1df76](https://github.com/oorabona/node-liblzma/commit/6e1df76))
+- refresh lockfile for latest transitive dependencies (deps) ([782d766](https://github.com/oorabona/node-liblzma/commit/782d766))
+- refresh lockfile for latest transitive dependencies (deps) ([2e85fd8](https://github.com/oorabona/node-liblzma/commit/2e85fd8))
+- refresh lockfile for latest transitive dependencies (deps) ([7c7d988](https://github.com/oorabona/node-liblzma/commit/7c7d988))
+- refresh lockfile for latest transitive dependencies (deps) ([75be43b](https://github.com/oorabona/node-liblzma/commit/75be43b))
+- refresh lockfile for latest transitive dependencies (deps) ([f0be648](https://github.com/oorabona/node-liblzma/commit/f0be648))
+- refresh lockfile for latest transitive dependencies (deps) ([6830989](https://github.com/oorabona/node-liblzma/commit/6830989))
+- refresh lockfile for latest transitive dependencies (deps) ([1db93cf](https://github.com/oorabona/node-liblzma/commit/1db93cf))
+- refresh lockfile for latest transitive dependencies (deps) ([face9ef](https://github.com/oorabona/node-liblzma/commit/face9ef))
+- refresh lockfile for latest transitive dependencies (deps) ([b762530](https://github.com/oorabona/node-liblzma/commit/b762530))
+- refresh lockfile for latest transitive dependencies (deps) ([d72ec1a](https://github.com/oorabona/node-liblzma/commit/d72ec1a))
+- refresh lockfile for latest transitive dependencies (deps) ([f0ecc74](https://github.com/oorabona/node-liblzma/commit/f0ecc74))
+- refresh lockfile for latest transitive dependencies (deps) ([7fc6a4e](https://github.com/oorabona/node-liblzma/commit/7fc6a4e))
+- refresh lockfile for latest transitive dependencies (deps) ([351ba36](https://github.com/oorabona/node-liblzma/commit/351ba36))
+- refresh lockfile for latest transitive dependencies (deps) ([44665c0](https://github.com/oorabona/node-liblzma/commit/44665c0))
+- refresh lockfile for latest transitive dependencies (deps) ([a02815f](https://github.com/oorabona/node-liblzma/commit/a02815f))
+- refresh lockfile for latest transitive dependencies (deps) ([89c4ff6](https://github.com/oorabona/node-liblzma/commit/89c4ff6))
+- refresh lockfile for latest transitive dependencies (deps) ([bc93d95](https://github.com/oorabona/node-liblzma/commit/bc93d95))
+- refresh lockfile for latest transitive dependencies (deps) ([a8e90de](https://github.com/oorabona/node-liblzma/commit/a8e90de))
+- refresh lockfile for latest transitive dependencies (deps) ([de560fa](https://github.com/oorabona/node-liblzma/commit/de560fa))
+- refresh lockfile for latest transitive dependencies (deps) ([c68dbaf](https://github.com/oorabona/node-liblzma/commit/c68dbaf))
+- refresh lockfile for latest transitive dependencies (deps) ([1ec29fe](https://github.com/oorabona/node-liblzma/commit/1ec29fe))
+- refresh lockfile for latest transitive dependencies (deps) ([e4728ab](https://github.com/oorabona/node-liblzma/commit/e4728ab))
+- refresh lockfile for latest transitive dependencies (deps) ([0e307fb](https://github.com/oorabona/node-liblzma/commit/0e307fb))
+- refresh lockfile for latest transitive dependencies (deps) ([6b835de](https://github.com/oorabona/node-liblzma/commit/6b835de))
+- refresh lockfile for latest transitive dependencies (deps) ([c0a98df](https://github.com/oorabona/node-liblzma/commit/c0a98df))
+- refresh lockfile for latest transitive dependencies (deps) ([2538699](https://github.com/oorabona/node-liblzma/commit/2538699))
+- refresh lockfile for latest transitive dependencies (deps) ([6c2457b](https://github.com/oorabona/node-liblzma/commit/6c2457b))
+- refresh lockfile for latest transitive dependencies (deps) ([269e4a7](https://github.com/oorabona/node-liblzma/commit/269e4a7))
+- refresh lockfile for latest transitive dependencies (deps) ([1ae5bde](https://github.com/oorabona/node-liblzma/commit/1ae5bde))
+- bump @vitest/ui (#178) (deps-dev) ([664ef09](https://github.com/oorabona/node-liblzma/commit/664ef09))
+- refresh lockfile for latest transitive dependencies (deps) ([4cd487f](https://github.com/oorabona/node-liblzma/commit/4cd487f))
+- refresh lockfile for latest transitive dependencies (deps) ([6e3d7a9](https://github.com/oorabona/node-liblzma/commit/6e3d7a9))
+- refresh lockfile for latest transitive dependencies (deps) ([a0e05e5](https://github.com/oorabona/node-liblzma/commit/a0e05e5))
+- refresh lockfile for latest transitive dependencies (deps) ([effec1a](https://github.com/oorabona/node-liblzma/commit/effec1a))
+- refresh lockfile for latest transitive dependencies (deps) ([c731b02](https://github.com/oorabona/node-liblzma/commit/c731b02))
+
 ## [5.1.1] - 2026-07-01
 
 ### Changed
@@ -696,7 +772,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.1...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.2...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -727,3 +803,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [5.1.0]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.0
 [v5.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.1
 [5.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.1
+[v5.1.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.2
+[5.1.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.2
