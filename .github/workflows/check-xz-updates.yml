@@ -125,7 +125,7 @@ jobs:
           # Update the version file
           jq --arg version "${{ steps.check.outputs.latest }}" \
              --arg date "$(date -I)" \
-             '.version = $version | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
+             '.version = $version | .changelog = "https://github.com/tukaani-project/xz/releases/tag/" + $version | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
              xz-version.json > tmp.json && mv tmp.json xz-version.json
 
           echo "Updated xz-version.json to ${{ steps.check.outputs.latest }}"
@@ -136,8 +136,8 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          sign-commits: true
           commit-message: "feat: update XZ to ${{ steps.check.outputs.latest }}"
-          committer: Olivier ORABONA <oorabona@users.noreply.github.com>
           title: "🆙 Update XZ Utils to ${{ steps.check.outputs.latest }}"
           body: |
             ## XZ Utils Update Available
