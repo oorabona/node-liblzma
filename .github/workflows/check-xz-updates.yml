@@ -21,6 +21,10 @@ permissions:
   issues: write
   pull-requests: write
 
+concurrency:
+  group: check-xz-updates
+  cancel-in-progress: false
+
 jobs:
   check-updates:
     runs-on: ubuntu-latest
@@ -28,6 +32,7 @@ jobs:
       has_update: ${{ steps.check.outputs.new_version }}
       current_version: ${{ steps.check.outputs.current }}
       latest_version: ${{ steps.check.outputs.latest }}
+      check_status: ${{ steps.check.outputs.status }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -42,21 +47,38 @@ jobs:
           # Get current version from config
           CURRENT=$(jq -r '.version' xz-version.json)
           echo "Current XZ version: $CURRENT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
           # Get latest version via gh CLI (authenticated, no rate limit issues)
-          LATEST=$(gh release view --repo tukaani-project/xz --json tagName -q '.tagName' 2>/dev/null || echo "")
-          echo "Latest XZ version: $LATEST"
+          LATEST=$(gh release view --repo tukaani-project/xz --json tagName -q '.tagName' 2>/dev/null || true)
+
+          # A failed lookup is often transient, so retry once before failing.
+          if [ -z "$LATEST" ]; then
+            echo "⚠️ Could not determine latest XZ version; retrying once"
+            sleep 2
+            LATEST=$(gh release view --repo tukaani-project/xz --json tagName -q '.tagName' 2>/dev/null || true)
+          fi
 
           # Guard against empty responses (no releases, API error)
           if [ -z "$LATEST" ]; then
-            echo "⚠️ Could not determine latest XZ version"
+            echo "⚠️ Could not determine latest XZ version after retry" >&2
             echo "new_version=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "status=unavailable" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+){0,3}$ ]]; then
+            echo "⚠️ Rejected unsupported latest XZ version: $LATEST" >&2
+            printf '%s' "$LATEST" > "$RUNNER_TEMP/xz-rejected-tag"
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=unsupported_tag" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
 
           # Set outputs
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "status=complete" >> "$GITHUB_OUTPUT"
+          echo "Latest XZ version: $LATEST"
 
           if [ "$CURRENT" != "$LATEST" ]; then
             echo "new_version=true" >> $GITHUB_OUTPUT
@@ -121,23 +143,26 @@ jobs:
 
       - name: Update xz-version.json
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
+        env:
+          LATEST_VERSION: ${{ steps.check.outputs.latest }}
         run: |
           # Update the version file
-          jq --arg version "${{ steps.check.outputs.latest }}" \
+          jq --arg version "$LATEST_VERSION" \
              --arg date "$(date -I)" \
-             '.version = $version | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
+             '.version = $version | .changelog = "https://github.com/tukaani-project/xz/releases/tag/" + ($version | @uri) | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
              xz-version.json > tmp.json && mv tmp.json xz-version.json
 
-          echo "Updated xz-version.json to ${{ steps.check.outputs.latest }}"
+          echo "Updated xz-version.json to $LATEST_VERSION"
 
       - name: Create Pull Request
         id: create-pr
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          sign-commits: true
+          add-paths: xz-version.json
           commit-message: "feat: update XZ to ${{ steps.check.outputs.latest }}"
-          committer: Olivier ORABONA <oorabona@users.noreply.github.com>
           title: "🆙 Update XZ Utils to ${{ steps.check.outputs.latest }}"
           body: |
             ## XZ Utils Update Available
@@ -169,29 +194,43 @@ jobs:
             automated
 
       - name: Enable auto-merge
-        if: steps.create-pr.outputs.pull-request-number
+        if: steps.create-pr.outputs.pull-request-number && steps.create-pr.outputs.pull-request-commits-verified == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
         run: gh pr merge "$PR_NUMBER" --auto --squash
 
+      - name: Fail when created head commit is unverified
+        if: steps.create-pr.outputs.pull-request-number && steps.create-pr.outputs.pull-request-commits-verified != 'true'
+        env:
+          PR_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
+          COMMITS_VERIFIED: ${{ steps.create-pr.outputs.pull-request-commits-verified }}
+        run: |
+          echo "Created PR #$PR_NUMBER has an unverified head commit (pull-request-commits-verified=$COMMITS_VERIFIED)." >&2
+          exit 1
+
       - name: Create issue on test failure
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed != 'true'
         uses: actions/github-script@v9
+        env:
+          CURRENT_VERSION: ${{ steps.check.outputs.current }}
+          LATEST_VERSION: ${{ steps.check.outputs.latest }}
         with:
           script: |
+            const currentVersion = process.env.CURRENT_VERSION;
+            const latestVersion = process.env.LATEST_VERSION;
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `❌ XZ ${{ steps.check.outputs.latest }} Update Failed`,
+              title: `❌ XZ ${latestVersion} Update Failed`,
               body: `A new version of XZ Utils is available but the automated tests failed.
 
-              - **Current version**: \`${{ steps.check.outputs.current }}\`
-              - **New version**: \`${{ steps.check.outputs.latest }}\`
+              - **Current version**: \`${currentVersion}\`
+              - **New version**: \`${latestVersion}\`
 
               The automated tests failed, so this update requires manual review.
 
-              [View release notes](${{ github.server_url }}/tukaani-project/xz/releases/tag/${{ steps.check.outputs.latest }})
+              [View release notes](${{ github.server_url }}/tukaani-project/xz/releases/tag/${latestVersion})
               [View failed workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
               Please investigate the compatibility issues before updating manually.`,
@@ -200,24 +239,41 @@ jobs:
 
       - name: Create summary
         if: always()
+        env:
+          CURRENT_VERSION: ${{ steps.check.outputs.current }}
+          LATEST_VERSION: ${{ steps.check.outputs.latest }}
+          CHECK_STATUS: ${{ steps.check.outputs.status }}
         run: |
           echo "## XZ Update Check Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Current version: ${{ steps.check.outputs.current }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Latest version: ${{ steps.check.outputs.latest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Current version: $CURRENT_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest version: $LATEST_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- Check status: $CHECK_STATUS" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ steps.check.outputs.new_version }}" == "true" ]; then
-            echo "- Status: 🆕 Update available" >> $GITHUB_STEP_SUMMARY
-            if [ "${{ steps.test.outputs.test_passed }}" == "true" ]; then
-              echo "- Tests: ✅ Passed" >> $GITHUB_STEP_SUMMARY
-              echo "- Action: PR created for update" >> $GITHUB_STEP_SUMMARY
-              echo "- Artifact: ✅ XZ sources uploaded" >> $GITHUB_STEP_SUMMARY
+          if [ "$CHECK_STATUS" == "complete" ]; then
+            if [ "${{ steps.check.outputs.new_version }}" == "true" ]; then
+              echo "- Status: 🆕 Update available" >> $GITHUB_STEP_SUMMARY
+              if [ "${{ steps.test.outputs.test_passed }}" == "true" ]; then
+                echo "- Tests: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+                echo "- Action: PR created for update" >> $GITHUB_STEP_SUMMARY
+                echo "- Artifact: ✅ XZ sources uploaded" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "- Tests: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+                echo "- Action: Issue created for manual review" >> $GITHUB_STEP_SUMMARY
+              fi
             else
-              echo "- Tests: ❌ Failed" >> $GITHUB_STEP_SUMMARY
-              echo "- Action: Issue created for manual review" >> $GITHUB_STEP_SUMMARY
+              echo "- Status: ✅ Up to date" >> $GITHUB_STEP_SUMMARY
+              echo "- Action: No action needed" >> $GITHUB_STEP_SUMMARY
             fi
+          elif [ "$CHECK_STATUS" == "unavailable" ]; then
+            echo "- Status: ⚠️ Upstream release lookup unavailable after retry" >> $GITHUB_STEP_SUMMARY
+            echo "- Action: Check failed; maintainer attention required" >> $GITHUB_STEP_SUMMARY
+          elif [ "$CHECK_STATUS" == "unsupported_tag" ]; then
+            REJECTED_LATEST=$(<"$RUNNER_TEMP/xz-rejected-tag")
+            printf '%s\n' "- Status: ⚠️ Unsupported upstream tag rejected: $REJECTED_LATEST" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Action: Check failed; widen the allowlist if this tag is supported" >> $GITHUB_STEP_SUMMARY
           else
-            echo "- Status: ✅ Up to date" >> $GITHUB_STEP_SUMMARY
-            echo "- Action: No action needed" >> $GITHUB_STEP_SUMMARY
+            echo "- Status: ⚠️ Check did not publish a recognized status" >> $GITHUB_STEP_SUMMARY
+            echo "- Action: Check failed; maintainer attention required" >> $GITHUB_STEP_SUMMARY
           fi
 
   refresh-artifact:
@@ -225,9 +281,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-updates
     if: |
-      (github.event_name == 'schedule') ||
-      (github.event.inputs.force_artifact == 'true') ||
-      (needs.check-updates.outputs.has_update == 'false' && github.event_name == 'workflow_dispatch')
+      needs.check-updates.outputs.check_status == 'complete' &&
+      (
+        (github.event_name == 'schedule') ||
+        (github.event.inputs.force_artifact == 'true') ||
+        (needs.check-updates.outputs.has_update == 'false' && github.event_name == 'workflow_dispatch')
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@v7
