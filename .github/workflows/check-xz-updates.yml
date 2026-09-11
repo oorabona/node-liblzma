@@ -21,6 +21,10 @@ permissions:
   issues: write
   pull-requests: write
 
+concurrency:
+  group: check-xz-updates
+  cancel-in-progress: false
+
 jobs:
   check-updates:
     runs-on: ubuntu-latest
@@ -50,6 +54,12 @@ jobs:
           # Guard against empty responses (no releases, API error)
           if [ -z "$LATEST" ]; then
             echo "⚠️ Could not determine latest XZ version"
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+){0,3}$ ]]; then
+            echo "⚠️ Rejected invalid latest XZ version: $LATEST"
             echo "new_version=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -121,22 +131,25 @@ jobs:
 
       - name: Update xz-version.json
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
+        env:
+          LATEST_VERSION: ${{ steps.check.outputs.latest }}
         run: |
           # Update the version file
-          jq --arg version "${{ steps.check.outputs.latest }}" \
+          jq --arg version "$LATEST_VERSION" \
              --arg date "$(date -I)" \
-             '.version = $version | .changelog = "https://github.com/tukaani-project/xz/releases/tag/" + $version | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
+             '.version = $version | .changelog = "https://github.com/tukaani-project/xz/releases/tag/" + ($version | @uri) | .last_checked = $date | .comment = "Stable version tested and validated for production. Auto-updated by GitHub Actions."' \
              xz-version.json > tmp.json && mv tmp.json xz-version.json
 
-          echo "Updated xz-version.json to ${{ steps.check.outputs.latest }}"
+          echo "Updated xz-version.json to $LATEST_VERSION"
 
       - name: Create Pull Request
         id: create-pr
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed == 'true' && (github.event.inputs.create_pr == 'true' || github.event_name == 'schedule')
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sign-commits: true
+          add-paths: xz-version.json
           commit-message: "feat: update XZ to ${{ steps.check.outputs.latest }}"
           title: "🆙 Update XZ Utils to ${{ steps.check.outputs.latest }}"
           body: |
@@ -169,29 +182,43 @@ jobs:
             automated
 
       - name: Enable auto-merge
-        if: steps.create-pr.outputs.pull-request-number
+        if: steps.create-pr.outputs.pull-request-number && steps.create-pr.outputs.pull-request-commits-verified == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
         run: gh pr merge "$PR_NUMBER" --auto --squash
 
+      - name: Fail when created head commit is unverified
+        if: steps.create-pr.outputs.pull-request-number && steps.create-pr.outputs.pull-request-commits-verified != 'true'
+        env:
+          PR_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
+          COMMITS_VERIFIED: ${{ steps.create-pr.outputs.pull-request-commits-verified }}
+        run: |
+          echo "Created PR #$PR_NUMBER has an unverified head commit (pull-request-commits-verified=$COMMITS_VERIFIED)." >&2
+          exit 1
+
       - name: Create issue on test failure
         if: steps.check.outputs.new_version == 'true' && steps.test.outputs.test_passed != 'true'
         uses: actions/github-script@v9
+        env:
+          CURRENT_VERSION: ${{ steps.check.outputs.current }}
+          LATEST_VERSION: ${{ steps.check.outputs.latest }}
         with:
           script: |
+            const currentVersion = process.env.CURRENT_VERSION;
+            const latestVersion = process.env.LATEST_VERSION;
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `❌ XZ ${{ steps.check.outputs.latest }} Update Failed`,
+              title: `❌ XZ ${latestVersion} Update Failed`,
               body: `A new version of XZ Utils is available but the automated tests failed.
 
-              - **Current version**: \`${{ steps.check.outputs.current }}\`
-              - **New version**: \`${{ steps.check.outputs.latest }}\`
+              - **Current version**: \`${currentVersion}\`
+              - **New version**: \`${latestVersion}\`
 
               The automated tests failed, so this update requires manual review.
 
-              [View release notes](${{ github.server_url }}/tukaani-project/xz/releases/tag/${{ steps.check.outputs.latest }})
+              [View release notes](${{ github.server_url }}/tukaani-project/xz/releases/tag/${latestVersion})
               [View failed workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
               Please investigate the compatibility issues before updating manually.`,
@@ -200,10 +227,13 @@ jobs:
 
       - name: Create summary
         if: always()
+        env:
+          CURRENT_VERSION: ${{ steps.check.outputs.current }}
+          LATEST_VERSION: ${{ steps.check.outputs.latest }}
         run: |
           echo "## XZ Update Check Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Current version: ${{ steps.check.outputs.current }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Latest version: ${{ steps.check.outputs.latest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Current version: $CURRENT_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest version: $LATEST_VERSION" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.check.outputs.new_version }}" == "true" ]; then
             echo "- Status: 🆕 Update available" >> $GITHUB_STEP_SUMMARY

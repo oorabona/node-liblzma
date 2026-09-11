@@ -168,24 +168,27 @@ Three packages are published in dependency order:
 |----------|---------|---------|
 | `ci.yml` | Push, PR, nightly | Tests, lint, coverage. Smart smoke/full matrix selection |
 | `build-artifacts.yml` | Called by release/manual-release | Cross-platform prebuilds (Linux, macOS, Windows × x64) |
-| `check-xz-updates.yml` | Weekly (Monday 3 AM UTC) | Monitors upstream XZ Utils, auto-PRs compatible updates |
+| `check-xz-updates.yml` | Daily (03:00 UTC) | Monitors upstream XZ Utils, auto-PRs compatible updates |
 | `docs.yml` | Release published, doc changes | Builds and deploys docs to GitHub Pages |
 | `build-wasm.yml` | WASM file changes | Isolated WASM build with size gate (< 100KB gzipped) |
 
 ### check-xz-updates.yml
 
-Runs weekly to detect new XZ Utils releases:
+Runs daily to detect new XZ Utils releases:
+
 1. Queries GitHub API for latest XZ release
 2. Compares with `xz-version.json`
 3. If new version: runs full test suite against it
-4. If tests pass: creates PR with auto-merge enabled
+4. If tests pass: creates PR with auto-merge enabled when its created head commit is verified
 5. If tests fail: creates issue for manual review
+
+It signs the created PR commit through the GitHub API as `github-actions[bot]` and does not import `GPG_PRIVATE_KEY`.
 
 ## Secrets & Prerequisites
 
 | Secret | Required | Used in | Purpose |
 |--------|----------|---------|---------|
-| `GPG_PRIVATE_KEY` | Yes | release, check-xz-updates | GPG-sign commits and tags |
+| `GPG_PRIVATE_KEY` | Yes | release | GPG-sign commits and tags |
 | `GITHUB_TOKEN` | Auto | All workflows | GitHub API access |
 | `CODECOV_TOKEN` | Yes | ci (coverage) | Upload coverage reports |
 
