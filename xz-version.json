@@ -1,7 +1,7 @@
 {
-  "version": "v5.8.3",
+  "version": "v5.8.4",
   "comment": "Stable version tested and validated for production. Auto-updated by GitHub Actions.",
-  "last_checked": "2026-04-02",
+  "last_checked": "2026-09-11",
   "allow_override": true,
   "repository": "tukaani-project/xz",
   "changelog": "https://github.com/tukaani-project/xz/releases/tag/v5.8.1"
