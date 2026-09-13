@@ -28,6 +28,9 @@ import tarfile
 import os
 import argparse
 import ssl
+import re
+import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 import tempfile
@@ -38,6 +41,11 @@ class VersionResolutionError(Exception):
 
 
 GITHUB_NOT_FOUND = object()
+REQUEST_TIMEOUT_SECONDS = 30
+DOWNLOAD_CHUNK_SIZE = 64 * 1024
+LOCK_RETRY_SECONDS = 0.1
+LOCK_ORPHAN_SECONDS = 60
+VERSION_TAG_PATTERN = re.compile(r'^v?(\d+\.\d+\.\d+)$')
 
 
 def fail_version_resolution(version, source, cause):
@@ -60,14 +68,13 @@ def get_github_headers():
     return headers
 
 
-def github_get(api_url, version, source):
-    """Fetch GitHub response bytes, translating request and read failures."""
+def github_get(api_url, version, source, read_body=True, response_handler=None):
+    """Fetch a GitHub response, translating request and optional read failures."""
     headers = get_github_headers()
     req = urllib.request.Request(api_url, headers=headers)
 
     try:
-        with urllib.request.urlopen(req) as response:
-            return response.read()
+        response = urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT_SECONDS)
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return GITHUB_NOT_FOUND
@@ -77,8 +84,32 @@ def github_get(api_url, version, source):
             f'GitHub returned HTTP {e.code}: {e}',
         )
     except (urllib.error.URLError, ssl.SSLError, TimeoutError,
-            http.client.HTTPException, ConnectionError) as e:
+            http.client.HTTPException, ConnectionError, OSError) as e:
         fail_version_resolution(version, source, f'GitHub request failed: {e}')
+
+    with response:
+        if response_handler is not None:
+            # The handler owns its file I/O, so do not misattribute its OSErrors
+            # to GitHub requests.
+            return response_handler(response)
+        if not read_body:
+            return None
+        try:
+            return response.read()
+        except OSError as e:
+            fail_version_resolution(version, source, f'GitHub request failed: {e}')
+
+
+def canonicalize_version(version, source):
+    """Return the sole accepted XZ tag spelling: vMAJOR.MINOR.PATCH."""
+    match = VERSION_TAG_PATTERN.fullmatch(version)
+    if not match:
+        fail_version_resolution(
+            version,
+            source,
+            'version must be a plain MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH tag',
+        )
+    return 'v' + match.group(1)
 
 def load_version_config():
     """Load version configuration from xz-version.json"""
@@ -152,7 +183,7 @@ def get_latest_version():
             'malformed GitHub response: "tag_name" must be a nonblank string',
         )
 
-    return tag_name.strip()
+    return canonicalize_version(tag_name.strip(), 'GitHub latest release')
 
 def determine_version():
     """Determine which XZ version to use based on priority hierarchy"""
@@ -164,8 +195,9 @@ def determine_version():
             print(f"[LAUNCH] Using latest XZ version: {version}")
             return version, 'XZ_VERSION=latest'
         else:
-            print(f"[TARGET] Using XZ version from environment: {env_version}")
-            return env_version, 'XZ_VERSION'
+            version = canonicalize_version(env_version, 'XZ_VERSION')
+            print(f"[TARGET] Using XZ version from environment: {version}")
+            return version, 'XZ_VERSION'
     
     # 2. Repository configuration file
     config, config_path = load_version_config()
@@ -176,18 +208,17 @@ def determine_version():
             f'xz-version.json ({config_path})',
             'required "version" must be a nonblank string',
         )
-    configured_version = configured_version.strip()
+    configured_version = canonicalize_version(
+        configured_version.strip(), f'xz-version.json ({config_path})'
+    )
     print(f"[CONFIG] Using configured XZ version: {configured_version}")
     return configured_version, f'xz-version.json ({config_path})'
 
 def validate_version(version, source):
     """Validate a version on GitHub through the output-free request helper."""
-    if not version.startswith('v'):
-        version = 'v' + version
-
     # Check if version exists
     api_url = f"https://api.github.com/repos/tukaani-project/xz/releases/tags/{version}"
-    if github_get(api_url, version, source) is GITHUB_NOT_FOUND:
+    if github_get(api_url, version, source, read_body=False) is GITHUB_NOT_FOUND:
         print(f"Warning: Version {version} not found on GitHub")
         return None
 
@@ -197,22 +228,26 @@ def get_tarball_url(version):
     """Get the tarball URL for a specific version"""
     return f'https://api.github.com/repos/tukaani-project/xz/tarball/{version}'
 
-def download_tarball(url, tarball_path):
+def download_tarball(url, tarball_path, version, source):
     """Download tarball from GitHub with proper user agent"""
     print(f"[DOWNLOAD] Downloading from: {url}")
-    headers = get_github_headers()
-    req = urllib.request.Request(url, headers=headers)
-    
-    with urllib.request.urlopen(req) as response:
-        # GitHub redirects to the actual download URL
-        final_url = response.geturl()
-        print(f"[PACKAGE] Resolved to: {final_url}")
-        
-        with urllib.request.urlopen(final_url) as final_response:
-            with open(tarball_path, 'wb') as f:
-                data = final_response.read()
-                f.write(data)
-                print(f"[SUCCESS] Downloaded {len(data)} bytes to {tarball_path}")
+
+    def write_response(response):
+        total_bytes = 0
+        with open(tarball_path, 'wb') as tarball_file:
+            while True:
+                chunk = response.read(DOWNLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                tarball_file.write(chunk)
+                total_bytes += len(chunk)
+        return response.geturl(), total_bytes
+
+    final_url, total_bytes = github_get(
+        url, version, source, read_body=False, response_handler=write_response
+    )
+    print(f"[PACKAGE] Resolved to: {final_url}")
+    print(f"[SUCCESS] Downloaded {total_bytes} bytes to {tarball_path}")
 
 def is_safe_path(member_path, extract_dir):
     """Validate that the extraction path is safe and within bounds."""
@@ -273,6 +308,9 @@ def is_xz_already_extracted(extract_dir, version):
                     print(f"[CACHE HIT] XZ {version} already extracted")
                     return True
                 else:
+                    # Older trees may contain an equivalent but non-canonical
+                    # spelling. Re-extract them rather than migrating a marker
+                    # for a tree that this run did not publish.
                     print(f"[CACHE MISS] Version mismatch: cached {cached_version} != requested {version}")
                     return False
         except IOError:
@@ -304,22 +342,23 @@ def extract_tarball(tarball_path, extract_dir):
         for member in members:
             # Create the new path by replacing root directory with 'xz'
             if not member.name.startswith(root_dir):
-                print(f"[SKIP] Skipping member not in root directory: {member.name}")
-                continue
+                raise ValueError(
+                    f"Tarball member is not in its root directory: {member.name}"
+                )
                 
             new_name = member.name.replace(root_dir, 'xz', 1)
             
             # Validate the new path is safe
             if not is_safe_path(new_name, extract_dir):
-                print(f"[SECURITY] Rejecting unsafe path: {member.name} -> {new_name}")
-                continue
+                raise ValueError(
+                    f"Unsafe tarball path: {member.name} -> {new_name}"
+                )
             
             # Additional safety checks for member properties
             if member.islnk() or member.issym():
                 # Validate link targets are also safe
                 if member.linkname and not is_safe_path(member.linkname, extract_dir):
-                    print(f"[SECURITY] Rejecting unsafe link target: {member.linkname}")
-                    continue
+                    raise ValueError(f"Unsafe tarball link target: {member.linkname}")
             
             # Create a new member with the safe name
             safe_member = member
@@ -338,12 +377,13 @@ def extract_tarball(tarball_path, extract_dir):
                 # Fallback for Python versions that don't support filter parameter
                 # Manual validation since we can't use the data filter
                 if member.isfile() and member.size > 100 * 1024 * 1024:  # 100MB limit
-                    print(f"[SECURITY] Skipping oversized file: {member.name} ({member.size} bytes)")
-                    continue
+                    raise ValueError(
+                        f"Oversized tarball file: {member.name} ({member.size} bytes)"
+                    )
                 tfile.extract(member, extract_dir)
             except Exception as e:
                 print(f"[ERROR] Failed to extract {member.name}: {e}")
-                continue
+                raise
 
         print(f"[SUCCESS] Successfully extracted XZ to {extract_dir}/xz")
 
@@ -352,12 +392,109 @@ def write_version_marker(extract_dir, version):
     xz_dir = os.path.join(extract_dir, 'xz')
     version_file = os.path.join(xz_dir, '.xz-version')
 
+    with open(version_file, 'w') as f:
+        f.write(version)
+    print(f"[VERSION] Wrote version marker: {version}")
+
+
+def versioned_tarball_path(tarball, version):
+    """Keep archives isolated by canonical tag, never at the legacy shared path."""
+    return os.path.join(
+        os.path.dirname(tarball), f'xz-{version}.tar.gz'
+    )
+
+
+class XZCacheLock:
+    """Cooperative directory lock with recovery for abandoned locks."""
+
+    def __init__(self, extract_dir):
+        self.path = os.path.join(extract_dir, '.xz-cache.lock')
+        self.acquired = False
+
+    @staticmethod
+    def _owner_is_alive(lock_path):
+        try:
+            with open(os.path.join(lock_path, 'owner'), 'r') as owner_file:
+                pid = int(owner_file.read().strip())
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except (OSError, ValueError):
+            return None
+        return True
+
+    def _is_abandoned(self):
+        try:
+            lock_age = time.time() - os.path.getmtime(self.path)
+        except FileNotFoundError:
+            return False
+        owner_is_alive = self._owner_is_alive(self.path)
+        if owner_is_alive is False:
+            return True
+        # A lock without readable owner metadata may be from a killed process.
+        # Wait briefly so that a creator can finish recording its PID first.
+        return owner_is_alive is None and lock_age >= LOCK_ORPHAN_SECONDS
+
+    def __enter__(self):
+        while True:
+            try:
+                os.mkdir(self.path)
+                try:
+                    with open(os.path.join(self.path, 'owner'), 'w') as owner_file:
+                        owner_file.write(str(os.getpid()))
+                except Exception:
+                    shutil.rmtree(self.path, ignore_errors=True)
+                    raise
+                self.acquired = True
+                return self
+            except FileExistsError:
+                if self._is_abandoned():
+                    try:
+                        shutil.rmtree(self.path)
+                        print(f"[LOCK] Removed abandoned XZ cache lock: {self.path}")
+                    except FileNotFoundError:
+                        pass
+                    continue
+                print(f"[LOCK] Waiting for XZ cache lock: {self.path}")
+                time.sleep(LOCK_RETRY_SECONDS)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.acquired:
+            shutil.rmtree(self.path)
+            self.acquired = False
+
+
+def publish_staged_tree(staged_xz_dir, extract_dir):
+    """Publish a complete staged tree, restoring the old tree on replacement failure."""
+    destination = os.path.join(extract_dir, 'xz')
+    backup = None
+    if os.path.exists(destination):
+        backup = tempfile.mkdtemp(prefix='.xz-previous-', dir=extract_dir)
+        os.rmdir(backup)
+        os.replace(destination, backup)
+
     try:
-        with open(version_file, 'w') as f:
-            f.write(version)
-        print(f"[VERSION] Wrote version marker: {version}")
-    except IOError as e:
-        print(f"[WARNING] Could not write version marker: {e}")
+        os.replace(staged_xz_dir, destination)
+    except Exception:
+        if backup is not None:
+            os.replace(backup, destination)
+        raise
+
+    if backup is not None:
+        shutil.rmtree(backup)
+
+
+def extract_and_publish(tarball, extract_dir, version):
+    """Extract to a sibling staging directory and publish only after it is complete."""
+    staging_dir = tempfile.mkdtemp(prefix='.xz-staging-', dir=extract_dir)
+    try:
+        extract_tarball(tarball, staging_dir)
+        write_version_marker(staging_dir, version)
+        publish_staged_tree(os.path.join(staging_dir, 'xz'), extract_dir)
+    finally:
+        shutil.rmtree(staging_dir, ignore_errors=True)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -413,33 +550,43 @@ Examples:
     os.makedirs(os.path.dirname(tarball), exist_ok=True)
     os.makedirs(dirname, exist_ok=True)
 
-    # Check if already extracted with correct version (smart cache)
-    # Do this BEFORE any GitHub API calls to avoid rate limiting
-    if is_xz_already_extracted(dirname, version):
-        print(f"[SKIP] XZ {version} already available, skipping download")
-        return 0
+    # The argument is retained for binding.gyp compatibility, but this legacy
+    # shared filename is never read or written. A cache hit therefore means an
+    # archive belonging to this canonical tag, not merely any prior archive.
+    tarball = versioned_tarball_path(tarball, version)
 
-    # Only validate version if we need to download (avoids GitHub API call when cached)
-    validated_version = validate_version(version, version_source)
-    if not validated_version:
-        fail_version_resolution(
-            version,
-            version_source,
-            'GitHub release tag was not found; update the requested version',
-        )
+    # Serialise inspection, download, extraction, and publication. A crashed
+    # owner is identified by its dead PID (or unreadable metadata after a short
+    # grace period) and its lock is removed, so stale locks cannot block forever.
+    with XZCacheLock(dirname):
+        # Do this before GitHub API calls to avoid rate limiting on a valid cache.
+        if is_xz_already_extracted(dirname, version):
+            print(f"[SKIP] XZ {version} already available, skipping download")
+            return 0
 
-    # Download if not cached
-    if os.path.exists(tarball):
-        print(f"[CACHED] Using cached tarball: {tarball}")
-    else:
-        url = get_tarball_url(validated_version)
-        download_tarball(url, tarball)
+        validated_version = validate_version(version, version_source)
+        if not validated_version:
+            fail_version_resolution(
+                version,
+                version_source,
+                'GitHub release tag was not found; update the requested version',
+            )
 
-    # Extract
-    extract_tarball(tarball, dirname)
+        if os.path.exists(tarball):
+            print(f"[CACHED] Using cached tarball: {tarball}")
+        else:
+            temporary_tarball = f'{tarball}.tmp-{os.getpid()}'
+            try:
+                url = get_tarball_url(validated_version)
+                download_tarball(url, temporary_tarball, version, version_source)
+                os.replace(temporary_tarball, tarball)
+            finally:
+                try:
+                    os.unlink(temporary_tarball)
+                except FileNotFoundError:
+                    pass
 
-    # Write version marker for future cache validation
-    write_version_marker(dirname, validated_version)
+        extract_and_publish(tarball, dirname, validated_version)
 
     print(f"[DONE] Successfully prepared XZ {validated_version}")
     return 0
