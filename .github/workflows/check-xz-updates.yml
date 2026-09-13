@@ -49,6 +49,14 @@ jobs:
           echo "Current XZ version: $CURRENT"
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
+          if [[ ! "$CURRENT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "⚠️ Rejected unsupported pinned XZ version: $CURRENT" >&2
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=unsupported_current_tag" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          IFS=. read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${CURRENT#v}"
+
           # Get latest version via gh CLI (authenticated, no rate limit issues)
           LATEST=$(gh release view --repo tukaani-project/xz --json tagName -q '.tagName' 2>/dev/null || true)
 
@@ -67,25 +75,43 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+){0,3}$ ]]; then
+          if [[ ! "$LATEST" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "⚠️ Rejected unsupported latest XZ version: $LATEST" >&2
             printf '%s' "$LATEST" > "$RUNNER_TEMP/xz-rejected-tag"
             echo "new_version=false" >> "$GITHUB_OUTPUT"
             echo "status=unsupported_tag" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          IFS=. read -r LATEST_MAJOR LATEST_MINOR LATEST_PATCH <<< "${LATEST#v}"
+
+          CURRENT_MAJOR=$((10#$CURRENT_MAJOR))
+          CURRENT_MINOR=$((10#$CURRENT_MINOR))
+          CURRENT_PATCH=$((10#$CURRENT_PATCH))
+          LATEST_MAJOR=$((10#$LATEST_MAJOR))
+          LATEST_MINOR=$((10#$LATEST_MINOR))
+          LATEST_PATCH=$((10#$LATEST_PATCH))
 
           # Set outputs
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-          echo "status=complete" >> "$GITHUB_OUTPUT"
           echo "Latest XZ version: $LATEST"
 
-          if [ "$CURRENT" != "$LATEST" ]; then
-            echo "new_version=true" >> $GITHUB_OUTPUT
+          if (( LATEST_MAJOR > CURRENT_MAJOR ||
+                (LATEST_MAJOR == CURRENT_MAJOR && LATEST_MINOR > CURRENT_MINOR) ||
+                (LATEST_MAJOR == CURRENT_MAJOR && LATEST_MINOR == CURRENT_MINOR && LATEST_PATCH > CURRENT_PATCH) )); then
+            echo "new_version=true" >> "$GITHUB_OUTPUT"
+            echo "status=complete" >> "$GITHUB_OUTPUT"
             echo "🆕 New XZ version available: $LATEST (current: $CURRENT)"
-          else
-            echo "new_version=false" >> $GITHUB_OUTPUT
+          elif (( LATEST_MAJOR == CURRENT_MAJOR &&
+                   LATEST_MINOR == CURRENT_MINOR &&
+                   LATEST_PATCH == CURRENT_PATCH )); then
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=complete" >> "$GITHUB_OUTPUT"
             echo "✅ Already on latest version: $LATEST"
+          else
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=current_ahead" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Pinned XZ version $CURRENT is ahead of upstream latest version $LATEST" >&2
+            exit 1
           fi
 
       - name: Setup pnpm
@@ -271,10 +297,22 @@ jobs:
             REJECTED_LATEST=$(<"$RUNNER_TEMP/xz-rejected-tag")
             printf '%s\n' "- Status: ⚠️ Unsupported upstream tag rejected: $REJECTED_LATEST" >> "$GITHUB_STEP_SUMMARY"
             echo "- Action: Check failed; widen the allowlist if this tag is supported" >> $GITHUB_STEP_SUMMARY
+          elif [ "$CHECK_STATUS" == "unsupported_current_tag" ]; then
+            echo "- Status: ⚠️ Unsupported pinned XZ version rejected: $CURRENT_VERSION" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Action: Check failed; correct xz-version.json" >> $GITHUB_STEP_SUMMARY
+          elif [ "$CHECK_STATUS" == "current_ahead" ]; then
+            echo "- Status: ⚠️ Pinned XZ version $CURRENT_VERSION is ahead of upstream latest version $LATEST_VERSION" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Action: Check failed; investigate the upstream release metadata or pin" >> $GITHUB_STEP_SUMMARY
           else
             echo "- Status: ⚠️ Check did not publish a recognized status" >> $GITHUB_STEP_SUMMARY
             echo "- Action: Check failed; maintainer attention required" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Fail after reporting candidate test failure
+        if: ${{ !cancelled() && steps.test.outcome == 'failure' }}
+        run: |
+          echo "Candidate XZ compatibility tests failed; see the issue and summary." >&2
+          exit 1
 
   refresh-artifact:
     name: Refresh XZ artifact
