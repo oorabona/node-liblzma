@@ -21,6 +21,7 @@ Environment variables:
 
 import urllib.request
 import urllib.error
+import http.client
 import json
 import sys
 import tarfile
@@ -61,23 +62,22 @@ def load_version_config():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, '..', 'xz-version.json')
 
-    if not os.path.exists(config_path):
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
         fail_version_resolution(
             'repository pin',
             f'xz-version.json ({config_path})',
             'file does not exist',
         )
-
-    try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         fail_version_resolution(
             'repository pin',
             f'xz-version.json ({config_path})',
             f'invalid JSON: {e}',
         )
-    except IOError as e:
+    except OSError as e:
         fail_version_resolution(
             'repository pin',
             f'xz-version.json ({config_path})',
@@ -410,7 +410,8 @@ Examples:
     # Only validate version if we need to download (avoids GitHub API call when cached)
     try:
         validated_version = validate_version(version)
-    except (urllib.error.HTTPError, urllib.error.URLError, ssl.SSLError, TimeoutError) as e:
+    except (urllib.error.HTTPError, urllib.error.URLError, ssl.SSLError, TimeoutError,
+            http.client.HTTPException, ConnectionError) as e:
         fail_version_resolution(version, version_source, str(e))
     if not validated_version:
         fail_version_resolution(
