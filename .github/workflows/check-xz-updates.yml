@@ -44,17 +44,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get current version from config
-          CURRENT=$(jq -r '.version' xz-version.json)
-          echo "Current XZ version: $CURRENT"
-          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-
-          if [[ ! "$CURRENT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "⚠️ Rejected unsupported pinned XZ version: $CURRENT" >&2
+          # Get and validate the current version before publishing it as an output.
+          if ! CURRENT=$(jq -er '
+            .version
+            | select(type == "string")
+            | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+\\z"))
+          ' xz-version.json); then
+            REJECTED_CURRENT=$(jq -c '.version' xz-version.json 2>/dev/null || printf '<unreadable>')
+            echo "⚠️ Rejected unsupported pinned XZ version: $REJECTED_CURRENT" >&2
             echo "new_version=false" >> "$GITHUB_OUTPUT"
             echo "status=unsupported_current_tag" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          echo "Current XZ version: $CURRENT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           IFS=. read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${CURRENT#v}"
 
           # Get latest version via gh CLI (authenticated, no rate limit issues)
@@ -84,26 +87,56 @@ jobs:
           fi
           IFS=. read -r LATEST_MAJOR LATEST_MINOR LATEST_PATCH <<< "${LATEST#v}"
 
-          CURRENT_MAJOR=$((10#$CURRENT_MAJOR))
-          CURRENT_MINOR=$((10#$CURRENT_MINOR))
-          CURRENT_PATCH=$((10#$CURRENT_PATCH))
-          LATEST_MAJOR=$((10#$LATEST_MAJOR))
-          LATEST_MINOR=$((10#$LATEST_MINOR))
-          LATEST_PATCH=$((10#$LATEST_PATCH))
+          normalize_decimal() {
+            local component=$1
+            component=${component#"${component%%[!0]*}"}
+            printf '%s\n' "${component:-0}"
+          }
+
+          compare_decimal() {
+            local left right
+            left=$(normalize_decimal "$1")
+            right=$(normalize_decimal "$2")
+
+            if (( ${#left} > ${#right} )); then
+              printf '%s\n' greater
+            elif (( ${#left} < ${#right} )); then
+              printf '%s\n' less
+            elif [[ "$left" > "$right" ]]; then
+              printf '%s\n' greater
+            elif [[ "$left" < "$right" ]]; then
+              printf '%s\n' less
+            else
+              printf '%s\n' equal
+            fi
+          }
+
+          compare_versions() {
+            local comparison
+            local -a latest_components=("$LATEST_MAJOR" "$LATEST_MINOR" "$LATEST_PATCH")
+            local -a current_components=("$CURRENT_MAJOR" "$CURRENT_MINOR" "$CURRENT_PATCH")
+
+            for index in 0 1 2; do
+              comparison=$(compare_decimal "${latest_components[index]}" "${current_components[index]}")
+              if [ "$comparison" != equal ]; then
+                printf '%s\n' "$comparison"
+                return
+              fi
+            done
+
+            printf '%s\n' equal
+          }
 
           # Set outputs
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
           echo "Latest XZ version: $LATEST"
 
-          if (( LATEST_MAJOR > CURRENT_MAJOR ||
-                (LATEST_MAJOR == CURRENT_MAJOR && LATEST_MINOR > CURRENT_MINOR) ||
-                (LATEST_MAJOR == CURRENT_MAJOR && LATEST_MINOR == CURRENT_MINOR && LATEST_PATCH > CURRENT_PATCH) )); then
+          VERSION_COMPARISON=$(compare_versions)
+          if [ "$VERSION_COMPARISON" == greater ]; then
             echo "new_version=true" >> "$GITHUB_OUTPUT"
             echo "status=complete" >> "$GITHUB_OUTPUT"
             echo "🆕 New XZ version available: $LATEST (current: $CURRENT)"
-          elif (( LATEST_MAJOR == CURRENT_MAJOR &&
-                   LATEST_MINOR == CURRENT_MINOR &&
-                   LATEST_PATCH == CURRENT_PATCH )); then
+          elif [ "$VERSION_COMPARISON" == equal ]; then
             echo "new_version=false" >> "$GITHUB_OUTPUT"
             echo "status=complete" >> "$GITHUB_OUTPUT"
             echo "✅ Already on latest version: $LATEST"
@@ -319,6 +352,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-updates
     if: |
+      always() && !cancelled() &&
       needs.check-updates.outputs.check_status == 'complete' &&
       (
         (github.event_name == 'schedule') ||
