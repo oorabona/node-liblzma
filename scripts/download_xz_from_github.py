@@ -37,6 +37,9 @@ class VersionResolutionError(Exception):
     """Raised when the requested XZ version cannot be resolved."""
 
 
+GITHUB_NOT_FOUND = object()
+
+
 def fail_version_resolution(version, source, cause):
     """Stop the build rather than silently choosing a different XZ version."""
     raise VersionResolutionError(
@@ -45,7 +48,7 @@ def fail_version_resolution(version, source, cause):
 
 
 def get_github_headers():
-    """Get headers with optional GitHub token for authentication"""
+    """Get headers with an optional GitHub token for authentication."""
     headers = {'User-Agent': 'node-liblzma'}
 
     # Use GITHUB_TOKEN if available (in CI) to avoid rate limiting
@@ -53,9 +56,29 @@ def get_github_headers():
     token = os.environ.get('GITHUB_TOKEN', '').strip()
     if token:
         headers['Authorization'] = f'token {token}'
-        print("[AUTH] Using GitHub token for authenticated requests")
 
     return headers
+
+
+def github_get(api_url, version, source):
+    """Fetch GitHub response bytes, translating request and read failures."""
+    headers = get_github_headers()
+    req = urllib.request.Request(api_url, headers=headers)
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            return response.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return GITHUB_NOT_FOUND
+        fail_version_resolution(
+            version,
+            source,
+            f'GitHub returned HTTP {e.code}: {e}',
+        )
+    except (urllib.error.URLError, ssl.SSLError, TimeoutError,
+            http.client.HTTPException, ConnectionError) as e:
+        fail_version_resolution(version, source, f'GitHub request failed: {e}')
 
 def load_version_config():
     """Load version configuration from xz-version.json"""
@@ -95,23 +118,15 @@ def load_version_config():
     return config, config_path
 
 def get_latest_version():
-    """Get the latest XZ version from GitHub API, catching transport errors at urlopen."""
+    """Get the latest XZ version from the GitHub API."""
     api_url = "https://api.github.com/repos/tukaani-project/xz/releases/latest"
-    headers = get_github_headers()
-    req = urllib.request.Request(api_url, headers=headers)
-    
-    try:
-        response = urllib.request.urlopen(req)
-    except (urllib.error.HTTPError, urllib.error.URLError, ssl.SSLError,
-            TimeoutError, http.client.HTTPException, ConnectionError) as e:
+    response_body = github_get(api_url, 'latest', 'XZ_VERSION=latest')
+    if response_body is GITHUB_NOT_FOUND:
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
-            f'could not query the GitHub releases API: {e}; check network access',
+            'GitHub latest release was not found',
         )
-
-    with response:
-        response_body = response.read()
 
     try:
         data = json.loads(response_body)
@@ -119,14 +134,14 @@ def get_latest_version():
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
-            f'malformed GitHub releases API response: invalid JSON: {e}',
+            f'malformed GitHub response: invalid JSON: {e}',
         )
 
     if not isinstance(data, dict):
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
-            'malformed GitHub releases API response: body must be a JSON object',
+            'malformed GitHub response: body must be a JSON object',
         )
 
     tag_name = data.get('tag_name')
@@ -134,7 +149,7 @@ def get_latest_version():
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
-            'malformed GitHub releases API response: "tag_name" must be a nonblank string',
+            'malformed GitHub response: "tag_name" must be a nonblank string',
         )
 
     return tag_name.strip()
@@ -166,28 +181,17 @@ def determine_version():
     return configured_version, f'xz-version.json ({config_path})'
 
 def validate_version(version, source):
-    """Validate a version on GitHub, translating transport failures only at urlopen."""
+    """Validate a version on GitHub through the output-free request helper."""
     if not version.startswith('v'):
         version = 'v' + version
 
     # Check if version exists
     api_url = f"https://api.github.com/repos/tukaani-project/xz/releases/tags/{version}"
-    headers = get_github_headers()
-    req = urllib.request.Request(api_url, headers=headers)
-    
-    try:
-        response = urllib.request.urlopen(req)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            print(f"Warning: Version {version} not found on GitHub")
-            return None
-        raise
-    except (urllib.error.URLError, ssl.SSLError, TimeoutError,
-            http.client.HTTPException, ConnectionError) as e:
-        fail_version_resolution(version, source, str(e))
+    if github_get(api_url, version, source) is GITHUB_NOT_FOUND:
+        print(f"Warning: Version {version} not found on GitHub")
+        return None
 
-    with response:
-        return version
+    return version
 
 def get_tarball_url(version):
     """Get the tarball URL for a specific version"""
