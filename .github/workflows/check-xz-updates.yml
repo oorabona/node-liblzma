@@ -30,9 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       has_update: ${{ steps.check.outputs.new_version }}
-      current_version: ${{ steps.check.outputs.current }}
       latest_version: ${{ steps.check.outputs.latest }}
       check_status: ${{ steps.check.outputs.status }}
+      pinned_version: ${{ steps.check.outputs.pinned_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -44,10 +44,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get current version from config
-          CURRENT=$(jq -r '.version' xz-version.json)
+          # Get and validate the current version before publishing it as an output.
+          if ! CURRENT=$(jq -ser '
+            if length == 1 then
+              .[0].version
+              | select(type == "string")
+              | select(test("^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\z"))
+            else
+              error("expected exactly one JSON document")
+            end
+          ' xz-version.json); then
+            if ! jq -Rs '.' xz-version.json > "$RUNNER_TEMP/xz-rejected-current"; then
+              printf '%s\n' '"<unreadable>"' > "$RUNNER_TEMP/xz-rejected-current"
+            fi
+            echo "⚠️ Rejected unsupported pinned XZ version; see the summary" >&2
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=unsupported_current_tag" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "pinned_version=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "Current XZ version: $CURRENT"
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          IFS=. read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${CURRENT#v}"
 
           # Get latest version via gh CLI (authenticated, no rate limit issues)
           LATEST=$(gh release view --repo tukaani-project/xz --json tagName -q '.tagName' 2>/dev/null || true)
@@ -67,25 +85,67 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$LATEST" =~ ^v[0-9]+(\.[0-9]+){0,3}$ ]]; then
+          if [[ ! "$LATEST" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "⚠️ Rejected unsupported latest XZ version: $LATEST" >&2
             printf '%s' "$LATEST" > "$RUNNER_TEMP/xz-rejected-tag"
             echo "new_version=false" >> "$GITHUB_OUTPUT"
             echo "status=unsupported_tag" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          IFS=. read -r LATEST_MAJOR LATEST_MINOR LATEST_PATCH <<< "${LATEST#v}"
+
+          compare_decimal() {
+            local left right
+            left=$1
+            right=$2
+
+            if (( ${#left} > ${#right} )); then
+              printf '%s\n' greater
+            elif (( ${#left} < ${#right} )); then
+              printf '%s\n' less
+            elif [[ "$left" > "$right" ]]; then
+              printf '%s\n' greater
+            elif [[ "$left" < "$right" ]]; then
+              printf '%s\n' less
+            else
+              printf '%s\n' equal
+            fi
+          }
+
+          compare_versions() {
+            local comparison
+            local -a latest_components=("$LATEST_MAJOR" "$LATEST_MINOR" "$LATEST_PATCH")
+            local -a current_components=("$CURRENT_MAJOR" "$CURRENT_MINOR" "$CURRENT_PATCH")
+
+            for index in 0 1 2; do
+              comparison=$(compare_decimal "${latest_components[index]}" "${current_components[index]}")
+              if [ "$comparison" != equal ]; then
+                printf '%s\n' "$comparison"
+                return
+              fi
+            done
+
+            printf '%s\n' equal
+          }
 
           # Set outputs
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-          echo "status=complete" >> "$GITHUB_OUTPUT"
           echo "Latest XZ version: $LATEST"
 
-          if [ "$CURRENT" != "$LATEST" ]; then
-            echo "new_version=true" >> $GITHUB_OUTPUT
+          VERSION_COMPARISON=$(compare_versions)
+          if [ "$VERSION_COMPARISON" == greater ]; then
+            echo "new_version=true" >> "$GITHUB_OUTPUT"
+            echo "status=complete" >> "$GITHUB_OUTPUT"
             echo "🆕 New XZ version available: $LATEST (current: $CURRENT)"
-          else
-            echo "new_version=false" >> $GITHUB_OUTPUT
+          elif [ "$VERSION_COMPARISON" == equal ]; then
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=complete" >> "$GITHUB_OUTPUT"
             echo "✅ Already on latest version: $LATEST"
+          else
+            echo "new_version=false" >> "$GITHUB_OUTPUT"
+            echo "status=current_ahead" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Pinned XZ version $CURRENT is ahead of upstream latest version $LATEST" >&2
+            exit 1
           fi
 
       - name: Setup pnpm
@@ -271,17 +331,31 @@ jobs:
             REJECTED_LATEST=$(<"$RUNNER_TEMP/xz-rejected-tag")
             printf '%s\n' "- Status: ⚠️ Unsupported upstream tag rejected: $REJECTED_LATEST" >> "$GITHUB_STEP_SUMMARY"
             echo "- Action: Check failed; widen the allowlist if this tag is supported" >> $GITHUB_STEP_SUMMARY
+          elif [ "$CHECK_STATUS" == "unsupported_current_tag" ]; then
+            REJECTED_CURRENT=$(<"$RUNNER_TEMP/xz-rejected-current")
+            printf '%s\n' "- Status: ⚠️ Unsupported pinned XZ version rejected: $REJECTED_CURRENT" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Action: Check failed; correct xz-version.json" >> $GITHUB_STEP_SUMMARY
+          elif [ "$CHECK_STATUS" == "current_ahead" ]; then
+            echo "- Status: ⚠️ Pinned XZ version $CURRENT_VERSION is ahead of upstream latest version $LATEST_VERSION" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Action: Check failed; investigate the upstream release metadata or pin" >> $GITHUB_STEP_SUMMARY
           else
             echo "- Status: ⚠️ Check did not publish a recognized status" >> $GITHUB_STEP_SUMMARY
             echo "- Action: Check failed; maintainer attention required" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Fail after reporting candidate test failure
+        if: ${{ !cancelled() && steps.test.outcome == 'failure' }}
+        run: |
+          echo "Candidate XZ compatibility tests failed; see the issue and summary." >&2
+          exit 1
 
   refresh-artifact:
     name: Refresh XZ artifact
     runs-on: ubuntu-latest
     needs: check-updates
     if: |
-      needs.check-updates.outputs.check_status == 'complete' &&
+      always() && !cancelled() &&
+      needs.check-updates.outputs.pinned_version != '' &&
       (
         (github.event_name == 'schedule') ||
         (github.event.inputs.force_artifact == 'true') ||
@@ -293,17 +367,17 @@ jobs:
 
       - name: Download XZ sources
         run: |
-          VERSION=$(jq -r '.version' xz-version.json)
-          echo "Downloading XZ $VERSION for artifact refresh"
+          echo "Downloading XZ $XZ_VERSION for artifact refresh"
           python3 scripts/download_xz_from_github.py deps/xz.tar.gz deps/xz/
           echo "✅ XZ sources downloaded"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          XZ_VERSION: ${{ needs.check-updates.outputs.pinned_version }}
 
       - name: Upload XZ sources as artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: xz-source-${{ needs.check-updates.outputs.current_version }}
+          name: xz-source-${{ needs.check-updates.outputs.pinned_version }}
           path: deps/xz/
           retention-days: 90
           compression-level: 9
@@ -311,6 +385,6 @@ jobs:
       - name: Summary
         run: |
           echo "## Artifact Refresh Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Version: ${{ needs.check-updates.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.check-updates.outputs.pinned_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Status: ✅ Artifact refreshed" >> $GITHUB_STEP_SUMMARY
           echo "- Retention: 90 days" >> $GITHUB_STEP_SUMMARY
