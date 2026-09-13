@@ -20,8 +20,7 @@ type NativeAddon = {
 
 function loadNativeAddon(): NativeAddon {
   try {
-    const addonPath = process.env.NODE_LIBLZMA_NATIVE_ADDON_PATH;
-    return (addonPath ? require(addonPath) : require('node-gyp-build')(projectRoot)) as NativeAddon;
+    return require('node-gyp-build')(projectRoot) as NativeAddon;
   } catch (cause) {
     throw new Error(
       `Could not load the native addon while checking its revision marker over ${revisionMarkerScope}. Rebuild with \`${rebuildCommand}\`.`,

@@ -42,7 +42,7 @@ def add_path(digest, relative_path, path):
                 file_digest.update(chunk)
     except OSError as error:
         fail(f"could not read required input {path}: {error}")
-    encoded_path = relative_path.encode("utf-8")
+    encoded_path = relative_path.encode("utf-8", "surrogatepass")
     digest.update(len(encoded_path).to_bytes(8, "big"))
     digest.update(encoded_path)
     digest.update(file_digest.digest())
