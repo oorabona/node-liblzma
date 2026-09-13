@@ -30,7 +30,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       has_update: ${{ steps.check.outputs.new_version }}
-      current_version: ${{ steps.check.outputs.current }}
       latest_version: ${{ steps.check.outputs.latest }}
       check_status: ${{ steps.check.outputs.status }}
       pinned_version: ${{ steps.check.outputs.pinned_version }}
@@ -55,7 +54,7 @@ jobs:
               error("expected exactly one JSON document")
             end
           ' xz-version.json); then
-            if ! jq -cs 'if length == 1 then .[0].version else . end' xz-version.json > "$RUNNER_TEMP/xz-rejected-current"; then
+            if ! jq -Rs '.' xz-version.json > "$RUNNER_TEMP/xz-rejected-current"; then
               printf '%s\n' '"<unreadable>"' > "$RUNNER_TEMP/xz-rejected-current"
             fi
             echo "⚠️ Rejected unsupported pinned XZ version; see the summary" >&2
@@ -368,17 +367,17 @@ jobs:
 
       - name: Download XZ sources
         run: |
-          VERSION=$(jq -r '.version' xz-version.json)
-          echo "Downloading XZ $VERSION for artifact refresh"
+          echo "Downloading XZ $XZ_VERSION for artifact refresh"
           python3 scripts/download_xz_from_github.py deps/xz.tar.gz deps/xz/
           echo "✅ XZ sources downloaded"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          XZ_VERSION: ${{ needs.check-updates.outputs.pinned_version }}
 
       - name: Upload XZ sources as artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: xz-source-${{ needs.check-updates.outputs.current_version }}
+          name: xz-source-${{ needs.check-updates.outputs.pinned_version }}
           path: deps/xz/
           retention-days: 90
           compression-level: 9
@@ -386,6 +385,6 @@ jobs:
       - name: Summary
         run: |
           echo "## Artifact Refresh Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Version: ${{ needs.check-updates.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.check-updates.outputs.pinned_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Status: ✅ Artifact refreshed" >> $GITHUB_STEP_SUMMARY
           echo "- Retention: 90 days" >> $GITHUB_STEP_SUMMARY
