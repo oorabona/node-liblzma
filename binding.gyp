@@ -210,14 +210,45 @@
     }]
   ],
   "targets": [{
+    "target_name": "native_fingerprint",
+    "type": "none",
+    "hard_dependency": 1,
+    "actions": [{
+      "action_name": "generate_native_fingerprint",
+      "inputs": [
+        "<(module_root_dir)/binding.gyp",
+        "<(module_root_dir)/scripts/binding_config.py",
+        "<(module_root_dir)/scripts/build_xz_with_cmake.py",
+        "<(module_root_dir)/scripts/download_xz_from_github.py",
+        "<(module_root_dir)/scripts/walk_sources.py",
+        "<(module_root_dir)/scripts/copy_dll.py",
+        "<(module_root_dir)/scripts/native_sources.py",
+        "<(module_root_dir)/scripts/native_fingerprint.py",
+        "<(module_root_dir)/xz-version.json",
+        "<!@(\"<(python)\" \"<(module_root_dir)/scripts/walk_sources.py\" src)"
+      ],
+      "outputs": ["<(SHARED_INTERMEDIATE_DIR)/native_fingerprint.h"],
+      "action": [
+        "<(py3)",
+        "<(module_root_dir)/scripts/native_fingerprint.py",
+        "--header",
+        "<(SHARED_INTERMEDIATE_DIR)/native_fingerprint.h"
+      ]
+    }]
+  }, {
     "target_name": "node_lzma",
-    "include_dirs": ["<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_include)"],
+    "include_dirs": [
+      "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_include)",
+      "<(SHARED_INTERMEDIATE_DIR)"
+    ],
     "defines": [
-      "NAPI_DISABLE_CPP_EXCEPTIONS",
-      "NATIVE_FINGERPRINT=\"<!(\"<(python)\" \"<(module_root_dir)/scripts/native_fingerprint.py\")\""
+      "NAPI_DISABLE_CPP_EXCEPTIONS"
     ],
     "sources": ["<!@(\"<(python)\" \"<(module_root_dir)/scripts/walk_sources.py\" src)"],
-    "dependencies": ["<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_gyp)"],
+    "dependencies": [
+      "native_fingerprint",
+      "<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_gyp)"
+    ],
     "cflags": [
       "-std=c++2a",
       "-Wall",

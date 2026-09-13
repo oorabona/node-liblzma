@@ -10,9 +10,25 @@ const require = createRequire(import.meta.url);
 const { findPython } = require('node-gyp/lib/find-python') as {
   findPython(configPython?: string): Promise<string>;
 };
-const nativeAddon = require('node-gyp-build')(projectRoot) as {
+const rebuildCommand = process.platform === 'win32' ? 'pnpm prebuildify:win' : 'pnpm prebuildify';
+const revisionMarkerScope =
+  'checked-out binding sources and control files; environment, dependency, and toolchain identity are outside this marker';
+
+type NativeAddon = {
   NATIVE_FINGERPRINT?: unknown;
 };
+
+function loadNativeAddon(): NativeAddon {
+  try {
+    const addonPath = process.env.NODE_LIBLZMA_NATIVE_ADDON_PATH;
+    return (addonPath ? require(addonPath) : require('node-gyp-build')(projectRoot)) as NativeAddon;
+  } catch (cause) {
+    throw new Error(
+      `Could not load the native addon while checking its revision marker over ${revisionMarkerScope}. Rebuild with \`${rebuildCommand}\`.`,
+      { cause }
+    );
+  }
+}
 
 async function calculateNativeFingerprint(): Promise<string> {
   const python = await findPython(process.env.npm_config_python);
@@ -23,12 +39,13 @@ async function calculateNativeFingerprint(): Promise<string> {
 }
 
 it('matches the native addon to the checked-out build inputs', async () => {
+  const nativeAddon = loadNativeAddon();
   const addonFingerprint =
     typeof nativeAddon.NATIVE_FINGERPRINT === 'string' ? nativeAddon.NATIVE_FINGERPRINT : '';
   const sourceFingerprint = await calculateNativeFingerprint();
 
   expect(
     addonFingerprint,
-    `Native addon fingerprint mismatch: addon=${JSON.stringify(addonFingerprint)}, sources=${JSON.stringify(sourceFingerprint)}. Rebuild with \`pnpm prebuildify\`.`
+    `Native addon revision marker mismatch over ${revisionMarkerScope}: addon=${JSON.stringify(addonFingerprint)}, sources=${JSON.stringify(sourceFingerprint)}. Rebuild with \`${rebuildCommand}\`.`
   ).toBe(sourceFingerprint);
 });
