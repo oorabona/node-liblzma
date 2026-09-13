@@ -1,7 +1,14 @@
-import os;
-import sys;
+import sys
+from pathlib import Path
 
-for (dirpath, dirnames, filenames) in os.walk(sys.argv[1]):
-    for filename in filenames:
-        if filename.endswith(('.cc', '.cpp', '.h', '.hpp', '.c')): 
-            print('/'.join([dirpath.replace(os.sep, '/'), filename]))
+from native_sources import native_source_paths
+
+
+def main():
+    source_root = Path(sys.argv[1])
+    for path in native_source_paths(source_root):
+        print(path.as_posix())
+
+
+if __name__ == "__main__":
+    main()

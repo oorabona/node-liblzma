@@ -50,6 +50,7 @@ function streamExpectError(compressed: Buffer, stream: Unxz): Promise<Error> {
     stream.on('end', () =>
       reject(new Error('expected stream to emit error, but it ended cleanly'))
     );
+    stream.resume();
 
     const src = Readable.from(compressed);
     src.pipe(stream);

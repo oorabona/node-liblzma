@@ -16,6 +16,7 @@
 	* along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "native_fingerprint.h"
 #include "node-liblzma.hpp"
 #include <cstring>
 
@@ -288,6 +289,9 @@ Napi::Object Init(Napi::Env env, Napi::Object exports)
 
 	// Tell companion script if we are thread-able or not
 	exports.Set(Napi::String::New(env, "HAS_THREADS_SUPPORT"), Napi::Boolean::New(env, HAS_THREADS_SUPPORT));
+	// Revision marker for checked-out binding sources and control files; environment,
+	// dependency, and toolchain identity are intentionally outside this marker.
+	exports.Set(Napi::String::New(env, "NATIVE_FINGERPRINT"), Napi::String::New(env, NATIVE_FINGERPRINT));
 
 	// Utility functions
 	exports.Set(Napi::String::New(env, "isXZ"), Napi::Function::New(env, IsXZ));
