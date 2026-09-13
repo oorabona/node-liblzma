@@ -20,11 +20,13 @@ Environment variables:
 """
 
 import urllib.request
+import urllib.error
 import json
 import sys
 import tarfile
 import os
 import argparse
+import ssl
 from datetime import datetime
 from pathlib import Path
 import tempfile
@@ -100,14 +102,39 @@ def get_latest_version():
     
     try:
         with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read())
-            return data['tag_name']
+            response_body = response.read()
     except Exception as e:
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
             f'could not query the GitHub releases API: {e}; check network access',
         )
+
+    try:
+        data = json.loads(response_body)
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            f'malformed GitHub releases API response: invalid JSON: {e}',
+        )
+
+    if not isinstance(data, dict):
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            'malformed GitHub releases API response: body must be a JSON object',
+        )
+
+    tag_name = data.get('tag_name')
+    if not isinstance(tag_name, str) or not tag_name.strip():
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            'malformed GitHub releases API response: "tag_name" must be a nonblank string',
+        )
+
+    return tag_name.strip()
 
 def determine_version():
     """Determine which XZ version to use based on priority hierarchy"""
@@ -129,7 +156,7 @@ def determine_version():
         fail_version_resolution(
             'repository pin',
             f'xz-version.json ({config_path})',
-            'missing required "version" key',
+            'required "version" must be a nonblank string',
         )
     configured_version = configured_version.strip()
     print(f"[CONFIG] Using configured XZ version: {configured_version}")
@@ -381,7 +408,10 @@ Examples:
         return 0
 
     # Only validate version if we need to download (avoids GitHub API call when cached)
-    validated_version = validate_version(version)
+    try:
+        validated_version = validate_version(version)
+    except (urllib.error.HTTPError, urllib.error.URLError, ssl.SSLError, TimeoutError) as e:
+        fail_version_resolution(version, version_source, str(e))
     if not validated_version:
         fail_version_resolution(
             version,
