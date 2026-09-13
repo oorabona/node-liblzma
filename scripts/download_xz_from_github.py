@@ -95,20 +95,23 @@ def load_version_config():
     return config, config_path
 
 def get_latest_version():
-    """Get the latest XZ version from GitHub API"""
+    """Get the latest XZ version from GitHub API, catching transport errors at urlopen."""
     api_url = "https://api.github.com/repos/tukaani-project/xz/releases/latest"
     headers = get_github_headers()
     req = urllib.request.Request(api_url, headers=headers)
     
     try:
-        with urllib.request.urlopen(req) as response:
-            response_body = response.read()
-    except Exception as e:
+        response = urllib.request.urlopen(req)
+    except (urllib.error.HTTPError, urllib.error.URLError, ssl.SSLError,
+            TimeoutError, http.client.HTTPException, ConnectionError) as e:
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
             f'could not query the GitHub releases API: {e}; check network access',
         )
+
+    with response:
+        response_body = response.read()
 
     try:
         data = json.loads(response_body)
@@ -162,8 +165,8 @@ def determine_version():
     print(f"[CONFIG] Using configured XZ version: {configured_version}")
     return configured_version, f'xz-version.json ({config_path})'
 
-def validate_version(version):
-    """Validate that the version exists on GitHub"""
+def validate_version(version, source):
+    """Validate a version on GitHub, translating transport failures only at urlopen."""
     if not version.startswith('v'):
         version = 'v' + version
 
@@ -173,13 +176,18 @@ def validate_version(version):
     req = urllib.request.Request(api_url, headers=headers)
     
     try:
-        with urllib.request.urlopen(req) as response:
-            return version
+        response = urllib.request.urlopen(req)
     except urllib.error.HTTPError as e:
         if e.code == 404:
             print(f"Warning: Version {version} not found on GitHub")
             return None
         raise
+    except (urllib.error.URLError, ssl.SSLError, TimeoutError,
+            http.client.HTTPException, ConnectionError) as e:
+        fail_version_resolution(version, source, str(e))
+
+    with response:
+        return version
 
 def get_tarball_url(version):
     """Get the tarball URL for a specific version"""
@@ -408,11 +416,7 @@ Examples:
         return 0
 
     # Only validate version if we need to download (avoids GitHub API call when cached)
-    try:
-        validated_version = validate_version(version)
-    except (urllib.error.HTTPError, urllib.error.URLError, ssl.SSLError, TimeoutError,
-            http.client.HTTPException, ConnectionError) as e:
-        fail_version_resolution(version, version_source, str(e))
+    validated_version = validate_version(version, version_source)
     if not validated_version:
         fail_version_resolution(
             version,
