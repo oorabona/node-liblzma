@@ -5,7 +5,6 @@ Download and extract XZ Utils from GitHub with intelligent version management.
 Version priority:
 1. XZ_VERSION environment variable (highest priority - for CI/CD overrides)
 2. xz-version.json configuration file (stable default)
-3. Fallback to v5.4.0 if no config found
 
 Features:
 - Smart caching: Skip download if correct version already extracted
@@ -16,22 +15,40 @@ Usage:
   python3 download_xz_from_github.py <tarball_path> <extract_dir>
 
 Environment variables:
-  XZ_VERSION: Specific version (e.g., 'v5.8.1', 'latest')
+  XZ_VERSION: Specific version (e.g., 'v5.8.4', 'latest')
   GITHUB_TOKEN: GitHub token for authenticated API requests (optional, increases rate limit)
 """
 
 import urllib.request
+import urllib.error
+import http.client
 import json
 import sys
 import tarfile
 import os
 import argparse
+import ssl
 from datetime import datetime
 from pathlib import Path
 import tempfile
 
+
+class VersionResolutionError(Exception):
+    """Raised when the requested XZ version cannot be resolved."""
+
+
+GITHUB_NOT_FOUND = object()
+
+
+def fail_version_resolution(version, source, cause):
+    """Stop the build rather than silently choosing a different XZ version."""
+    raise VersionResolutionError(
+        f"Could not resolve XZ version {version} from {source}: {cause}"
+    )
+
+
 def get_github_headers():
-    """Get headers with optional GitHub token for authentication"""
+    """Get headers with an optional GitHub token for authentication."""
     headers = {'User-Agent': 'node-liblzma'}
 
     # Use GITHUB_TOKEN if available (in CI) to avoid rate limiting
@@ -39,44 +56,103 @@ def get_github_headers():
     token = os.environ.get('GITHUB_TOKEN', '').strip()
     if token:
         headers['Authorization'] = f'token {token}'
-        print("[AUTH] Using GitHub token for authenticated requests")
 
     return headers
+
+
+def github_get(api_url, version, source):
+    """Fetch GitHub response bytes, translating request and read failures."""
+    headers = get_github_headers()
+    req = urllib.request.Request(api_url, headers=headers)
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            return response.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return GITHUB_NOT_FOUND
+        fail_version_resolution(
+            version,
+            source,
+            f'GitHub returned HTTP {e.code}: {e}',
+        )
+    except (urllib.error.URLError, ssl.SSLError, TimeoutError,
+            http.client.HTTPException, ConnectionError) as e:
+        fail_version_resolution(version, source, f'GitHub request failed: {e}')
 
 def load_version_config():
     """Load version configuration from xz-version.json"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, '..', 'xz-version.json')
-    
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-                print(f"Loaded XZ config: {config.get('version', 'unknown')} ({config.get('comment', 'no comment')})")
-                return config
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"Warning: Could not read xz-version.json: {e}")
-    
-    # Fallback configuration
-    return {
-        'version': 'v5.4.0',
-        'comment': 'Fallback stable version',
-        'allow_override': True
-    }
+
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        fail_version_resolution(
+            'repository pin',
+            f'xz-version.json ({config_path})',
+            'file does not exist',
+        )
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        fail_version_resolution(
+            'repository pin',
+            f'xz-version.json ({config_path})',
+            f'invalid JSON: {e}',
+        )
+    except OSError as e:
+        fail_version_resolution(
+            'repository pin',
+            f'xz-version.json ({config_path})',
+            f'could not read file: {e}',
+        )
+
+    if not isinstance(config, dict):
+        fail_version_resolution(
+            'repository pin',
+            f'xz-version.json ({config_path})',
+            'configuration must be a JSON object',
+        )
+
+    print(f"Loaded XZ config: {config.get('version', 'unknown')} ({config.get('comment', 'no comment')})")
+    return config, config_path
 
 def get_latest_version():
-    """Get the latest XZ version from GitHub API"""
+    """Get the latest XZ version from the GitHub API."""
     api_url = "https://api.github.com/repos/tukaani-project/xz/releases/latest"
-    headers = get_github_headers()
-    req = urllib.request.Request(api_url, headers=headers)
-    
+    response_body = github_get(api_url, 'latest', 'XZ_VERSION=latest')
+    if response_body is GITHUB_NOT_FOUND:
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            'GitHub latest release was not found',
+        )
+
     try:
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read())
-            return data['tag_name']
-    except Exception as e:
-        print(f"Warning: Could not fetch latest version: {e}")
-        return 'v5.8.1'  # Safe fallback
+        data = json.loads(response_body)
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            f'malformed GitHub response: invalid JSON: {e}',
+        )
+
+    if not isinstance(data, dict):
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            'malformed GitHub response: body must be a JSON object',
+        )
+
+    tag_name = data.get('tag_name')
+    if not isinstance(tag_name, str) or not tag_name.strip():
+        fail_version_resolution(
+            'latest',
+            'XZ_VERSION=latest',
+            'malformed GitHub response: "tag_name" must be a nonblank string',
+        )
+
+    return tag_name.strip()
 
 def determine_version():
     """Determine which XZ version to use based on priority hierarchy"""
@@ -86,35 +162,36 @@ def determine_version():
         if env_version.lower() == 'latest':
             version = get_latest_version()
             print(f"[LAUNCH] Using latest XZ version: {version}")
-            return version
+            return version, 'XZ_VERSION=latest'
         else:
             print(f"[TARGET] Using XZ version from environment: {env_version}")
-            return env_version
+            return env_version, 'XZ_VERSION'
     
     # 2. Repository configuration file
-    config = load_version_config()
-    configured_version = config.get('version', 'v5.4.0')
+    config, config_path = load_version_config()
+    configured_version = config.get('version')
+    if not isinstance(configured_version, str) or not configured_version.strip():
+        fail_version_resolution(
+            'repository pin',
+            f'xz-version.json ({config_path})',
+            'required "version" must be a nonblank string',
+        )
+    configured_version = configured_version.strip()
     print(f"[CONFIG] Using configured XZ version: {configured_version}")
-    return configured_version
+    return configured_version, f'xz-version.json ({config_path})'
 
-def validate_version(version):
-    """Validate that the version exists on GitHub"""
+def validate_version(version, source):
+    """Validate a version on GitHub through the output-free request helper."""
     if not version.startswith('v'):
         version = 'v' + version
 
     # Check if version exists
     api_url = f"https://api.github.com/repos/tukaani-project/xz/releases/tags/{version}"
-    headers = get_github_headers()
-    req = urllib.request.Request(api_url, headers=headers)
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            return version
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            print(f"Warning: Version {version} not found on GitHub")
-            return None
-        raise
+    if github_get(api_url, version, source) is GITHUB_NOT_FOUND:
+        print(f"Warning: Version {version} not found on GitHub")
+        return None
+
+    return version
 
 def get_tarball_url(version):
     """Get the tarball URL for a specific version"""
@@ -287,9 +364,8 @@ def main():
         description='Download XZ Utils from GitHub with intelligent version management',
         epilog='''
 Version priority:
-  1. XZ_VERSION environment variable (e.g., XZ_VERSION=v5.8.1)
+  1. XZ_VERSION environment variable (e.g., XZ_VERSION=v5.8.4)
   2. xz-version.json configuration file
-  3. Fallback to v5.4.0
 
 Examples:
   python3 download_xz_from_github.py deps/xz.tar.gz deps/
@@ -310,7 +386,7 @@ Examples:
         print("[VERBOSE] Verbose mode enabled")
     
     # Determine version to use
-    version = determine_version()
+    version, version_source = determine_version()
 
     # Prepare and validate paths
     tarball = os.path.abspath(args.tarball)
@@ -344,10 +420,13 @@ Examples:
         return 0
 
     # Only validate version if we need to download (avoids GitHub API call when cached)
-    validated_version = validate_version(version)
+    validated_version = validate_version(version, version_source)
     if not validated_version:
-        print(f"[ERROR] Version {version} not found, falling back to v5.4.0")
-        validated_version = 'v5.4.0'
+        fail_version_resolution(
+            version,
+            version_source,
+            'GitHub release tag was not found; update the requested version',
+        )
 
     # Download if not cached
     if os.path.exists(tarball):
@@ -369,7 +448,10 @@ if __name__ == '__main__':
     try:
         sys.exit(main())
     except KeyboardInterrupt:
-        print("\\n[ERROR] Interrupted by user")
+        print("\\n[ERROR] Interrupted by user", file=sys.stderr)
+        sys.exit(1)
+    except VersionResolutionError as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"[ERROR] Error: {e}")
