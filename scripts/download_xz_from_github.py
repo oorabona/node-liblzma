@@ -17,7 +17,8 @@ Usage:
 The supplied tarball path is written as an output. The per-version archive
 cache is stored alongside it as xz-<canonical-version>.tar.gz.
 The supplied tarball path must not be inside <extract_dir>/xz, since that
-directory is published as a complete replacement.
+directory is published as a complete replacement, and must not name the
+canonical archive for a different version.
 
 Environment variables:
   XZ_VERSION: Specific version (e.g., 'v5.8.4', 'latest')
@@ -47,8 +48,12 @@ class VersionResolutionError(Exception):
 GITHUB_NOT_FOUND = object()
 REQUEST_TIMEOUT_SECONDS = 30
 DOWNLOAD_CHUNK_SIZE = 64 * 1024
-VERSION_TAG_PATTERN = re.compile(
-    r'^v?((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$'
+VERSION_NUMBER_PATTERN = (
+    r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
+)
+VERSION_TAG_PATTERN = re.compile(r'^v?(' + VERSION_NUMBER_PATTERN + r')$')
+CANONICAL_ARCHIVE_FILENAME_PATTERN = re.compile(
+    r'^xz-(v' + VERSION_NUMBER_PATTERN + r')\.tar\.gz$'
 )
 # These are failures that establish unusable archive bytes, unlike filesystem
 # and permission errors raised while extracting valid content.
@@ -425,27 +430,6 @@ def versioned_tarball_path(tarball, version):
     )
 
 
-def validate_archive_filename(tarball, version, source):
-    """Reject archive names the target filesystem cannot represent."""
-    archive_dir = os.path.dirname(tarball)
-    archive_name = os.path.basename(tarball)
-    try:
-        name_max = os.pathconf(archive_dir, 'PC_NAME_MAX')
-    except OSError as e:
-        fail_version_resolution(
-            version, source,
-            f'could not determine PC_NAME_MAX for {archive_dir}: {e}',
-        )
-
-    encoded_length = len(os.fsencode(archive_name))
-    if encoded_length > name_max:
-        fail_version_resolution(
-            version, source,
-            f'archive filename {archive_name!r} exceeds PC_NAME_MAX={name_max} '
-            f'for {archive_dir} ({encoded_length} bytes)',
-        )
-
-
 def publish_staged_tree(staged_xz_dir, extract_dir):
     """Publish a complete staged tree, restoring the old tree on replacement failure."""
     destination = os.path.join(extract_dir, 'xz')
@@ -466,14 +450,7 @@ def publish_staged_tree(staged_xz_dir, extract_dir):
         raise
 
     if backup is not None:
-        committed_backup = os.path.join(
-            extract_dir,
-            '.xz-committed-' + os.path.basename(backup)[len('.xz-previous-'):],
-        )
-        os.replace(backup, committed_backup)
-        # An interruption between this committed mark and removal still leaves
-        # committed debris; recovery intentionally never restores that tree.
-        shutil.rmtree(committed_backup)
+        shutil.rmtree(backup)
 
 
 def extract_and_publish(tarball, extract_dir, version):
@@ -496,28 +473,6 @@ def extract_and_publish(tarball, extract_dir, version):
         publish_staged_tree(os.path.join(staging_dir, 'xz'), extract_dir)
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
-
-
-def recover_previous_tree(extract_dir):
-    """Restore the sole interrupted publication backup when the live tree is absent."""
-    destination = os.path.join(extract_dir, 'xz')
-    if os.path.lexists(destination):
-        return
-
-    previous_trees = []
-    with os.scandir(extract_dir) as entries:
-        for entry in entries:
-            if entry.name.startswith('.xz-previous-') and entry.is_dir(
-                    follow_symlinks=False):
-                previous_trees.append(entry.path)
-
-    if len(previous_trees) == 1:
-        os.replace(previous_trees[0], destination)
-        print(f"[RECOVERY] Restored interrupted XZ publication: {destination}")
-    elif len(previous_trees) > 1:
-        raise RuntimeError(
-            'Cannot recover absent XZ tree: multiple .xz-previous-* directories exist'
-        )
 
 
 def materialize_requested_tarball(canonical_tarball, requested_tarball):
@@ -586,8 +541,18 @@ Examples:
 
     extraction_destination = os.path.realpath(os.path.join(dirname, 'xz'))
     requested_destination = os.path.realpath(requested_tarball)
-    if os.path.commonpath(
-            [requested_destination, extraction_destination]) == extraction_destination:
+    normalized_extraction_destination = os.path.normcase(extraction_destination)
+    try:
+        requested_is_within_destination = (
+            os.path.commonpath([
+                os.path.normcase(requested_destination),
+                normalized_extraction_destination,
+            ]) == normalized_extraction_destination
+        )
+    except ValueError:
+        # Different Windows drives have no common path, so cannot be contained.
+        requested_is_within_destination = False
+    if requested_is_within_destination:
         print(
             '[ERROR] Output tarball path conflicts with extraction destination '
             f'{extraction_destination}: {requested_tarball}'
@@ -597,6 +562,18 @@ Examples:
     # Determine version only after path refusals that must make no request.
     version, version_source = determine_version()
 
+    requested_archive_match = CANONICAL_ARCHIVE_FILENAME_PATTERN.fullmatch(
+        os.path.basename(requested_tarball)
+    )
+    if (requested_archive_match is not None
+            and requested_archive_match.group(1) != version):
+        print(
+            '[ERROR] Output tarball path conflicts with requested XZ version '
+            f'{version}: {requested_tarball} names '
+            f'{requested_archive_match.group(1)}'
+        )
+        return 1
+
     # Create directories if needed
     os.makedirs(os.path.dirname(requested_tarball), exist_ok=True)
     os.makedirs(dirname, exist_ok=True)
@@ -604,12 +581,6 @@ Examples:
     # The documented positional path remains an output, while only this
     # canonical per-version archive is ever read as the archive cache input.
     tarball = versioned_tarball_path(requested_tarball, version)
-    validate_archive_filename(tarball, version, version_source)
-
-    # A previous interruption can leave the live tree absent after publication.
-    # Staging directories are deliberately ignored: without coordination, one
-    # may belong to a currently running invocation.
-    recover_previous_tree(dirname)
 
     # deps/xz is never intentionally populated incrementally: extraction and
     # marker writing complete in staging before publication. Concurrent builds
