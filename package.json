@@ -48,7 +48,7 @@
     "test:coverage-v8": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf lib",
+    "clean": "rm -rf lib build prebuilds",
     "lint": "biome lint",
     "lint:fix": "biome lint --write",
     "format": "biome format",

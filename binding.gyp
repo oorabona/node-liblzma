@@ -212,7 +212,10 @@
   "targets": [{
     "target_name": "node_lzma",
     "include_dirs": ["<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_include)"],
-    "defines": ["NAPI_DISABLE_CPP_EXCEPTIONS"],
+    "defines": [
+      "NAPI_DISABLE_CPP_EXCEPTIONS",
+      "NATIVE_FINGERPRINT=\"<!(\"<(python)\" \"<(module_root_dir)/scripts/native_fingerprint.py\")\""
+    ],
     "sources": ["<!@(\"<(python)\" \"<(module_root_dir)/scripts/walk_sources.py\" src)"],
     "dependencies": ["<!(\"<(python)\" \"<(module_root_dir)/scripts/binding_config.py\" node_addon_api_gyp)"],
     "cflags": [

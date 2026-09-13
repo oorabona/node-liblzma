@@ -288,6 +288,12 @@ Napi::Object Init(Napi::Env env, Napi::Object exports)
 
 	// Tell companion script if we are thread-able or not
 	exports.Set(Napi::String::New(env, "HAS_THREADS_SUPPORT"), Napi::Boolean::New(env, HAS_THREADS_SUPPORT));
+	// Identifies the native build inputs used to compile this addon.
+#ifdef NATIVE_FINGERPRINT
+	exports.Set(Napi::String::New(env, "NATIVE_FINGERPRINT"), Napi::String::New(env, NATIVE_FINGERPRINT));
+#else
+	exports.Set(Napi::String::New(env, "NATIVE_FINGERPRINT"), Napi::String::New(env, ""));
+#endif
 
 	// Utility functions
 	exports.Set(Napi::String::New(env, "isXZ"), Napi::Function::New(env, IsXZ));

@@ -1,0 +1,34 @@
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '../..');
+const require = createRequire(import.meta.url);
+const { findPython } = require('node-gyp/lib/find-python') as {
+  findPython(configPython?: string): Promise<string>;
+};
+const nativeAddon = require('node-gyp-build')(projectRoot) as {
+  NATIVE_FINGERPRINT?: unknown;
+};
+
+async function calculateNativeFingerprint(): Promise<string> {
+  const python = await findPython(process.env.npm_config_python);
+  return execFileSync(python, [path.join(projectRoot, 'scripts/native_fingerprint.py')], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  }).trim();
+}
+
+it('matches the native addon to the checked-out build inputs', async () => {
+  const addonFingerprint =
+    typeof nativeAddon.NATIVE_FINGERPRINT === 'string' ? nativeAddon.NATIVE_FINGERPRINT : '';
+  const sourceFingerprint = await calculateNativeFingerprint();
+
+  expect(
+    addonFingerprint,
+    `Native addon fingerprint mismatch: addon=${JSON.stringify(addonFingerprint)}, sources=${JSON.stringify(sourceFingerprint)}. Rebuild with \`pnpm prebuildify\`.`
+  ).toBe(sourceFingerprint);
+});
