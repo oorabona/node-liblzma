@@ -14,6 +14,9 @@ Features:
 Usage:
   python3 download_xz_from_github.py <tarball_path> <extract_dir>
 
+The supplied tarball path is written as an output. The per-version archive
+cache is stored alongside it as xz-<canonical-version>.tar.gz.
+
 Environment variables:
   XZ_VERSION: Specific version (e.g., 'v5.8.4', 'latest')
   GITHUB_TOKEN: GitHub token for authenticated API requests (optional, increases rate limit)
@@ -30,8 +33,6 @@ import argparse
 import ssl
 import re
 import shutil
-import time
-from datetime import datetime
 from pathlib import Path
 import tempfile
 
@@ -43,9 +44,7 @@ class VersionResolutionError(Exception):
 GITHUB_NOT_FOUND = object()
 REQUEST_TIMEOUT_SECONDS = 30
 DOWNLOAD_CHUNK_SIZE = 64 * 1024
-LOCK_RETRY_SECONDS = 0.1
-LOCK_ORPHAN_SECONDS = 60
-VERSION_TAG_PATTERN = re.compile(r'^v?(\d+\.\d+\.\d+)$')
+VERSION_TAG_PATTERN = re.compile(r'^v?([0-9]+\.[0-9]+\.[0-9]+)$')
 
 
 def fail_version_resolution(version, source, cause):
@@ -243,9 +242,16 @@ def download_tarball(url, tarball_path, version, source):
                 total_bytes += len(chunk)
         return response.geturl(), total_bytes
 
-    final_url, total_bytes = github_get(
+    download_result = github_get(
         url, version, source, read_body=False, response_handler=write_response
     )
+    if download_result is GITHUB_NOT_FOUND:
+        fail_version_resolution(
+            version,
+            source,
+            'GitHub tarball was not found',
+        )
+    final_url, total_bytes = download_result
     print(f"[PACKAGE] Resolved to: {final_url}")
     print(f"[SUCCESS] Downloaded {total_bytes} bytes to {tarball_path}")
 
@@ -340,13 +346,14 @@ def extract_tarball(tarball_path, extract_dir):
         # Security validation: check all members before extraction
         safe_members = []
         for member in members:
-            # Create the new path by replacing root directory with 'xz'
-            if not member.name.startswith(root_dir):
+            # Create the new path by mapping the root path component to 'xz'.
+            member_parts = member.name.split('/')
+            if not member_parts or member_parts[0] != root_dir:
                 raise ValueError(
                     f"Tarball member is not in its root directory: {member.name}"
                 )
                 
-            new_name = member.name.replace(root_dir, 'xz', 1)
+            new_name = '/'.join(['xz', *member_parts[1:]])
             
             # Validate the new path is safe
             if not is_safe_path(new_name, extract_dir):
@@ -404,68 +411,6 @@ def versioned_tarball_path(tarball, version):
     )
 
 
-class XZCacheLock:
-    """Cooperative directory lock with recovery for abandoned locks."""
-
-    def __init__(self, extract_dir):
-        self.path = os.path.join(extract_dir, '.xz-cache.lock')
-        self.acquired = False
-
-    @staticmethod
-    def _owner_is_alive(lock_path):
-        try:
-            with open(os.path.join(lock_path, 'owner'), 'r') as owner_file:
-                pid = int(owner_file.read().strip())
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            return True
-        except (OSError, ValueError):
-            return None
-        return True
-
-    def _is_abandoned(self):
-        try:
-            lock_age = time.time() - os.path.getmtime(self.path)
-        except FileNotFoundError:
-            return False
-        owner_is_alive = self._owner_is_alive(self.path)
-        if owner_is_alive is False:
-            return True
-        # A lock without readable owner metadata may be from a killed process.
-        # Wait briefly so that a creator can finish recording its PID first.
-        return owner_is_alive is None and lock_age >= LOCK_ORPHAN_SECONDS
-
-    def __enter__(self):
-        while True:
-            try:
-                os.mkdir(self.path)
-                try:
-                    with open(os.path.join(self.path, 'owner'), 'w') as owner_file:
-                        owner_file.write(str(os.getpid()))
-                except Exception:
-                    shutil.rmtree(self.path, ignore_errors=True)
-                    raise
-                self.acquired = True
-                return self
-            except FileExistsError:
-                if self._is_abandoned():
-                    try:
-                        shutil.rmtree(self.path)
-                        print(f"[LOCK] Removed abandoned XZ cache lock: {self.path}")
-                    except FileNotFoundError:
-                        pass
-                    continue
-                print(f"[LOCK] Waiting for XZ cache lock: {self.path}")
-                time.sleep(LOCK_RETRY_SECONDS)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.acquired:
-            shutil.rmtree(self.path)
-            self.acquired = False
-
-
 def publish_staged_tree(staged_xz_dir, extract_dir):
     """Publish a complete staged tree, restoring the old tree on replacement failure."""
     destination = os.path.join(extract_dir, 'xz')
@@ -473,6 +418,9 @@ def publish_staged_tree(staged_xz_dir, extract_dir):
     if os.path.exists(destination):
         backup = tempfile.mkdtemp(prefix='.xz-previous-', dir=extract_dir)
         os.rmdir(backup)
+        # This is not an atomic swap: abrupt termination between these two
+        # renames can leave deps/xz absent with recovery material at
+        # deps/.xz-previous-*.
         os.replace(destination, backup)
 
     try:
@@ -490,11 +438,58 @@ def extract_and_publish(tarball, extract_dir, version):
     """Extract to a sibling staging directory and publish only after it is complete."""
     staging_dir = tempfile.mkdtemp(prefix='.xz-staging-', dir=extract_dir)
     try:
-        extract_tarball(tarball, staging_dir)
+        try:
+            extract_tarball(tarball, staging_dir)
+        except Exception:
+            # A failed extraction makes this archive unusable as a cache input;
+            # remove it so a later invocation can download a fresh copy.
+            try:
+                os.unlink(tarball)
+            except FileNotFoundError:
+                pass
+            raise
         write_version_marker(staging_dir, version)
         publish_staged_tree(os.path.join(staging_dir, 'xz'), extract_dir)
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
+
+
+def recover_previous_tree(extract_dir):
+    """Restore the sole interrupted publication backup when the live tree is absent."""
+    destination = os.path.join(extract_dir, 'xz')
+    if os.path.lexists(destination):
+        return
+
+    previous_trees = []
+    with os.scandir(extract_dir) as entries:
+        for entry in entries:
+            if entry.name.startswith('.xz-previous-') and entry.is_dir(
+                    follow_symlinks=False):
+                previous_trees.append(entry.path)
+
+    if len(previous_trees) == 1:
+        os.replace(previous_trees[0], destination)
+        print(f"[RECOVERY] Restored interrupted XZ publication: {destination}")
+    elif len(previous_trees) > 1:
+        raise RuntimeError(
+            'Cannot recover absent XZ tree: multiple .xz-previous-* directories exist'
+        )
+
+
+def materialize_requested_tarball(canonical_tarball, requested_tarball):
+    """Copy the canonical archive to the documented positional output path."""
+    if canonical_tarball == requested_tarball:
+        return
+
+    temporary_tarball = f'{requested_tarball}.tmp-{os.getpid()}'
+    try:
+        shutil.copyfile(canonical_tarball, temporary_tarball)
+        os.replace(temporary_tarball, requested_tarball)
+    finally:
+        try:
+            os.unlink(temporary_tarball)
+        except FileNotFoundError:
+            pass
 
 def main():
     parser = argparse.ArgumentParser(
@@ -512,7 +507,7 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    parser.add_argument('tarball', help='Output tarball path (.tar.gz will be used)')
+    parser.add_argument('tarball', help='Output tarball path')
     parser.add_argument('dirname', help='Extract directory')
     parser.add_argument('--verbose', '-v', action='store_true', 
                        help='Verbose output')
@@ -526,11 +521,11 @@ Examples:
     version, version_source = determine_version()
 
     # Prepare and validate paths
-    tarball = os.path.abspath(args.tarball)
+    requested_tarball = os.path.abspath(args.tarball)
     dirname = os.path.abspath(args.dirname)
 
     # Additional security validation for output paths
-    if not tarball or not dirname:
+    if not requested_tarball or not dirname:
         print("[ERROR] Invalid paths provided")
         return 1
 
@@ -541,52 +536,55 @@ Examples:
             print(f"[ERROR] Suspicious pattern '{pattern}' detected in paths")
             return 1
 
-    # Ensure we're using .tar.gz extension (GitHub uses gzip, not xz)
-    if tarball.endswith('.tar.xz'):
-        tarball = tarball.replace('.tar.xz', '.tar.gz')
-        print(f"[NOTE] Adjusted tarball name to: {tarball}")
-
     # Create directories if needed
-    os.makedirs(os.path.dirname(tarball), exist_ok=True)
+    os.makedirs(os.path.dirname(requested_tarball), exist_ok=True)
     os.makedirs(dirname, exist_ok=True)
 
-    # The argument is retained for binding.gyp compatibility, but this legacy
-    # shared filename is never read or written. A cache hit therefore means an
-    # archive belonging to this canonical tag, not merely any prior archive.
-    tarball = versioned_tarball_path(tarball, version)
+    # The documented positional path remains an output, while only this
+    # canonical per-version archive is ever read as the archive cache input.
+    tarball = versioned_tarball_path(requested_tarball, version)
 
-    # Serialise inspection, download, extraction, and publication. A crashed
-    # owner is identified by its dead PID (or unreadable metadata after a short
-    # grace period) and its lock is removed, so stale locks cannot block forever.
-    with XZCacheLock(dirname):
-        # Do this before GitHub API calls to avoid rate limiting on a valid cache.
-        if is_xz_already_extracted(dirname, version):
-            print(f"[SKIP] XZ {version} already available, skipping download")
-            return 0
+    # A previous interruption can leave the live tree absent after publication.
+    # Staging directories are deliberately ignored: without coordination, one
+    # may belong to a currently running invocation.
+    recover_previous_tree(dirname)
 
-        validated_version = validate_version(version, version_source)
-        if not validated_version:
-            fail_version_resolution(
-                version,
-                version_source,
-                'GitHub release tag was not found; update the requested version',
-            )
+    # deps/xz is never intentionally populated incrementally: extraction and
+    # marker writing complete in staging before publication. Concurrent builds
+    # are not supported: two versions can race, a complete tree wins, and the
+    # losing invocation may fail because a non-empty directory cannot be
+    # replaced. That retryable failure does not indicate corruption.
+    if is_xz_already_extracted(dirname, version) and os.path.exists(tarball):
+        materialize_requested_tarball(tarball, requested_tarball)
+        print(f"[SKIP] XZ {version} already available, skipping download")
+        return 0
 
-        if os.path.exists(tarball):
-            print(f"[CACHED] Using cached tarball: {tarball}")
-        else:
-            temporary_tarball = f'{tarball}.tmp-{os.getpid()}'
+    validated_version = validate_version(version, version_source)
+    if not validated_version:
+        fail_version_resolution(
+            version,
+            version_source,
+            'GitHub release tag was not found; update the requested version',
+        )
+
+    if os.path.exists(tarball):
+        print(f"[CACHED] Using cached tarball: {tarball}")
+    else:
+        temporary_tarball = f'{tarball}.tmp-{os.getpid()}'
+        try:
+            url = get_tarball_url(validated_version)
+            download_tarball(url, temporary_tarball, version, version_source)
+            os.replace(temporary_tarball, tarball)
+        finally:
             try:
-                url = get_tarball_url(validated_version)
-                download_tarball(url, temporary_tarball, version, version_source)
-                os.replace(temporary_tarball, tarball)
-            finally:
-                try:
-                    os.unlink(temporary_tarball)
-                except FileNotFoundError:
-                    pass
+                os.unlink(temporary_tarball)
+            except FileNotFoundError:
+                pass
 
+    if not is_xz_already_extracted(dirname, version):
         extract_and_publish(tarball, dirname, validated_version)
+
+    materialize_requested_tarball(tarball, requested_tarball)
 
     print(f"[DONE] Successfully prepared XZ {validated_version}")
     return 0
