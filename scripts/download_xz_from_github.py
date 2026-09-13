@@ -16,6 +16,8 @@ Usage:
 
 The supplied tarball path is written as an output. The per-version archive
 cache is stored alongside it as xz-<canonical-version>.tar.gz.
+The supplied tarball path must not be inside <extract_dir>/xz, since that
+directory is published as a complete replacement.
 
 Environment variables:
   XZ_VERSION: Specific version (e.g., 'v5.8.4', 'latest')
@@ -25,6 +27,7 @@ Environment variables:
 import urllib.request
 import urllib.error
 import http.client
+import gzip
 import json
 import sys
 import tarfile
@@ -44,7 +47,18 @@ class VersionResolutionError(Exception):
 GITHUB_NOT_FOUND = object()
 REQUEST_TIMEOUT_SECONDS = 30
 DOWNLOAD_CHUNK_SIZE = 64 * 1024
-VERSION_TAG_PATTERN = re.compile(r'^v?([0-9]+\.[0-9]+\.[0-9]+)$')
+VERSION_TAG_PATTERN = re.compile(
+    r'^v?((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$'
+)
+# These are failures that establish unusable archive bytes, unlike filesystem
+# and permission errors raised while extracting valid content.
+ARCHIVE_CONTENT_ERRORS = (
+    tarfile.ReadError,
+    tarfile.CompressionError,
+    tarfile.HeaderError,
+    gzip.BadGzipFile,
+    EOFError,
+)
 
 
 def fail_version_resolution(version, source, cause):
@@ -106,7 +120,8 @@ def canonicalize_version(version, source):
         fail_version_resolution(
             version,
             source,
-            'version must be a plain MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH tag',
+            'version must be a plain, unpadded ASCII-digit '
+            'MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH tag',
         )
     return 'v' + match.group(1)
 
@@ -175,19 +190,19 @@ def get_latest_version():
         )
 
     tag_name = data.get('tag_name')
-    if not isinstance(tag_name, str) or not tag_name.strip():
+    if not isinstance(tag_name, str) or not tag_name:
         fail_version_resolution(
             'latest',
             'XZ_VERSION=latest',
             'malformed GitHub response: "tag_name" must be a nonblank string',
         )
 
-    return canonicalize_version(tag_name.strip(), 'GitHub latest release')
+    return canonicalize_version(tag_name, 'GitHub latest release')
 
 def determine_version():
     """Determine which XZ version to use based on priority hierarchy"""
     # 1. Environment variable has highest priority (CI/CD overrides)
-    env_version = os.environ.get('XZ_VERSION', '').strip()
+    env_version = os.environ.get('XZ_VERSION', '')
     if env_version:
         if env_version.lower() == 'latest':
             version = get_latest_version()
@@ -201,14 +216,14 @@ def determine_version():
     # 2. Repository configuration file
     config, config_path = load_version_config()
     configured_version = config.get('version')
-    if not isinstance(configured_version, str) or not configured_version.strip():
+    if not isinstance(configured_version, str) or not configured_version:
         fail_version_resolution(
             'repository pin',
             f'xz-version.json ({config_path})',
             'required "version" must be a nonblank string',
         )
     configured_version = canonicalize_version(
-        configured_version.strip(), f'xz-version.json ({config_path})'
+        configured_version, f'xz-version.json ({config_path})'
     )
     print(f"[CONFIG] Using configured XZ version: {configured_version}")
     return configured_version, f'xz-version.json ({config_path})'
@@ -227,19 +242,18 @@ def get_tarball_url(version):
     """Get the tarball URL for a specific version"""
     return f'https://api.github.com/repos/tukaani-project/xz/tarball/{version}'
 
-def download_tarball(url, tarball_path, version, source):
+def download_tarball(url, tarball_file, tarball_path, version, source):
     """Download tarball from GitHub with proper user agent"""
     print(f"[DOWNLOAD] Downloading from: {url}")
 
     def write_response(response):
         total_bytes = 0
-        with open(tarball_path, 'wb') as tarball_file:
-            while True:
-                chunk = response.read(DOWNLOAD_CHUNK_SIZE)
-                if not chunk:
-                    break
-                tarball_file.write(chunk)
-                total_bytes += len(chunk)
+        while True:
+            chunk = response.read(DOWNLOAD_CHUNK_SIZE)
+            if not chunk:
+                break
+            tarball_file.write(chunk)
+            total_bytes += len(chunk)
         return response.geturl(), total_bytes
 
     download_result = github_get(
@@ -411,6 +425,27 @@ def versioned_tarball_path(tarball, version):
     )
 
 
+def validate_archive_filename(tarball, version, source):
+    """Reject archive names the target filesystem cannot represent."""
+    archive_dir = os.path.dirname(tarball)
+    archive_name = os.path.basename(tarball)
+    try:
+        name_max = os.pathconf(archive_dir, 'PC_NAME_MAX')
+    except OSError as e:
+        fail_version_resolution(
+            version, source,
+            f'could not determine PC_NAME_MAX for {archive_dir}: {e}',
+        )
+
+    encoded_length = len(os.fsencode(archive_name))
+    if encoded_length > name_max:
+        fail_version_resolution(
+            version, source,
+            f'archive filename {archive_name!r} exceeds PC_NAME_MAX={name_max} '
+            f'for {archive_dir} ({encoded_length} bytes)',
+        )
+
+
 def publish_staged_tree(staged_xz_dir, extract_dir):
     """Publish a complete staged tree, restoring the old tree on replacement failure."""
     destination = os.path.join(extract_dir, 'xz')
@@ -431,7 +466,14 @@ def publish_staged_tree(staged_xz_dir, extract_dir):
         raise
 
     if backup is not None:
-        shutil.rmtree(backup)
+        committed_backup = os.path.join(
+            extract_dir,
+            '.xz-committed-' + os.path.basename(backup)[len('.xz-previous-'):],
+        )
+        os.replace(backup, committed_backup)
+        # An interruption between this committed mark and removal still leaves
+        # committed debris; recovery intentionally never restores that tree.
+        shutil.rmtree(committed_backup)
 
 
 def extract_and_publish(tarball, extract_dir, version):
@@ -440,13 +482,15 @@ def extract_and_publish(tarball, extract_dir, version):
     try:
         try:
             extract_tarball(tarball, staging_dir)
-        except Exception:
-            # A failed extraction makes this archive unusable as a cache input;
-            # remove it so a later invocation can download a fresh copy.
+        except ARCHIVE_CONTENT_ERRORS:
+            # Only tarfile read, compression, header, gzip, and EOF failures
+            # prove the bytes unusable. Disk, permission, and transient I/O
+            # errors leave the archive available for a later retry.
             try:
                 os.unlink(tarball)
-            except FileNotFoundError:
-                pass
+            except OSError as e:
+                print(f"[WARNING] Could not evict unusable archive {tarball}: {e}",
+                      file=sys.stderr)
             raise
         write_version_marker(staging_dir, version)
         publish_staged_tree(os.path.join(staging_dir, 'xz'), extract_dir)
@@ -481,15 +525,22 @@ def materialize_requested_tarball(canonical_tarball, requested_tarball):
     if canonical_tarball == requested_tarball:
         return
 
-    temporary_tarball = f'{requested_tarball}.tmp-{os.getpid()}'
+    temporary_tarball = None
     try:
-        shutil.copyfile(canonical_tarball, temporary_tarball)
+        descriptor, temporary_tarball = tempfile.mkstemp(
+            prefix=os.path.basename(requested_tarball) + '.tmp-',
+            dir=os.path.dirname(requested_tarball),
+        )
+        with os.fdopen(descriptor, 'wb') as temporary_file:
+            with open(canonical_tarball, 'rb') as canonical_file:
+                shutil.copyfileobj(canonical_file, temporary_file)
         os.replace(temporary_tarball, requested_tarball)
     finally:
-        try:
-            os.unlink(temporary_tarball)
-        except FileNotFoundError:
-            pass
+        if temporary_tarball is not None:
+            try:
+                os.unlink(temporary_tarball)
+            except FileNotFoundError:
+                pass
 
 def main():
     parser = argparse.ArgumentParser(
@@ -516,9 +567,6 @@ Examples:
     
     if args.verbose:
         print("[VERBOSE] Verbose mode enabled")
-    
-    # Determine version to use
-    version, version_source = determine_version()
 
     # Prepare and validate paths
     requested_tarball = os.path.abspath(args.tarball)
@@ -536,6 +584,19 @@ Examples:
             print(f"[ERROR] Suspicious pattern '{pattern}' detected in paths")
             return 1
 
+    extraction_destination = os.path.realpath(os.path.join(dirname, 'xz'))
+    requested_destination = os.path.realpath(requested_tarball)
+    if os.path.commonpath(
+            [requested_destination, extraction_destination]) == extraction_destination:
+        print(
+            '[ERROR] Output tarball path conflicts with extraction destination '
+            f'{extraction_destination}: {requested_tarball}'
+        )
+        return 1
+
+    # Determine version only after path refusals that must make no request.
+    version, version_source = determine_version()
+
     # Create directories if needed
     os.makedirs(os.path.dirname(requested_tarball), exist_ok=True)
     os.makedirs(dirname, exist_ok=True)
@@ -543,6 +604,7 @@ Examples:
     # The documented positional path remains an output, while only this
     # canonical per-version archive is ever read as the archive cache input.
     tarball = versioned_tarball_path(requested_tarball, version)
+    validate_archive_filename(tarball, version, version_source)
 
     # A previous interruption can leave the live tree absent after publication.
     # Staging directories are deliberately ignored: without coordination, one
@@ -570,16 +632,24 @@ Examples:
     if os.path.exists(tarball):
         print(f"[CACHED] Using cached tarball: {tarball}")
     else:
-        temporary_tarball = f'{tarball}.tmp-{os.getpid()}'
+        temporary_tarball = None
         try:
-            url = get_tarball_url(validated_version)
-            download_tarball(url, temporary_tarball, version, version_source)
+            descriptor, temporary_tarball = tempfile.mkstemp(
+                prefix=os.path.basename(tarball) + '.tmp-',
+                dir=os.path.dirname(tarball),
+            )
+            with os.fdopen(descriptor, 'wb') as temporary_file:
+                url = get_tarball_url(validated_version)
+                download_tarball(
+                    url, temporary_file, temporary_tarball, version, version_source
+                )
             os.replace(temporary_tarball, tarball)
         finally:
-            try:
-                os.unlink(temporary_tarball)
-            except FileNotFoundError:
-                pass
+            if temporary_tarball is not None:
+                try:
+                    os.unlink(temporary_tarball)
+                except FileNotFoundError:
+                    pass
 
     if not is_xz_already_extracted(dirname, version):
         extract_and_publish(tarball, dirname, validated_version)
