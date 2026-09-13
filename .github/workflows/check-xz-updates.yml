@@ -33,6 +33,7 @@ jobs:
       current_version: ${{ steps.check.outputs.current }}
       latest_version: ${{ steps.check.outputs.latest }}
       check_status: ${{ steps.check.outputs.status }}
+      pinned_version: ${{ steps.check.outputs.pinned_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -45,17 +46,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get and validate the current version before publishing it as an output.
-          if ! CURRENT=$(jq -er '
-            .version
-            | select(type == "string")
-            | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+\\z"))
+          if ! CURRENT=$(jq -ser '
+            if length == 1 then
+              .[0].version
+              | select(type == "string")
+              | select(test("^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\z"))
+            else
+              error("expected exactly one JSON document")
+            end
           ' xz-version.json); then
-            REJECTED_CURRENT=$(jq -c '.version' xz-version.json 2>/dev/null || printf '<unreadable>')
-            echo "⚠️ Rejected unsupported pinned XZ version: $REJECTED_CURRENT" >&2
+            if ! jq -cs 'if length == 1 then .[0].version else . end' xz-version.json > "$RUNNER_TEMP/xz-rejected-current"; then
+              printf '%s\n' '"<unreadable>"' > "$RUNNER_TEMP/xz-rejected-current"
+            fi
+            echo "⚠️ Rejected unsupported pinned XZ version; see the summary" >&2
             echo "new_version=false" >> "$GITHUB_OUTPUT"
             echo "status=unsupported_current_tag" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          echo "pinned_version=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "Current XZ version: $CURRENT"
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           IFS=. read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${CURRENT#v}"
@@ -78,7 +86,7 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$LATEST" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ! "$LATEST" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "⚠️ Rejected unsupported latest XZ version: $LATEST" >&2
             printf '%s' "$LATEST" > "$RUNNER_TEMP/xz-rejected-tag"
             echo "new_version=false" >> "$GITHUB_OUTPUT"
@@ -87,16 +95,10 @@ jobs:
           fi
           IFS=. read -r LATEST_MAJOR LATEST_MINOR LATEST_PATCH <<< "${LATEST#v}"
 
-          normalize_decimal() {
-            local component=$1
-            component=${component#"${component%%[!0]*}"}
-            printf '%s\n' "${component:-0}"
-          }
-
           compare_decimal() {
             local left right
-            left=$(normalize_decimal "$1")
-            right=$(normalize_decimal "$2")
+            left=$1
+            right=$2
 
             if (( ${#left} > ${#right} )); then
               printf '%s\n' greater
@@ -331,7 +333,8 @@ jobs:
             printf '%s\n' "- Status: ⚠️ Unsupported upstream tag rejected: $REJECTED_LATEST" >> "$GITHUB_STEP_SUMMARY"
             echo "- Action: Check failed; widen the allowlist if this tag is supported" >> $GITHUB_STEP_SUMMARY
           elif [ "$CHECK_STATUS" == "unsupported_current_tag" ]; then
-            echo "- Status: ⚠️ Unsupported pinned XZ version rejected: $CURRENT_VERSION" >> "$GITHUB_STEP_SUMMARY"
+            REJECTED_CURRENT=$(<"$RUNNER_TEMP/xz-rejected-current")
+            printf '%s\n' "- Status: ⚠️ Unsupported pinned XZ version rejected: $REJECTED_CURRENT" >> "$GITHUB_STEP_SUMMARY"
             echo "- Action: Check failed; correct xz-version.json" >> $GITHUB_STEP_SUMMARY
           elif [ "$CHECK_STATUS" == "current_ahead" ]; then
             echo "- Status: ⚠️ Pinned XZ version $CURRENT_VERSION is ahead of upstream latest version $LATEST_VERSION" >> "$GITHUB_STEP_SUMMARY"
@@ -353,7 +356,7 @@ jobs:
     needs: check-updates
     if: |
       always() && !cancelled() &&
-      needs.check-updates.outputs.check_status == 'complete' &&
+      needs.check-updates.outputs.pinned_version != '' &&
       (
         (github.event_name == 'schedule') ||
         (github.event.inputs.force_artifact == 'true') ||
