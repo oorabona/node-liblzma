@@ -6,13 +6,11 @@ from pathlib import Path
 SOURCE_SUFFIXES = (".cc", ".cpp", ".h", ".hpp", ".c")
 
 
-def native_source_paths(repo_root: Path):
-    """Return the sorted repository-relative source paths used by binding.gyp."""
-    source_root = repo_root / "src"
+def native_source_paths(source_root: Path):
+    """Return sorted source paths beneath the supplied source root."""
     return sorted(
-        (
-            path.relative_to(repo_root).as_posix()
-            for path in source_root.rglob("*")
-            if path.is_file() and path.suffix in SOURCE_SUFFIXES
-        ),
+        path
+        for path in source_root.rglob("*")
+            if path.suffix in SOURCE_SUFFIXES
+            and (path.is_file() or (path.is_symlink() and not path.exists()))
     )

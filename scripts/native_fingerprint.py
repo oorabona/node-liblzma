@@ -32,27 +32,29 @@ def fail(message):
     raise SystemExit(1)
 
 
-def add_path(digest, repo_root, path):
-    digest.update(path.relative_to(repo_root).as_posix().encode("utf-8"))
-    digest.update(b"\0")
+def add_path(digest, relative_path, path):
     if not path.is_file():
         fail(f"required input is missing: {path}")
+    file_digest = hashlib.sha256()
     try:
         with path.open("rb") as source:
             while chunk := source.read(CHUNK_SIZE):
-                digest.update(chunk)
+                file_digest.update(chunk)
     except OSError as error:
         fail(f"could not read required input {path}: {error}")
-    digest.update(b"\0")
+    encoded_path = relative_path.encode("utf-8")
+    digest.update(len(encoded_path).to_bytes(8, "big"))
+    digest.update(encoded_path)
+    digest.update(file_digest.digest())
 
 
 def fingerprint(repo_root):
     digest = hashlib.sha256()
-    for relative_path in native_source_paths(repo_root):
-        add_path(digest, repo_root, repo_root / relative_path)
+    for path in native_source_paths(repo_root / "src"):
+        add_path(digest, path.relative_to(repo_root).as_posix(), path)
 
     for relative_path in REQUIRED_FILES:
-        add_path(digest, repo_root, repo_root / relative_path)
+        add_path(digest, relative_path, repo_root / relative_path)
 
     return digest.hexdigest()
 

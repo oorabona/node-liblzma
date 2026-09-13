@@ -38,7 +38,7 @@ async function calculateNativeFingerprint(): Promise<string> {
   }).trim();
 }
 
-it('matches the native addon to the checked-out build inputs', async () => {
+it('matches the native addon to the checked-out binding sources and control files', async () => {
   const nativeAddon = loadNativeAddon();
   const addonFingerprint =
     typeof nativeAddon.NATIVE_FINGERPRINT === 'string' ? nativeAddon.NATIVE_FINGERPRINT : '';
