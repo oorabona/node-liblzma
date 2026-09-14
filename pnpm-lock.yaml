@@ -38,7 +38,7 @@ importers:
         version: 2.5.13
       '@oorabona/release-it-preset':
         specifier: ^1.5.2
-        version: 1.5.2(release-it@21.0.2(@types/node@26.5.1)(magicast@0.5.5))
+        version: 1.5.2(release-it@21.0.3(@types/node@26.5.1)(magicast@0.5.5))
       '@oorabona/vitest-monocart-coverage':
         specifier: ^3.0.1
         version: 3.0.1(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1))(vitest@4.1.11)
@@ -65,7 +65,7 @@ importers:
         version: 6.0.1
       release-it:
         specifier: ^21.0.0
-        version: 21.0.2(@types/node@26.5.1)(magicast@0.5.5)
+        version: 21.0.3(@types/node@26.5.1)(magicast@0.5.5)
       simple-git-hooks:
         specifier: ^2.13.1
         version: 2.14.0
@@ -1781,8 +1781,8 @@ packages:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
     engines: {node: '>=8'}
 
-  release-it@21.0.2:
-    resolution: {integrity: sha512-QwyDnWiQNB4d8Hc2b5FLMHcsKz9S2O1dMNnPB7w+0knsL5r8+qbnznDA1X7Bw5D863+Ud7eRHc71Cfth5Tlrgg==}
+  release-it@21.0.3:
+    resolution: {integrity: sha512-Pd5Uqj5hJmVAZzb+QSkkDgfvHJwRBazWryb90x5FYHhPxg35cE+1wX9v1DXk4ENy8C0osHxH/yRk1mvnZi7ZHQ==}
     engines: {node: ^22.21.0 || >=24.0.0}
     hasBin: true
 
@@ -2178,8 +2178,8 @@ packages:
     resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
     engines: {node: '>=18'}
 
-  zod@4.6.4:
-    resolution: {integrity: sha512-AXSD6hvGdvRjajG/l1cC+d6IrhH+sjmPKtYeQdJIK8MFJl3LyClzS+o/YsVC+zQZPupAaeH5skwwm8YqYH7BqA==}
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
 snapshots:
 
@@ -2559,9 +2559,9 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 29.0.1
 
-  '@oorabona/release-it-preset@1.5.2(release-it@21.0.2(@types/node@26.5.1)(magicast@0.5.5))':
+  '@oorabona/release-it-preset@1.5.2(release-it@21.0.3(@types/node@26.5.1)(magicast@0.5.5))':
     dependencies:
-      release-it: 21.0.2(@types/node@26.5.1)(magicast@0.5.5)
+      release-it: 21.0.3(@types/node@26.5.1)(magicast@0.5.5)
       semver: 7.8.5
 
   '@oorabona/vitest-monocart-coverage@3.0.1(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1))(vitest@4.1.11)':
@@ -2570,7 +2570,7 @@ snapshots:
       picomatch: 4.0.7
       vite: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
       vitest: 4.1.11(@types/node@26.5.1)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1))
-      zod: 4.6.4
+      zod: 4.6.5
 
   '@oxc-project/types@0.149.0': {}
 
@@ -3726,7 +3726,7 @@ snapshots:
       indent-string: 4.0.0
       strip-indent: 3.0.0
 
-  release-it@21.0.2(@types/node@26.5.1)(magicast@0.5.5):
+  release-it@21.0.3(@types/node@26.5.1)(magicast@0.5.5):
     dependencies:
       '@inquirer/prompts': 8.5.2(@types/node@26.5.1)
       '@octokit/rest': 22.0.1
@@ -4083,4 +4083,4 @@ snapshots:
 
   yoctocolors@2.2.0: {}
 
-  zod@4.6.4: {}
+  zod@4.6.5: {}
