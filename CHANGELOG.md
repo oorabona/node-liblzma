@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.3] - 2026-09-14
+
+### Changed
+- refresh lockfile for latest transitive dependencies (deps) ([652e3ed](https://github.com/oorabona/node-liblzma/commit/652e3ed))
+- refresh lockfile for latest transitive dependencies (deps) ([47027bb](https://github.com/oorabona/node-liblzma/commit/47027bb))
+- move to release-it 21 and release-it-preset 1.5.2 (#193) (deps) ([0cbac4c](https://github.com/oorabona/node-liblzma/commit/0cbac4c))
+- refresh lockfile for latest transitive dependencies (deps) ([720e63b](https://github.com/oorabona/node-liblzma/commit/720e63b))
+
+### Fixed
+- make the XZ cache coherent without claiming to verify it (#208) ([e0f5144](https://github.com/oorabona/node-liblzma/commit/e0f5144))
+- compare XZ versions as versions, and fail on a failed candidate (#206) (ci) ([921b60d](https://github.com/oorabona/node-liblzma/commit/921b60d))
+- compile the pinned XZ version or nothing (#199) ([3c19591](https://github.com/oorabona/node-liblzma/commit/3c19591))
+- fail loudly when the native addon does not match its sources (#194) ([fb2f5f2](https://github.com/oorabona/node-liblzma/commit/fb2f5f2))
+- sign the XZ bump bot's commits and harden the workflow around it (#190) (ci) ([6659f5f](https://github.com/oorabona/node-liblzma/commit/6659f5f))
+
 ## [5.1.2] - 2026-09-11
 
 ### Added
@@ -772,7 +787,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - C++ binding support ENCODE/DECODE
 - Async support
 
-[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.2...HEAD
+[Unreleased]: https://github.com/oorabona/node-liblzma/compare/v5.1.3...HEAD
 [3.2.0]: https://github.com/oorabona/node-liblzma/compare/v3.1.2...v3.2.0
 [3.1.2]: https://github.com/oorabona/node-liblzma/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/oorabona/node-liblzma/compare/v3.1.0...v3.1.1
@@ -805,3 +820,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [5.1.1]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.1
 [v5.1.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.2
 [5.1.2]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.2
+[v5.1.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.3
+[5.1.3]: https://github.com/oorabona/node-liblzma/releases/tag/v5.1.3
