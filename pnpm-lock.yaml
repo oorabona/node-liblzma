@@ -41,7 +41,7 @@ importers:
         version: 1.5.2(release-it@21.1.2(@types/node@26.6.6)(magicast@0.5.5))
       '@oorabona/vitest-monocart-coverage':
         specifier: ^3.0.1
-        version: 3.0.1(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(vitest@4.1.12)
+        version: 3.0.1(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(vitest@4.1.12)
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
@@ -83,7 +83,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+        version: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/nxz:
     dependencies:
@@ -108,7 +108,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+        version: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/tar-xz:
     dependencies:
@@ -130,10 +130,10 @@ importers:
         version: 6.0.3
       vite:
         specifier: ^8.0.11
-        version: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+        version: 8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
       vitest:
         specifier: 'catalog:'
-        version: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+        version: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
 packages:
 
@@ -869,8 +869,8 @@ packages:
     resolution: {integrity: sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==}
     engines: {node: '>=6'}
 
-  caniuse-lite@1.0.30001820:
-    resolution: {integrity: sha512-gfWD6MxqVCqAOwmODfZf7DchWvlrA+SRdNX7ceLfg3xRqe5ssjjpF7EgslC/0tiLiNTajdaNN/q8c/5u/7Gz8w==}
+  caniuse-lite@1.0.30001822:
+    resolution: {integrity: sha512-Y3fvWQWzc69dlCyr07tuNrEhotv+db5FpMSPD3slZnkPKwRNOKwFBz2dP966XUmWMXLTOt+YShkFoQoom3U7hg==}
 
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
@@ -1005,8 +1005,8 @@ packages:
   eight-colors@1.3.3:
     resolution: {integrity: sha512-4B54S2Qi4pJjeHmCbDIsveQZWQ/TSSQng4ixYJ9/SYHHpeS5nYK0pzcHvWzWUfRsvJQjwoIENhAwqg59thQceg==}
 
-  electron-to-chromium@1.5.477:
-    resolution: {integrity: sha512-PN++F4zWZoVDGWinxMnSCpVqKhqFOJfLXxdU8bYJKudAEsHL/XKVITOKWVbfMt1r276Mi9RDLU9VHx9uKJ4RMQ==}
+  electron-to-chromium@1.5.478:
+    resolution: {integrity: sha512-pftG+ma5Lm8O6/p45bhYT6StBN5ziQymaRzmCZwFl8DwWHKPPD93FdOmP1aqftcepolQYvrcyTLa17kE8Yf+jg==}
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -2038,8 +2038,8 @@ packages:
     resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
-  undici@8.12.3:
-    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
     engines: {node: '>=22.19.0'}
 
   universal-user-agent@7.0.3:
@@ -2065,8 +2065,8 @@ packages:
     resolution: {integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==}
     engines: {node: '>=18.12.0'}
 
-  vite@8.3.5:
-    resolution: {integrity: sha512-z1YpjieJ9g0ebTmQpLBv/oq9E3F9EIlOe+7LahW8SrE3LTiG3udBRUXQOlYXP9b+IC2q2phHeVxj9xGlw34OEQ==}
+  vite@8.3.6:
+    resolution: {integrity: sha512-UI7dK29NnS54Fk+mmo7o+jI6U8Fp7hDl+X5Q1k45WH+d4dSlbLVUETGQ+hfkNgvLQGyoElPj837nZyv4MBc0VA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -2590,12 +2590,12 @@ snapshots:
       release-it: 21.1.2(@types/node@26.6.6)(magicast@0.5.5)
       semver: 7.8.6
 
-  '@oorabona/vitest-monocart-coverage@3.0.1(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(vitest@4.1.12)':
+  '@oorabona/vitest-monocart-coverage@3.0.1(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(vitest@4.1.12)':
     dependencies:
       monocart-coverage-reports: 2.13.2
       picomatch: 4.0.7
-      vite: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
-      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+      vite: 8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
       zod: 4.6.7
 
   '@oxc-project/types@0.156.0': {}
@@ -2723,7 +2723,7 @@ snapshots:
       magicast: 0.5.5
       obug: 2.2.1
       tinyrainbow: 3.2.0
-      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -2739,7 +2739,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
   '@vitest/expect@4.1.12':
     dependencies:
@@ -2750,13 +2750,13 @@ snapshots:
       chai: 6.3.0
       tinyrainbow: 3.2.0
 
-  '@vitest/mocker@4.1.12(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))':
+  '@vitest/mocker@4.1.12(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))':
     dependencies:
       '@vitest/spy': 4.1.12
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+      vite: 8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
 
   '@vitest/pretty-format@4.1.12':
     dependencies:
@@ -2788,7 +2788,7 @@ snapshots:
       pathe: 2.0.3
       sirv: 3.0.2
       tinyrainbow: 3.2.0
-      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+      vitest: 4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
   '@vitest/utils@4.1.12':
     dependencies:
@@ -2879,8 +2879,8 @@ snapshots:
   browserslist@4.29.5:
     dependencies:
       baseline-browser-mapping: 2.11.35
-      caniuse-lite: 1.0.30001820
-      electron-to-chromium: 1.5.477
+      caniuse-lite: 1.0.30001822
+      electron-to-chromium: 1.5.478
       node-releases: 2.0.63
       update-browserslist-db: 1.3.4(browserslist@4.29.5)
 
@@ -2918,7 +2918,7 @@ snapshots:
 
   camelcase@5.3.1: {}
 
-  caniuse-lite@1.0.30001820: {}
+  caniuse-lite@1.0.30001822: {}
 
   chai@6.3.0: {}
 
@@ -3012,7 +3012,7 @@ snapshots:
 
   eight-colors@1.3.3: {}
 
-  electron-to-chromium@1.5.477: {}
+  electron-to-chromium@1.5.478: {}
 
   emoji-regex@8.0.0: {}
 
@@ -3530,7 +3530,7 @@ snapshots:
       semver: 7.8.6
       tar: 7.5.22
       tinyglobby: 0.2.17
-      undici: 8.12.3
+      undici: 8.12.4
       which: 7.0.0
 
   node-releases@2.0.63: {}
@@ -4020,7 +4020,7 @@ snapshots:
 
   undici@7.30.1: {}
 
-  undici@8.12.3: {}
+  undici@8.12.4: {}
 
   universal-user-agent@7.0.3: {}
 
@@ -4041,7 +4041,7 @@ snapshots:
 
   verkit@0.5.0: {}
 
-  vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1):
+  vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -4054,10 +4054,10 @@ snapshots:
       jiti: 2.7.0
       yaml: 2.9.1
 
-  vitest@4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)):
+  vitest@4.1.12(@types/node@26.6.6)(@vitest/coverage-istanbul@4.1.12)(@vitest/coverage-v8@4.1.12)(@vitest/ui@5.0.5)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.12
-      '@vitest/mocker': 4.1.12(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+      '@vitest/mocker': 4.1.12(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
       '@vitest/pretty-format': 4.1.12
       '@vitest/runner': 4.1.12
       '@vitest/snapshot': 4.1.12
@@ -4074,7 +4074,7 @@ snapshots:
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
       tinyrainbow: 3.2.0
-      vite: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+      vite: 8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.6.6
