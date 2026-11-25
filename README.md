@@ -25,7 +25,7 @@ Native Node.js bindings for liblzma — XZ/LZMA2 compression with **browser supp
 - [Browser Usage](#browser-usage)
 - [CLI Tool (nxz)](#cli-tool-nxz)
 - [Ecosystem Packages](#ecosystem-packages)
-  - [tar-xz — tar.xz archives](#tar-xz--tarxz-archives)
+  - [tar-xz — tar.xz archives](#tar-xz--tarxz-archives-v6)
   - [nxz — standalone CLI](#nxz--standalone-cli)
 - [API Reference](#api-reference)
   - [API Comparison with Zlib](#api-comparison-with-zlib)
